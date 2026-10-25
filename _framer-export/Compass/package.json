@@ -1,0 +1,86 @@
+{
+  "name": "Compass",
+  "version": "1.0.0",
+  "description": "Exported Framer components: I9lejbgbo, M0ybvw8zq, Gh5hfcgil, Wpyaoeylv, Budgetslider, I9lejbgbo2, M0ybvw8zq2, Gh5hfcgil2, Wpyaoeylv2, Budgetslider2, I9lejbgbo3, M0ybvw8zq3, Gh5hfcgil3, Wpyaoeylv3, Budgetslider3",
+  "type": "module",
+  "main": "index.js",
+  "types": "index.d.ts",
+  "exports": {
+    ".": {
+      "import": "./index.js",
+      "types": "./index.d.ts"
+    },
+    "./I9lejbgbo": {
+      "import": "./I9lejbgbo.js",
+      "types": "./I9lejbgbo.d.ts"
+    },
+    "./M0ybvw8zq": {
+      "import": "./M0ybvw8zq.js",
+      "types": "./M0ybvw8zq.d.ts"
+    },
+    "./Gh5hfcgil": {
+      "import": "./Gh5hfcgil.js",
+      "types": "./Gh5hfcgil.d.ts"
+    },
+    "./Wpyaoeylv": {
+      "import": "./Wpyaoeylv.js",
+      "types": "./Wpyaoeylv.d.ts"
+    },
+    "./Budgetslider": {
+      "import": "./Budgetslider.js",
+      "types": "./Budgetslider.d.ts"
+    },
+    "./I9lejbgbo2": {
+      "import": "./I9lejbgbo2.js",
+      "types": "./I9lejbgbo2.d.ts"
+    },
+    "./M0ybvw8zq2": {
+      "import": "./M0ybvw8zq2.js",
+      "types": "./M0ybvw8zq2.d.ts"
+    },
+    "./Gh5hfcgil2": {
+      "import": "./Gh5hfcgil2.js",
+      "types": "./Gh5hfcgil2.d.ts"
+    },
+    "./Wpyaoeylv2": {
+      "import": "./Wpyaoeylv2.js",
+      "types": "./Wpyaoeylv2.d.ts"
+    },
+    "./Budgetslider2": {
+      "import": "./Budgetslider2.js",
+      "types": "./Budgetslider2.d.ts"
+    },
+    "./I9lejbgbo3": {
+      "import": "./I9lejbgbo3.js",
+      "types": "./I9lejbgbo3.d.ts"
+    },
+    "./M0ybvw8zq3": {
+      "import": "./M0ybvw8zq3.js",
+      "types": "./M0ybvw8zq3.d.ts"
+    },
+    "./Gh5hfcgil3": {
+      "import": "./Gh5hfcgil3.js",
+      "types": "./Gh5hfcgil3.d.ts"
+    },
+    "./Wpyaoeylv3": {
+      "import": "./Wpyaoeylv3.js",
+      "types": "./Wpyaoeylv3.d.ts"
+    },
+    "./Budgetslider3": {
+      "import": "./Budgetslider3.js",
+      "types": "./Budgetslider3.d.ts"
+    }
+  },
+  "peerDependencies": {
+    "react": ">=18.0.0",
+    "react-dom": ">=18.0.0",
+    "framer-motion": ">=10.0.0"
+  },
+  "keywords": [
+    "framer",
+    "react",
+    "components",
+    "exported"
+  ],
+  "license": "MIT"
+}

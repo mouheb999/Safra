@@ -1,0 +1,38 @@
+{
+  "name": "SAFRASafariCard",
+  "version": "1.0.0",
+  "description": "Exported Framer components: Safrasafaricard, Safrasafaricard2, Safrasafaricard3",
+  "type": "module",
+  "main": "index.js",
+  "types": "index.d.ts",
+  "exports": {
+    ".": {
+      "import": "./index.js",
+      "types": "./index.d.ts"
+    },
+    "./Safrasafaricard": {
+      "import": "./Safrasafaricard.js",
+      "types": "./Safrasafaricard.d.ts"
+    },
+    "./Safrasafaricard2": {
+      "import": "./Safrasafaricard2.js",
+      "types": "./Safrasafaricard2.d.ts"
+    },
+    "./Safrasafaricard3": {
+      "import": "./Safrasafaricard3.js",
+      "types": "./Safrasafaricard3.d.ts"
+    }
+  },
+  "peerDependencies": {
+    "react": ">=18.0.0",
+    "react-dom": ">=18.0.0",
+    "framer-motion": ">=10.0.0"
+  },
+  "keywords": [
+    "framer",
+    "react",
+    "components",
+    "exported"
+  ],
+  "license": "MIT"
+}

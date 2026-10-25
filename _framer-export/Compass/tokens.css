@@ -1,0 +1,29 @@
+/**
+ * Project design tokens extracted from the Framer canvas.
+ * Import this file once at the root of your app so the
+ * --token-<uuid> CSS variables referenced by exported components resolve.
+ */
+/* Fallback @imports for families not covered by @font-face above. */
+/* These rely on Google Fonts publishing the family under the exact name; */
+/* will silently 404 for custom or non-Google fonts. */
+@import url('https://fonts.googleapis.com/css2?family=Nunito:wght@300;400;500;600;700;800&display=swap');
+
+:root {
+  --token-6a3cf5fd-4a56-4188-ad98-e631d3feeeb7: rgb(248, 244, 234);
+  --token-f2311b69-9cb0-4b19-b79f-bbb6249f7e4a: rgb(32, 61, 53);
+  --token-e9889874-28fd-4bbf-8a8d-7ef5d06ce8dd: rgb(255, 128, 85);
+  --token-53c4acc1-0319-49ae-860a-be859056d545: rgb(228, 233, 220);
+}
+
+.text-style-hK4vyf1xL {
+  font-family: 'Nunito', sans-serif;
+  font-size: 96px;
+  line-height: 1.02em;
+  color: rgb(32, 61, 53);
+}
+.text-style-BhppV7uri {
+  font-family: 'Nunito', sans-serif;
+  font-size: 23px;
+  line-height: 1.2em;
+  color: rgb(32, 61, 53);
+}

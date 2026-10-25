@@ -1,0 +1,38 @@
+{
+  "name": "SAFRATripExperience",
+  "version": "1.0.0",
+  "description": "Exported Framer components: Safratripexperience, Safratripexperience2, Safratripexperience3",
+  "type": "module",
+  "main": "index.js",
+  "types": "index.d.ts",
+  "exports": {
+    ".": {
+      "import": "./index.js",
+      "types": "./index.d.ts"
+    },
+    "./Safratripexperience": {
+      "import": "./Safratripexperience.js",
+      "types": "./Safratripexperience.d.ts"
+    },
+    "./Safratripexperience2": {
+      "import": "./Safratripexperience2.js",
+      "types": "./Safratripexperience2.d.ts"
+    },
+    "./Safratripexperience3": {
+      "import": "./Safratripexperience3.js",
+      "types": "./Safratripexperience3.d.ts"
+    }
+  },
+  "peerDependencies": {
+    "react": ">=18.0.0",
+    "react-dom": ">=18.0.0",
+    "framer-motion": ">=10.0.0"
+  },
+  "keywords": [
+    "framer",
+    "react",
+    "components",
+    "exported"
+  ],
+  "license": "MIT"
+}
