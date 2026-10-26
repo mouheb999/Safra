@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import { TripExperience } from "@/components/trip/TripExperience";
 import { routeLocale, type LocaleParams } from "@/i18n/server";
-import { getDestinations } from "@/lib/catalog";
+import { getCheckoutConfig, getDestinations } from "@/lib/catalog";
 import { parseTripExperienceParams, type SearchParams } from "@/lib/search-params";
 import { pageMetadata } from "@/lib/site";
 
@@ -21,10 +21,11 @@ export async function generateMetadata({ params, searchParams }: Props): Promise
 
 export default async function TripPage({ params, searchParams }: Props) {
   const locale = await routeLocale(params);
-  const trip = parseTripExperienceParams(await searchParams, await getDestinations(locale));
+  const [sp, destinations, checkout] = await Promise.all([searchParams, getDestinations(locale), getCheckoutConfig()]);
+  const trip = parseTripExperienceParams(sp, destinations);
   return (
     <main className="py-10">
-      <TripExperience params={trip} locale={locale} />
+      <TripExperience params={trip} locale={locale} planPriceDT={checkout.planPriceDT} />
     </main>
   );
 }

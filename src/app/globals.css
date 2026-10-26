@@ -49,11 +49,14 @@ html[lang="ar"] {
   outline-offset: 3px;
 }
 
-button,
-input,
-select,
-textarea {
-  font: inherit;
+/* In the base layer so utilities (font-black, text-xs…) on buttons and inputs still apply. */
+@layer base {
+  button,
+  input,
+  select,
+  textarea {
+    font: inherit;
+  }
 }
 
 /* Lock page scroll while a modal <dialog> is open. */

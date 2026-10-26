@@ -12,10 +12,10 @@ npm run build      # production build + type check
 
 | Route | Rendering | Content |
 |---|---|---|
-| `/` | static | Home: hero, budget slider, destination teasers |
+| `/` | static | Home: hero, budget slider whose destination cards re-rank and re-price as it moves |
 | `/find-my-trip` | dynamic | 5-step quiz → scored results (`?budget=`, `?category=safari` prefill) |
 | `/trip?destination=thailand\|egypt\|turkiye` | dynamic, server-only | Destination preview carrying the quiz answers |
-| `/trip-request` | dynamic | Trip request form (`?mode=direct`, `?mode=visa`) |
+| `/trip-request` | dynamic | Trip plan checkout (`?mode=direct`), or the visa form (`?mode=visa`) |
 | `/visas` | static | Thailand visa service + application |
 | `/safari` | static | Safari collection + request dialog |
 | `/experiences` | static | Every destination with budget, duration and highlights |
@@ -35,10 +35,10 @@ Every public route exists in English (no prefix), French (`/fr/…`) and Arabic 
 src/
   app/                 routes
   components/
-    budget/            BudgetRange (shared track) + home BudgetSlider
+    budget/            BudgetRange (shared track) + home BudgetDiscovery (slider + cards)
     quiz/TripQuiz      quiz UI
     trip/              TripExperience (server component)
-    request/           TripRequestForm, VisaRequest
+    request/           TripRequestForm (trip plan checkout), VisaRequest
     safari/            SafariCard (server) + SafariRequestDialog (client, native <dialog>)
     forms.tsx          Field, input styles, validation + WhatsApp launch hooks
     icons.tsx
@@ -46,6 +46,7 @@ src/
   lib/
     quiz.ts            answer model + destination scoring (pure)
     requests.ts        request payload types + WhatsApp message text
+    payments.ts        checkout: payment methods, governorates, prices
     search-params.ts   server-side parsing of the URLs pages pass to each other
     budget.ts          budget constants/formatting
 _framer-export/        original Framer export, kept for reference only
@@ -100,6 +101,9 @@ Seed a linked project by running `supabase/seed.sql` in the SQL editor. Admin ac
   included, required documents). Images are uploaded straight to the public Supabase Storage bucket `catalog`
   (admins only), or can be links on the hosts in `src/lib/images.ts` (shared with `next.config.ts`).
   Saves refresh the public site immediately.
+- **Settings → Trip plan & payments**: the plan price, the cash-on-delivery fee, and the accounts customers pay
+  into (D17 number, Flouci number, Wafacash recipient + phone, bank holder / bank / RIB). An empty method is
+  hidden from the checkout; with none filled in, only cash on delivery is offered.
 - **Settings**: booking mode — *WhatsApp hand-off* (store, then open a prefilled WhatsApp message) or
   *Reservation on the site* (store and show a confirmation with the reference; SAFRA contacts the customer;
   marked "Reserved on site" in Requests) — and SAFRA's WhatsApp number used by every link and message.
@@ -108,6 +112,21 @@ Access: Supabase Auth email + password. Create the account in the Supabase dashb
 Add user, tick *Auto Confirm*), then in the SQL editor: `select private.add_admin('you@example.com');`
 Pages and server actions check admin membership on the server, and RLS checks it again in the database;
 `src/proxy.ts` only refreshes the session and redirects signed-out visitors to `/admin/login`.
+
+## Trip plan checkout
+
+The quiz and the home cards lead to `/trip`, whose "Get my complete trip plan" opens the checkout at
+`/trip-request`: trip details, contact, then payment.
+
+- **Cash on delivery**: governorate + address; a delivery company brings the order to the customer’s home, paid in cash (plan price + delivery fee).
+- **Pay online**: D17, Flouci, Wafacash or bank transfer, no API — the checkout shows the account to pay into
+  (with copy buttons); after ordering, the confirmation repeats it and opens WhatsApp with the order so the
+  customer attaches their receipt. Mark the request **Paid** once the receipt checks out.
+
+`submit_request()` prices every order from `site_settings` (the browser never sends a price) and refuses an
+online method whose account details are empty. Orders show as "Plan order" in Requests, with the method,
+amounts and delivery address on the request page. Trip orders always confirm on the site (whatever the booking
+mode), because the customer needs to see how to pay.
 
 ## How the flow works
 

@@ -11,6 +11,7 @@ import {
   formatDT,
   formatDate,
   formatDateTime,
+  paymentLabel,
 } from "@/lib/admin/format";
 import { requireAdmin } from "@/lib/admin/session";
 import { BackLink, Card, Facts, StatusBadge, adminPrimaryButton } from "../../../ui";
@@ -105,6 +106,30 @@ export default async function RequestPage({ params }: Props) {
               ]}
             />
           </Card>
+
+          {r.payment_method ? (
+            <Card title={`Trip plan order · ${formatDT(r.total_dt)}`}>
+              <Facts
+                rows={[
+                  [
+                    "Payment",
+                    r.payment_method === "cod"
+                      ? "Cash on delivery — collect on delivery"
+                      : `${paymentLabel(r.payment_method)} — check the receipt on WhatsApp before marking it Paid`,
+                  ],
+                  ["Plan price", formatDT(r.plan_price_dt)],
+                  ["Delivery fee", r.payment_method === "cod" ? formatDT(r.delivery_fee_dt) : "— (online)"],
+                  ["Total", <strong>{formatDT(r.total_dt)}</strong>],
+                  ...(r.payment_method === "cod"
+                    ? ([
+                        ["Governorate", r.delivery_governorate ?? "—"],
+                        ["Address", r.delivery_address ?? "—"],
+                      ] as [string, React.ReactNode][])
+                    : []),
+                ]}
+              />
+            </Card>
+          ) : null}
 
           {visa ? (
             <Card title={`Visa application · ${formatDT(visa.price_dt)}`}>

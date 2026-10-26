@@ -5,6 +5,7 @@ import type { VisaService } from "@/data/visas";
 import type { Locale } from "@/i18n/config";
 import { fmt } from "@/i18n/fmt";
 import en, { type Messages } from "@/i18n/messages/en";
+import { METHOD_NAME, type PaymentMethod } from "./payments";
 
 /** Used when site settings can't be read; the live number is set in /admin/settings. */
 export const DEFAULT_WHATSAPP_NUMBER = "21697433003";
@@ -38,6 +39,11 @@ export interface TripRequest {
   durationDays: string;
   budgetDT: string;
   notes: string;
+  /** How the trip plan is paid; the price comes from /admin/settings. */
+  paymentMethod: PaymentMethod;
+  /** Cash on delivery only. */
+  governorate: string;
+  address: string;
 }
 
 export interface VisaRequest {
@@ -96,7 +102,18 @@ const yesNo = (value: YesNo, w: Wording) => (value === "Yes" ? w.yes : value ===
 /** Second line of every message once the request is stored, so SAFRA can look it up. */
 const referenceLine = (w: Wording, reference?: string) => (reference ? `${fmt(w.reference, { ref: reference })}\n` : "");
 
-function tripRequestMessage(r: TripRequest | VisaRequest, w: Wording, reference?: string): string {
+/** Trip plan orders: what is paid, how, and where to deliver. */
+function orderLines(r: TripRequest, w: Wording, totalDT?: number): string[] {
+  if (!r.paymentMethod) return [];
+  const method = r.paymentMethod === "cod" ? w.cod : r.paymentMethod === "bank" ? w.bank : METHOD_NAME[r.paymentMethod];
+  return [
+    ...(totalDT ? [fmt(w.order, { total: totalDT })] : []),
+    fmt(w.payment, { v: method }),
+    ...(r.paymentMethod === "cod" ? [fmt(w.deliverTo, { v: [r.address, r.governorate].filter(Boolean).join(", ") })] : []),
+  ];
+}
+
+function tripRequestMessage(r: TripRequest | VisaRequest, w: Wording, reference?: string, totalDT?: number): string {
   const line = (template: string, v: string) => fmt(template, { v });
   const lines = [
     w.hi,
@@ -130,8 +147,13 @@ function tripRequestMessage(r: TripRequest | VisaRequest, w: Wording, reference?
           line(w.duration, dash(r.durationDays)),
           line(w.budget, dash(r.budgetDT)),
           line(w.notes, dash(r.notes)),
+          ...orderLines(r, w, totalDT),
         ]),
-    w.closingTrip,
+    r.kind === "trip" && r.paymentMethod
+      ? r.paymentMethod === "cod"
+        ? w.closingCod
+        : w.closingReceipt
+      : w.closingTrip,
   ];
   return lines.join("\n");
 }
@@ -154,9 +176,12 @@ function safariRequestMessage(r: SafariRequest, w: Wording, reference?: string):
   ].join("\n");
 }
 
-/** The message SAFRA receives, written with `wording` (the visitor's language; English by default). */
-export function requestMessage(r: ConciergeRequest, reference?: string, wording: Wording = en.whatsapp): string {
-  return r.kind === "safari" ? safariRequestMessage(r, wording, reference) : tripRequestMessage(r, wording, reference);
+/**
+ * The message SAFRA receives, written with `wording` (the visitor's language; English by default).
+ * `totalDT`: the amount of a trip plan order, as charged by submit_request().
+ */
+export function requestMessage(r: ConciergeRequest, reference?: string, wording: Wording = en.whatsapp, totalDT?: number): string {
+  return r.kind === "safari" ? safariRequestMessage(r, wording, reference) : tripRequestMessage(r, wording, reference, totalDT);
 }
 
 // Straight to api.whatsapp.com: the wa.me short link redirects there but turns 4-byte emoji

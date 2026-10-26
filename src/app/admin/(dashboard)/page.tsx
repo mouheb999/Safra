@@ -1,6 +1,16 @@
 import type { Metadata } from "next";
 import Link from "next/link";
-import { KIND_LABEL, LANGUAGE_LABEL, STATUSES, STATUS_LABEL, formatDT, formatDateTime, type RequestKind, type RequestStatus } from "@/lib/admin/format";
+import {
+  KIND_LABEL,
+  LANGUAGE_LABEL,
+  STATUSES,
+  STATUS_LABEL,
+  formatDT,
+  formatDateTime,
+  paymentLabel,
+  type RequestKind,
+  type RequestStatus,
+} from "@/lib/admin/format";
 import { requireAdmin } from "@/lib/admin/session";
 import { StatusBadge, adminInput, adminSecondaryButton } from "../ui";
 
@@ -31,7 +41,7 @@ export default async function InboxPage({
 
   let query = supabase
     .from("requests")
-    .select("id, reference, kind, status, channel, locale, full_name, whatsapp, travelers, destination_text, budget_dt, created_at, safaris(name), visa_applications(services(country))")
+    .select("id, reference, kind, status, channel, locale, full_name, whatsapp, travelers, destination_text, budget_dt, payment_method, total_dt, created_at, safaris(name), visa_applications(services(country))")
     .order("created_at", { ascending: false })
     .limit(PAGE_SIZE);
   if (view === "open") query = query.in("status", OPEN);
@@ -140,6 +150,11 @@ export default async function InboxPage({
                     {" · "}
                     {r.kind === "visa" ? (r.visa_applications?.services?.country ?? "—") : r.kind === "safari" ? (r.safaris?.name ?? "—") : (r.destination_text ?? "—")}
                     <span className="opacity-60"> · {r.travelers} pax</span>
+                    {r.payment_method ? (
+                      <div className="mt-1 text-xs font-bold whitespace-nowrap">
+                        <span className="rounded bg-[#CDEBD3] px-1.5 py-0.5">Plan order</span> {paymentLabel(r.payment_method)} · {formatDT(r.total_dt)}
+                      </div>
+                    ) : null}
                   </td>
                   <td className="px-4 py-3 text-right whitespace-nowrap">{formatDT(r.budget_dt)}</td>
                   <td className="px-4 py-3">
