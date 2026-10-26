@@ -2,11 +2,11 @@ import Image from "next/image";
 import Link from "next/link";
 import { fmt, getMessages, label } from "@/i18n";
 import { localizedPath, type Locale } from "@/i18n/config";
-import { formatRange } from "@/lib/budget";
+import { formatDT, formatRange } from "@/lib/budget";
 import type { TripExperienceParams } from "@/lib/search-params";
 
 /** Destination preview reached from the quiz results. Server-rendered from the URL parameters. */
-export function TripExperience({ params, locale }: { params: TripExperienceParams; locale: Locale }) {
+export function TripExperience({ params, locale, planPriceDT }: { params: TripExperienceParams; locale: Locale; planPriceDT: number }) {
   const t = getMessages(locale);
   const d = params.destination;
   const when = params.when.trim() && params.when.trim() !== "—" ? params.when : "";
@@ -65,6 +65,7 @@ export function TripExperience({ params, locale }: { params: TripExperienceParam
             </div>
             <h3 className="m-0 text-[30px] leading-[1.1] font-black rtl:leading-[1.3]">{t.trip.planTitle}</h3>
             <p className="m-0 opacity-90">{t.trip.planBody}</p>
+            <p className="m-0 font-black text-orange">{fmt(t.trip.planPrice, { price: formatDT(planPriceDT, locale) })}</p>
             <Link
               href={localizedPath(locale, `/trip-request?${request}`)}
               className="justify-self-start rounded-full bg-orange px-4 py-3 font-black text-ink hover:brightness-95"

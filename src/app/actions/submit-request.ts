@@ -8,12 +8,20 @@ import { z } from "zod";
 import { getMessages, type Messages } from "@/i18n";
 import { isLocale, type Locale } from "@/i18n/config";
 import { getSiteSettings } from "@/lib/catalog";
+import { GOVERNORATES, PAYMENT_METHODS } from "@/lib/payments";
 import type { BookingConfig, ConciergeRequest } from "@/lib/requests";
 import { getAdminClient } from "@/lib/supabase/admin";
 
+/** What a trip plan order was charged (by submit_request, from /admin/settings). */
+export interface OrderAmounts {
+  planPriceDT: number;
+  deliveryFeeDT: number;
+  totalDT: number;
+}
+
 export type SubmitResult =
   /** Stored: confirm on the site (booking.mode 'onsite') or put the reference in the WhatsApp message. */
-  | { status: "saved"; reference: string; booking: BookingConfig }
+  | { status: "saved"; reference: string; booking: BookingConfig; order?: OrderAmounts }
   /** The visitor needs to fix something; don't hand off yet. */
   | { status: "invalid"; message: string }
   /** Storage is down or not configured: open WhatsApp anyway so the lead isn't lost. */
@@ -34,8 +42,11 @@ function requestSchema(e: Messages["errors"]) {
   const yesNo = z.enum(["Yes", "No"], e.yesNo);
   const locale = z.enum(["en", "fr", "ar"]);
 
+  const governorate = z.union([z.literal(""), z.enum(GOVERNORATES.map((g) => g.value) as [string, ...string[]])], e.address);
+
   return z.discriminatedUnion("kind", [
-    z.object({
+    z
+      .object({
       kind: z.literal("trip"),
       locale,
       source: z.enum(["trip", "direct"]),
@@ -49,7 +60,13 @@ function requestSchema(e: Messages["errors"]) {
       durationDays: z.union([z.literal(""), z.string().regex(/^[1-9]\d{0,2}$/)]),
       budgetDT: amount,
       notes: text(1500),
-    }),
+      paymentMethod: z.enum(PAYMENT_METHODS, e.payment),
+      governorate,
+      address: text(300),
+    })
+      // Cash on delivery needs somewhere to deliver; online payments keep no address.
+      .refine((r) => r.paymentMethod !== "cod" || (r.governorate && r.address), { message: e.address, path: ["address"] })
+      .transform((r) => (r.paymentMethod === "cod" ? r : { ...r, governorate: "", address: "" })),
     z.object({
       kind: z.literal("visa"),
       locale,
@@ -95,6 +112,9 @@ const DATABASE_MESSAGES: Record<string, keyof Messages["errors"]> = {
   "Arrival date must be today or later.": "arrivalPast",
   "Passport expiry must be in the future.": "passportExpired",
   "Date of birth must be in the past.": "dobFuture",
+  "This payment method is not available.": "paymentUnavailable",
+  "Delivery address is required.": "address",
+  "Only trip plans can be ordered.": "invalid",
 };
 
 /** Postgres codes raised by submit_request / table constraints for bad input. */
@@ -139,6 +159,11 @@ export async function submitRequest(request: ConciergeRequest, honeypot = ""): P
     return unavailable;
   }
 
-  const reference = rows?.[0]?.reference;
-  return reference ? { status: "saved", reference, booking } : unavailable;
+  const row = rows?.[0];
+  if (!row?.reference) return unavailable;
+  const order =
+    data.kind === "trip" && row.total_dt
+      ? { planPriceDT: row.plan_price_dt, deliveryFeeDT: row.delivery_fee_dt, totalDT: row.total_dt }
+      : undefined;
+  return { status: "saved", reference: row.reference, booking, order };
 }

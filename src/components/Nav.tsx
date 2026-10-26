@@ -16,7 +16,7 @@ export function Nav() {
 
   return (
     <header className="px-4 pt-4 sm:px-7 sm:pt-5">
-      <nav className="mx-auto flex max-w-[1180px] items-center justify-between gap-3 rounded-[28px] bg-white/80 px-5 py-3 shadow-[0_6px_24px_rgba(32,61,53,0.08)] sm:px-6">
+      <nav className="mx-auto flex max-w-[1180px] items-center justify-between gap-3 rounded-[28px] bg-white/80 px-4 py-3 shadow-[0_6px_24px_rgba(32,61,53,0.08)] sm:px-6">
         <Link href={href("/")} className="text-[22px] font-black tracking-[0.06em] sm:text-2xl">
           SAFRA
         </Link>
@@ -32,7 +32,7 @@ export function Nav() {
           </ul>
           <Link
             href={href("/find-my-trip")}
-            className="rounded-full bg-ink px-4 py-2.5 text-sm font-extrabold whitespace-nowrap text-cream hover:opacity-90 sm:px-5"
+            className="rounded-full bg-ink px-3 py-2.5 text-sm font-extrabold whitespace-nowrap text-cream hover:opacity-90 sm:px-5"
           >
             {t.nav.planTrip}
           </Link>

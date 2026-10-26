@@ -176,3 +176,57 @@ export function tripHref(r: QuizResult, a: QuizAnswers, queryCategory: string): 
   if (category) p.set("category", category);
   return `/trip?${p}`;
 }
+
+export interface BudgetTeaser {
+  destination: Destination;
+  /** The budget reaches the destination's minimum (the same rule the quiz uses). */
+  fits: boolean;
+  /** Budget-only match (68–99) when it fits. */
+  matchPercent: number;
+  /** What the trip costs at this budget: from the minimum up to the budget (capped at the maximum). */
+  rangeMin: number;
+  rangeMax: number;
+}
+
+/**
+ * Home page cards for a per-traveler budget: destinations the budget reaches first, best fit first
+ * (budget closest to the middle of their range), then the rest from the cheapest.
+ */
+export function budgetTeasers(catalog: Destination[], budget: number): BudgetTeaser[] {
+  const teasers = catalog.map((d) => {
+    const fits = budget >= d.minBudget;
+    const center = (d.minBudget + d.maxBudget) / 2;
+    const spread = Math.max(1, (d.maxBudget - d.minBudget) / 2);
+    // Inside the range: 0.6 (an edge) to 1 (the middle). Above it: from 0.6 down to 0.2 the more
+    // budget would go unused, so a bigger budget brings the bigger trips forward.
+    const fit =
+      budget > d.maxBudget
+        ? Math.max(0.2, 0.6 - (0.4 * (budget - d.maxBudget)) / d.maxBudget)
+        : 1 - (0.4 * Math.abs(budget - center)) / spread;
+    return {
+      destination: d,
+      fits,
+      matchPercent: fits ? Math.round(60 + 39 * fit) : 0,
+      rangeMin: d.minBudget,
+      rangeMax: Math.max(d.minBudget, Math.min(d.maxBudget, budget)),
+    };
+  });
+  return teasers.sort((x, y) =>
+    x.fits !== y.fits
+      ? Number(y.fits) - Number(x.fits)
+      : x.fits
+        ? y.matchPercent - x.matchPercent || x.destination.minBudget - y.destination.minBudget
+        : x.destination.minBudget - y.destination.minBudget,
+  );
+}
+
+/** /trip link for a home card, carrying the budget so the trip page shows the same range. */
+export function teaserHref(t: BudgetTeaser, budget: number): string {
+  const p = new URLSearchParams({ destination: t.destination.slug, budget: String(budget) });
+  if (t.fits) {
+    p.set("match", String(t.matchPercent));
+    p.set("rangemin", String(t.rangeMin));
+    p.set("rangemax", String(t.rangeMax));
+  }
+  return `/trip?${p}`;
+}

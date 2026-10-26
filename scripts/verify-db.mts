@@ -404,6 +404,61 @@ await check("catalog translations are public and must be a JSON object", async (
   await expectError(rows(`update safaris set translations = '[]'::jsonb where slug = 'kenya'`), /check constraint/);
 });
 
+console.log("\nPlan checkout");
+
+const order = (paymentMethod: string, extra: object = {}) => ({ ...tripPayload, paymentMethod, ...extra });
+const cod = order("cod", { governorate: "Sousse", address: "12 Rue de la Plage, Sahloul" });
+
+await check("orders are priced from the settings (79 DT plan, 7 DT delivery by default)", async () => {
+  const [r] = await as("service_role", () => submit(cod));
+  assertEqual([r.plan_price_dt, r.delivery_fee_dt, r.total_dt], [79, 7, 86]);
+  const [row] = await rows(`select payment_method, delivery_governorate, delivery_address, total_dt from requests where id = $1`, [r.id]);
+  assertEqual(row, { payment_method: "cod", delivery_governorate: "Sousse", delivery_address: "12 Rue de la Plage, Sahloul", total_dt: 86 });
+});
+
+await check("prices sent by the browser are ignored", async () => {
+  const [r] = await as("service_role", () => submit({ ...cod, planPriceDT: "1", totalDT: "1" }));
+  assertEqual(r.total_dt, 86);
+});
+
+await check("cash on delivery needs a governorate and an address", async () => {
+  await expectError(as("service_role", () => submit(order("cod", { governorate: "Sousse", address: "  " }))), /Delivery address is required/);
+  await expectError(as("service_role", () => submit(order("cod", { address: "12 Rue" }))), /Delivery address is required/);
+});
+
+await check("online methods are refused until their account details are set", async () => {
+  for (const method of ["d17", "flouci", "wafacash", "bank"])
+    await expectError(as("service_role", () => submit(order(method))), /payment method is not available/);
+  await expectError(as("service_role", () => submit(order("paypal"))), /payment method is not available/);
+});
+
+await check("online payment: no delivery fee, no address kept", async () => {
+  await rows(`update site_settings set d17_number = '+216 20 000 000', plan_price_dt = 120 where id = 1`);
+  const [r] = await as("service_role", () => submit(order("d17", { governorate: "Tunis", address: "ignored" })));
+  assertEqual([r.plan_price_dt, r.delivery_fee_dt, r.total_dt], [120, 0, 120]);
+  const [row] = await rows(`select delivery_governorate, delivery_address from requests where id = $1`, [r.id]);
+  assertEqual(row, { delivery_governorate: null, delivery_address: null });
+  await rows(`update site_settings set d17_number = '', plan_price_dt = 79 where id = 1`);
+});
+
+await check("only trip plans can be ordered", async () => {
+  await expectError(as("service_role", () => submit({ ...safariPayload, paymentMethod: "cod", governorate: "Tunis", address: "x" })), /Only trip plans/);
+});
+
+await check("requests without a payment method are stored as before", async () => {
+  const [r] = await as("service_role", () => submit(tripPayload));
+  assertEqual([r.plan_price_dt, r.total_dt], [null, null]);
+});
+
+await check("visitors read the payment settings; only admins change them", async () => {
+  const [s] = await as("anon", () => rows(`select plan_price_dt, delivery_fee_dt, bank_rib from site_settings`));
+  assertEqual(s, { plan_price_dt: 79, delivery_fee_dt: 7, bank_rib: "" });
+  await as("authenticated", () => rows(`update site_settings set plan_price_dt = 1`), USER);
+  const [after] = await rows(`select plan_price_dt from site_settings`);
+  assertEqual(after.plan_price_dt, 79);
+  await expectError(rows(`update site_settings set plan_price_dt = 0`), /check constraint/);
+});
+
 console.log(`\n${passed} passed, ${failures.length} failed`);
 await db.close();
 process.exit(failures.length ? 1 : 0);

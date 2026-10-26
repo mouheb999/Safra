@@ -163,6 +163,9 @@ export type Database = {
           category: string | null
           channel: string
           created_at: string
+          delivery_address: string | null
+          delivery_fee_dt: number | null
+          delivery_governorate: string | null
           destination_slug: string | null
           destination_text: string | null
           duration_days: number | null
@@ -173,12 +176,15 @@ export type Database = {
           locale: string
           notes: string | null
           number: number
+          payment_method: string | null
+          plan_price_dt: number | null
           preferred_date: string | null
           quiz_answers: Json | null
           reference: string | null
           safari_slug: string | null
           source: Database["public"]["Enums"]["request_source"]
           status: Database["public"]["Enums"]["request_status"]
+          total_dt: number | null
           travelers: number
           updated_at: string
           whatsapp: string
@@ -188,6 +194,9 @@ export type Database = {
           category?: string | null
           channel?: string
           created_at?: string
+          delivery_address?: string | null
+          delivery_fee_dt?: number | null
+          delivery_governorate?: string | null
           destination_slug?: string | null
           destination_text?: string | null
           duration_days?: number | null
@@ -198,12 +207,15 @@ export type Database = {
           locale?: string
           notes?: string | null
           number?: never
+          payment_method?: string | null
+          plan_price_dt?: number | null
           preferred_date?: string | null
           quiz_answers?: Json | null
           reference?: string | null
           safari_slug?: string | null
           source: Database["public"]["Enums"]["request_source"]
           status?: Database["public"]["Enums"]["request_status"]
+          total_dt?: number | null
           travelers: number
           updated_at?: string
           whatsapp: string
@@ -213,6 +225,9 @@ export type Database = {
           category?: string | null
           channel?: string
           created_at?: string
+          delivery_address?: string | null
+          delivery_fee_dt?: number | null
+          delivery_governorate?: string | null
           destination_slug?: string | null
           destination_text?: string | null
           duration_days?: number | null
@@ -223,12 +238,15 @@ export type Database = {
           locale?: string
           notes?: string | null
           number?: never
+          payment_method?: string | null
+          plan_price_dt?: number | null
           preferred_date?: string | null
           quiz_answers?: Json | null
           reference?: string | null
           safari_slug?: string | null
           source?: Database["public"]["Enums"]["request_source"]
           status?: Database["public"]["Enums"]["request_status"]
+          total_dt?: number | null
           travelers?: number
           updated_at?: string
           whatsapp?: string
@@ -345,21 +363,48 @@ export type Database = {
       }
       site_settings: {
         Row: {
+          bank_holder: string
+          bank_name: string
+          bank_rib: string
           booking_mode: string
+          d17_number: string
+          delivery_fee_dt: number
+          flouci_number: string
           id: number
+          plan_price_dt: number
           updated_at: string
+          wafacash_name: string
+          wafacash_phone: string
           whatsapp_number: string
         }
         Insert: {
+          bank_holder?: string
+          bank_name?: string
+          bank_rib?: string
           booking_mode?: string
+          d17_number?: string
+          delivery_fee_dt?: number
+          flouci_number?: string
           id?: number
+          plan_price_dt?: number
           updated_at?: string
+          wafacash_name?: string
+          wafacash_phone?: string
           whatsapp_number?: string
         }
         Update: {
+          bank_holder?: string
+          bank_name?: string
+          bank_rib?: string
           booking_mode?: string
+          d17_number?: string
+          delivery_fee_dt?: number
+          flouci_number?: string
           id?: number
+          plan_price_dt?: number
           updated_at?: string
+          wafacash_name?: string
+          wafacash_phone?: string
           whatsapp_number?: string
         }
         Relationships: []
@@ -444,8 +489,11 @@ export type Database = {
       submit_request: {
         Args: { payload: Json }
         Returns: {
+          delivery_fee_dt: number
           id: string
+          plan_price_dt: number
           reference: string
+          total_dt: number
         }[]
       }
     }

@@ -1,12 +1,11 @@
 import type { Metadata } from "next";
 import Image from "next/image";
 import Link from "next/link";
-import { BudgetSlider } from "@/components/budget/BudgetSlider";
+import { BudgetDiscovery } from "@/components/budget/BudgetDiscovery";
 import { CompassIcon, GlobeIcon, SparklesIcon } from "@/components/icons";
-import { fmt, getMessages, label } from "@/i18n";
+import { getMessages } from "@/i18n";
 import { localizedPath, type Locale } from "@/i18n/config";
 import { routeLocale, type LocaleParams } from "@/i18n/server";
-import { formatDT } from "@/lib/budget";
 import { getDestinations, getSiteSettings } from "@/lib/catalog";
 import { SITE_NAME, SITE_URL, pageMetadata } from "@/lib/site";
 
@@ -24,8 +23,6 @@ export default async function HomePage({ params }: LocaleParams) {
   const t = getMessages(locale);
   const href = (path: string) => localizedPath(locale, path);
   const [destinations, settings] = await Promise.all([getDestinations(locale), getSiteSettings()]);
-  const [featured, ...others] = destinations;
-  const tag = (value: string) => label(t.options.vibes, value);
 
   return (
     <main className="overflow-x-hidden pb-24">
@@ -84,72 +81,7 @@ export default async function HomePage({ params }: LocaleParams) {
         </div>
       </section>
 
-      {/* Budget */}
-      <section className="mx-auto mt-24 max-w-[560px] px-4 text-center">
-        <h2 className="text-[34px] leading-[1.08] font-black tracking-[-0.02em] sm:text-[44px] rtl:leading-[1.3] rtl:tracking-normal">
-          {t.home.budgetTitle}
-        </h2>
-        <p className="mt-3 text-lg">{t.home.budgetBody}</p>
-        <div className="mt-10 text-start">
-          <BudgetSlider />
-        </div>
-      </section>
-
-      {/* Trip teasers */}
-      <section className="mx-auto mt-14 max-w-[1180px]">
-        <div className="flex snap-x snap-mandatory gap-5 overflow-x-auto px-4 pb-4 sm:px-7">
-          <Link
-            href={href(`/trip?destination=${featured.slug}`)}
-            className="w-[86vw] max-w-[560px] shrink-0 snap-start overflow-hidden rounded-[0_40px_40px_40px] bg-ink text-cream rtl:rounded-[40px_0_40px_40px]"
-          >
-            <div className="relative h-[240px] sm:h-[300px]">
-              <Image src={featured.cardImage.src} alt={featured.cardImage.alt} fill sizes="560px" className="object-cover" />
-            </div>
-            <div className="grid gap-3 p-6 sm:p-7">
-              <span className="justify-self-start rounded-full bg-orange px-3 py-1.5 text-xs font-black text-ink">
-                {fmt(t.match, { n: featured.match })}
-              </span>
-              <h3 className="text-4xl font-black tracking-[-0.02em] sm:text-[44px] rtl:tracking-normal">{featured.country}</h3>
-              <p className="text-lg">
-                {fmt(t.home.featuredMeta, { duration: featured.teaser.duration, budget: formatDT(featured.teaser.budget, locale) })}
-              </p>
-              <div className="flex flex-wrap gap-2">
-                {featured.teaser.tags.map((x) => (
-                  <span key={x} className="rounded-full border border-cream/40 px-3 py-1 text-xs font-bold">
-                    {tag(x)}
-                  </span>
-                ))}
-              </div>
-            </div>
-          </Link>
-          {others.map((d) => (
-            <Link key={d.slug} href={href(`/trip?destination=${d.slug}`)} className="w-[60vw] max-w-[260px] shrink-0 snap-start">
-              <div className="relative h-[240px] overflow-hidden rounded-[120px_120px_28px_28px]">
-                <Image src={d.cardImage.src} alt={d.cardImage.alt} fill sizes="260px" className="object-cover" />
-              </div>
-              <h3 className="mt-4 text-2xl font-black">{d.country}</h3>
-              <p className="mt-1">{fmt(t.home.teaserMeta, { budget: formatDT(d.teaser.budget, locale), duration: d.teaser.duration })}</p>
-              <p className="mt-2 text-xs font-semibold">{d.teaser.tags.map(tag).join(" · ")}</p>
-            </Link>
-          ))}
-        </div>
-
-        <div className="mt-6 flex items-center justify-center gap-3 text-sm">
-          <span className="flex gap-1.5" aria-hidden>
-            <span className="h-1.5 w-5 rounded-full bg-orange" />
-            <span className="h-1.5 w-1.5 rounded-full bg-ink/20" />
-            <span className="h-1.5 w-1.5 rounded-full bg-ink/20" />
-          </span>
-          {t.home.slide}
-        </div>
-
-        <div className="mt-7 text-center">
-          <Link href={href("/find-my-trip")} className="inline-flex rounded-full bg-orange px-8 py-4 text-lg font-extrabold hover:brightness-95">
-            {t.home.cta}
-          </Link>
-          <p className="mt-6 px-4 text-xs">{t.home.disclaimer}</p>
-        </div>
-      </section>
+      <BudgetDiscovery destinations={destinations} />
     </main>
   );
 }

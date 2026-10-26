@@ -1,5 +1,6 @@
 // Labels and formatting shared by the admin pages.
 
+import { METHOD_NAME, isPaymentMethod } from "@/lib/payments";
 import type { Enums } from "@/lib/supabase/database.types";
 
 export type RequestStatus = Enums<"request_status">;
@@ -41,6 +42,9 @@ export const CHANNEL_LABEL: Record<string, string> = {
   whatsapp: "sent via WhatsApp",
   onsite: "reserved on the site — contact the customer",
 };
+
+/** requests.payment_method of a trip plan order. */
+export const paymentLabel = (method: string) => (isPaymentMethod(method) ? METHOD_NAME[method] : method);
 
 export const SOURCE_LABEL: Record<Enums<"request_source">, string> = {
   quiz: "Quiz",
