@@ -31,6 +31,19 @@ const fr: Messages = {
     visa: "Visa",
     planTrip: "Organiser mon voyage",
     language: "Langue",
+    openMenu: "Ouvrir le menu",
+    closeMenu: "Fermer le menu",
+    menu: "Menu",
+    home: "Accueil",
+    desc: {
+      quiz: "Cinq questions, un voyage qui vous ressemble",
+      experiences: "Toutes les escapades, avec leurs budgets",
+      safari: "L’Afrique sauvage, organisée pour vous",
+      visa: "Nous préparons votre dossier avec vous",
+    },
+    knowWhere: "Je sais où je veux aller",
+    questions: "Une question ? Écrivez-nous",
+    whatsapp: "WhatsApp",
   },
 
   home: {

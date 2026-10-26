@@ -31,6 +31,19 @@ const ar: Messages = {
     visa: "التأشيرة",
     planTrip: "خطّط رحلتي",
     language: "اللغة",
+    openMenu: "فتح القائمة",
+    closeMenu: "إغلاق القائمة",
+    menu: "القائمة",
+    home: "الرئيسية",
+    desc: {
+      quiz: "خمسة أسئلة ورحلة تناسبك",
+      experiences: "كل الرحلات مع ميزانياتها",
+      safari: "أفريقيا البرية، نخطّطها لك",
+      visa: "نُعدّ ملفك معك",
+    },
+    knowWhere: "أعرف إلى أين أريد الذهاب",
+    questions: "لديك سؤال؟ راسلنا",
+    whatsapp: "واتساب",
   },
 
   home: {
