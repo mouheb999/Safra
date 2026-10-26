@@ -118,7 +118,7 @@ Pages and server actions check admin membership on the server, and RLS checks it
 The quiz and the home cards lead to `/trip`, whose "Get my complete trip plan" opens the checkout at
 `/trip-request`: trip details, contact, then payment.
 
-- **Cash on delivery**: governorate + address; the printed plan is delivered and paid in cash (plan price + delivery fee).
+- **Cash on delivery**: governorate + address; a delivery company brings the order to the customer’s home, paid in cash (plan price + delivery fee).
 - **Pay online**: D17, Flouci, Wafacash or bank transfer, no API — the checkout shows the account to pay into
   (with copy buttons); after ordering, the confirmation repeats it and opens WhatsApp with the order so the
   customer attaches their receipt. Mark the request **Paid** once the receipt checks out.

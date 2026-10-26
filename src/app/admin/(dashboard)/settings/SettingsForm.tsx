@@ -79,7 +79,7 @@ export function SettingsForm({
           <SettingField label="Trip plan price (DT)" hint="What a complete trip plan costs, whatever the destination.">
             <input name="plan_price_dt" type="number" min={1} max={100000} step={1} required defaultValue={checkout.plan_price_dt} className={adminInput} />
           </SettingField>
-          <SettingField label="Delivery fee (DT)" hint="Added for cash on delivery (printed plan, anywhere in Tunisia).">
+          <SettingField label="Delivery fee (DT)" hint="Added for cash on delivery: the order is delivered to the customer’s home, anywhere in Tunisia.">
             <input name="delivery_fee_dt" type="number" min={0} max={1000} step={1} required defaultValue={checkout.delivery_fee_dt} className={adminInput} />
           </SettingField>
         </div>

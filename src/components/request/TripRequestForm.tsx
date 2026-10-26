@@ -328,14 +328,26 @@ function PayOption({
 }
 
 /** Where to send the money for an online method, with copy buttons. */
-function AccountPanel({ method, checkout, totalDT }: { method: OnlineMethod; checkout: CheckoutConfig; totalDT: number }) {
+function AccountPanel({
+  method,
+  checkout,
+  totalDT,
+  heading = true,
+}: {
+  method: OnlineMethod;
+  checkout: CheckoutConfig;
+  totalDT: number;
+  heading?: boolean;
+}) {
   const { t, locale } = useI18n();
   const c = t.checkout;
   return (
     <div className="grid gap-2 rounded-2xl bg-sky/70 p-4">
-      <div className="text-sm font-black tracking-[.04em] text-sea rtl:tracking-normal">
-        {fmt(c.payTo, { total: formatDT(totalDT, locale) })} · {methodName(method, t)}
-      </div>
+      {heading ? (
+        <div className="text-sm font-black tracking-[.04em] text-sea rtl:tracking-normal">
+          {fmt(c.payTo, { total: formatDT(totalDT, locale) })} · {methodName(method, t)}
+        </div>
+      ) : null}
       {accountDetails(method, checkout.accounts).map(([field, value]) => (
         <div key={field} className="flex items-center justify-between gap-3 rounded-xl bg-white/80 px-3 py-2.5">
           <span className="grid min-w-0 gap-0.5">
@@ -433,7 +445,11 @@ function SummaryRow({ label, value }: { label: string; value: string }) {
   );
 }
 
-/** After ordering: the reference, how to pay, and the WhatsApp hand-off (receipt or order copy). */
+/**
+ * After ordering: the reference, then either the two payment steps (send the money, send the receipt
+ * on WhatsApp) or the cash-on-delivery summary. The WhatsApp message always carries the whole order,
+ * so SAFRA gets it even if storing it failed (no reference shown then).
+ */
 function OrderConfirmation({ order, checkout }: { order: PlacedOrder; checkout: CheckoutConfig }) {
   const { t, locale } = useI18n();
   const c = t.checkout;
@@ -443,15 +459,14 @@ function OrderConfirmation({ order, checkout }: { order: PlacedOrder; checkout: 
   const online = request.paymentMethod !== "cod" ? request.paymentMethod : null;
   const [before, after = ""] = c.confirmRef.split("{ref}");
   const place = [request.address, governorateLabel(request.governorate, locale)].filter(Boolean).join(", ");
+  const stepClass = "m-0 text-xl font-black";
 
   return (
     <div role="status" className="mx-auto grid w-full max-w-[640px] animate-enter gap-4 rounded-3xl border border-ink/14 bg-white/80 p-6 text-center motion-reduce:animate-none">
       <div aria-hidden className="mx-auto grid size-14 place-items-center rounded-full bg-orange text-2xl font-black">
         ✓
       </div>
-      <h1 className="m-0 text-4xl leading-tight font-black tracking-[-0.02em] rtl:tracking-normal">
-        {reference ? c.confirmTitle : c.confirmTitleNoRef}
-      </h1>
+      <h1 className="m-0 text-4xl leading-tight font-black tracking-[-0.02em] rtl:tracking-normal">{c.confirmTitle}</h1>
       {reference ? (
         <p className="m-0 text-lg">
           {before}
@@ -460,24 +475,26 @@ function OrderConfirmation({ order, checkout }: { order: PlacedOrder; checkout: 
           </strong>
           {after}
         </p>
-      ) : (
-        <p className="m-0 font-bold">{c.noRefHint}</p>
-      )}
+      ) : null}
 
       {online ? (
-        <div className="grid gap-3 text-start">
-          <h2 className="m-0 text-center text-2xl font-black">{fmt(c.payNowTitle, { total })}</h2>
-          <AccountPanel method={online} checkout={checkout} totalDT={totalDT} />
-          {reference ? <p className="m-0 text-center text-sm font-bold">{fmt(c.payNowNote, { ref: reference })}</p> : null}
-          <a href={chatHref} className="justify-self-stretch rounded-full bg-orange px-6 py-4 text-center text-lg font-black text-ink hover:brightness-95">
-            {c.sendReceipt}
-          </a>
-          <p className="m-0 text-center text-sm opacity-80">{c.receiptHint}</p>
+        <div className="grid gap-4 text-start">
+          <div className="grid gap-2">
+            <h2 className={stepClass}>{fmt(c.payStep1, { total, method: methodName(online, t) })}</h2>
+            <AccountPanel method={online} checkout={checkout} totalDT={totalDT} heading={false} />
+            {reference ? <p className="m-0 text-sm font-bold opacity-80">{fmt(c.payNowNote, { ref: reference })}</p> : null}
+          </div>
+          <div className="grid gap-2">
+            <h2 className={stepClass}>{c.payStep2}</h2>
+            <a href={chatHref} className="rounded-full bg-orange px-6 py-4 text-center text-lg font-black text-ink hover:brightness-95">
+              {c.sendReceipt}
+            </a>
+            <p className="m-0 text-center text-sm opacity-80">{c.receiptHint}</p>
+          </div>
         </div>
       ) : (
         <div className="grid gap-3">
-          {/* The number is isolated so "+216 …" keeps its order inside Arabic text. */}
-          <p className="m-0 font-bold">{fmt(c.codConfirm, { phone: `⁨${request.whatsapp}⁩`, place, total })}</p>
+          <p className="m-0 text-lg font-bold">{fmt(c.codConfirm, { place, total })}</p>
           {reference ? (
             <a href={chatHref} className="justify-self-center text-sm font-extrabold underline">
               {c.chat}
