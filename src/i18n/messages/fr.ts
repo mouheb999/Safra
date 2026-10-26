@@ -26,7 +26,6 @@ const fr: Messages = {
   },
 
   nav: {
-    explore: "Explorer",
     experiences: "Expériences",
     safari: "Safari",
     visa: "Visa",

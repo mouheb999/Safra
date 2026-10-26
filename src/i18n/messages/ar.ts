@@ -26,7 +26,6 @@ const ar: Messages = {
   },
 
   nav: {
-    explore: "استكشف",
     experiences: "التجارب",
     safari: "سفاري",
     visa: "التأشيرة",

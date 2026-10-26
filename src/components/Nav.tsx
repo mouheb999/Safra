@@ -8,7 +8,6 @@ import { LanguageSwitcher } from "./LanguageSwitcher";
 export function Nav() {
   const { t, href } = useI18n();
   const links = [
-    { path: "/find-my-trip", label: t.nav.explore },
     { path: "/experiences", label: t.nav.experiences },
     { path: "/safari", label: t.nav.safari },
     { path: "/visas", label: t.nav.visa },

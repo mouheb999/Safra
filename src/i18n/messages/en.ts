@@ -26,7 +26,6 @@ const en = {
   },
 
   nav: {
-    explore: "Explore",
     experiences: "Experiences",
     safari: "Safari",
     visa: "Visa",
