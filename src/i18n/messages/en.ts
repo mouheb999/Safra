@@ -31,6 +31,19 @@ const en = {
     visa: "Visa",
     planTrip: "Plan my trip",
     language: "Language",
+    openMenu: "Open menu",
+    closeMenu: "Close menu",
+    menu: "Menu",
+    home: "Home",
+    desc: {
+      quiz: "Five questions, a trip that fits",
+      experiences: "Every escape, with budgets",
+      safari: "Wild Africa, planned for you",
+      visa: "We prepare your file with you",
+    },
+    knowWhere: "I know where I’m going",
+    questions: "Questions? Chat with us",
+    whatsapp: "WhatsApp",
   },
 
   home: {
