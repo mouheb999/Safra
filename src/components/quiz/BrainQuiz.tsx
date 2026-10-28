@@ -11,7 +11,7 @@ import { GROUP_TYPES, STAY_TYPES, type GroupType, type StayType } from "@/data/b
 import { useI18n } from "@/i18n/client";
 import { fmt, label } from "@/i18n/fmt";
 import type { Locale } from "@/i18n/config";
-import { DEFAULT_BUDGET, DISCOVERY_BUDGET_KEY, clampBudget, formatBudget, formatDT } from "@/lib/budget";
+import { BUDGET_STEP, DEFAULT_BUDGET, DISCOVERY_BUDGET_KEY, clampBudget, formatBudget, formatDT } from "@/lib/budget";
 import { CATEGORIES, type BrainInput } from "@/lib/brain/engine";
 import { encodeBrainInput } from "@/lib/brain/input";
 import type { BrainPreview, PreviewOption } from "@/lib/brain/preview";
@@ -99,7 +99,10 @@ export function BrainQuiz({ prefill, whatsappNumber }: { prefill: QuizPrefill; w
   const [step, setStep] = useState<Step>("Budget");
   const [preview, setPreview] = useState<BrainPreview | null>(null);
   const [failed, setFailed] = useState(false);
+  const [refreshing, setRefreshing] = useState(false);
   const [, startTransition] = useTransition();
+  // Only the latest request may show its result (budget changes can overlap).
+  const requestId = useRef(0);
   const headingRef = useRef<HTMLHeadingElement>(null);
   const firstRender = useRef(true);
 
@@ -146,6 +149,7 @@ export function BrainQuiz({ prefill, whatsappNumber }: { prefill: QuizPrefill; w
   const run = () => {
     setStep("Loading");
     setFailed(false);
+    const id = ++requestId.current;
     const started = Date.now();
     startTransition(async () => {
       let result: BrainPreview | null = null;
@@ -155,9 +159,32 @@ export function BrainQuiz({ prefill, whatsappNumber }: { prefill: QuizPrefill; w
         // shown below
       }
       await new Promise((r) => setTimeout(r, Math.max(0, 1300 - (Date.now() - started))));
+      if (id !== requestId.current) return;
       setPreview(result);
       setFailed(!result || result.status === "need_info");
       setStep("Results");
+    });
+  };
+
+  /** New budget from the results page: recompute in place, without going back through the questions. */
+  const changeBudget = (budget: number) => {
+    const next = { ...answers, budget };
+    setAnswers(next);
+    setRefreshing(true);
+    const id = ++requestId.current;
+    startTransition(async () => {
+      let result: BrainPreview | null = null;
+      try {
+        result = await suggestBrainTrips(toInput(next), locale);
+      } catch {
+        // keep the trips on screen; the error state below covers a failed first run only
+      }
+      if (id !== requestId.current) return;
+      if (result && result.status !== "need_info") {
+        setPreview(result);
+        setFailed(false);
+      }
+      setRefreshing(false);
     });
   };
 
@@ -276,6 +303,8 @@ export function BrainQuiz({ prefill, whatsappNumber }: { prefill: QuizPrefill; w
               answers={answers}
               headingRef={headingRef}
               whatsappNumber={whatsappNumber}
+              refreshing={refreshing}
+              onBudget={changeBudget}
               onChange={() => setStep("Budget")}
               onRestart={() => {
                 setAnswers((a) => ({ ...a, depart: "", ret: "", month: null, group: "", vibes: [], stay: "", children: 0, childAges: [] }));
@@ -440,6 +469,8 @@ function Results({
   answers,
   headingRef,
   whatsappNumber,
+  refreshing,
+  onBudget,
   onChange,
   onRestart,
 }: {
@@ -447,6 +478,8 @@ function Results({
   answers: Answers;
   headingRef: RefObject<HTMLHeadingElement | null>;
   whatsappNumber: string;
+  refreshing: boolean;
+  onBudget: (budget: number) => void;
   onChange: () => void;
   onRestart: () => void;
 }) {
@@ -475,21 +508,36 @@ function Results({
 
   const travelers = preview.travelers === 1 ? t.brain.oneTraveler : fmt(t.brain.travelersValue, { n: preview.travelers });
   const nights = fmt(t.brain.nightsValue, { n: preview.nights });
+  const budgetEditor = <BudgetEditor value={answers.budget} refreshing={refreshing} onCommit={onBudget} />;
+  const dim = `transition-opacity duration-300 ${refreshing ? "pointer-events-none opacity-45" : ""}`;
 
   if (preview.status === "no_fit") {
     const c = preview.closest;
+    // The per-person budget that would cover what's missing (when the slider can reach it).
+    const needed = c ? clampBudget(answers.budget + Math.ceil(c.missingTND / preview.travelers / BUDGET_STEP) * BUDGET_STEP) : null;
+    const canReach = needed !== null && needed > answers.budget;
     return (
       <div className="grid max-w-[760px] gap-5 pt-2">
         <h2 ref={headingRef} tabIndex={-1} className={headingClass}>
           {t.brain.noFitTitle}
         </h2>
-        <div className="grid gap-3 rounded-[24px] bg-white/75 p-6 ring-1 ring-ink/8">
+        {budgetEditor}
+        <div className={`grid gap-3 rounded-[24px] bg-white/75 p-6 ring-1 ring-ink/8 ${dim}`}>
           {c ? (
             <>
               <p className="m-0 text-lg font-bold">
                 {fmt(t.brain.noFitBody, { country: c.countryName, places: c.places.join(t.brain.and), missing: formatDT(c.missingTND, locale) })}
               </p>
               {c.fitsWithNights ? <p className="m-0 font-bold text-sea">{fmt(t.brain.noFitNights, { n: c.fitsWithNights })}</p> : null}
+              {canReach ? (
+                <button
+                  type="button"
+                  onClick={() => onBudget(needed)}
+                  className="mt-1 cursor-pointer justify-self-start rounded-full bg-ink px-6 py-3.5 font-black text-cream hover:brightness-110"
+                >
+                  {fmt(t.brain.tryBudget, { amount: formatDT(needed, locale) })}
+                </button>
+              ) : null}
             </>
           ) : (
             <p className="m-0 text-lg font-bold">{t.brain.noFitNone}</p>
@@ -514,7 +562,9 @@ function Results({
         </p>
       </div>
 
-      <div className={`grid gap-5 ${preview.options.length === 3 ? "@min-[900px]:grid-cols-3" : preview.options.length === 2 ? "@min-[700px]:grid-cols-2" : "max-w-[460px]"}`}>
+      {budgetEditor}
+
+      <div className={`grid gap-5 ${dim} ${preview.options.length === 3 ? "@min-[900px]:grid-cols-3" : preview.options.length === 2 ? "@min-[700px]:grid-cols-2" : "max-w-[460px]"}`}>
         {preview.options.map((o, i) => (
           <OptionCard key={o.country} option={o} answers={answers} totalBudget={preview.totalBudgetTND} nights={preview.nights} travelers={preview.travelers} index={i} />
         ))}
@@ -522,6 +572,36 @@ function Results({
 
       <p className="m-0 text-sm opacity-70">{t.brain.estimated}</p>
       {actions}
+    </div>
+  );
+}
+
+/** The budget slider on the results: trips update a moment after the visitor lets go. */
+function BudgetEditor({ value, refreshing, onCommit }: { value: number; refreshing: boolean; onCommit: (budget: number) => void }) {
+  const { t, locale } = useI18n();
+  const [draft, setDraft] = useState(value);
+  const [synced, setSynced] = useState(value);
+  // A budget set from outside (the "Try … per person" button) moves the slider too.
+  if (value !== synced) {
+    setSynced(value);
+    setDraft(value);
+  }
+  useEffect(() => {
+    if (draft === value) return;
+    const timer = setTimeout(() => onCommit(draft), 450);
+    return () => clearTimeout(timer);
+  }, [draft, value, onCommit]);
+
+  return (
+    <div className="grid max-w-[640px] gap-3 rounded-[24px] bg-white/75 px-5 pt-4 pb-5 ring-1 ring-ink/8">
+      <div className="flex flex-wrap items-baseline justify-between gap-x-4 gap-y-1">
+        <span className="font-extrabold">{t.brain.editBudget}</span>
+        <span className="text-[28px] leading-none font-black tracking-[-0.02em] tabular-nums">{formatBudget(draft, locale)}</span>
+      </div>
+      <BudgetRange value={draft} onChange={setDraft} />
+      <p aria-live="polite" className={`m-0 h-4 text-sm font-bold text-sea transition-opacity ${refreshing ? "opacity-100" : "opacity-0"}`}>
+        {refreshing ? t.brain.updating : ""}
+      </p>
     </div>
   );
 }
