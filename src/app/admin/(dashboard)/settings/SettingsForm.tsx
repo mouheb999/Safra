@@ -58,7 +58,7 @@ export function SettingsForm({
           </label>
         ))}
         <p className="m-0 text-xs opacity-70">
-          Applies to visa applications and safari requests. Trip plan orders always show their confirmation and payment
+          Applies to visa applications. Trip plan orders always show their confirmation and payment
           steps on the site, then hand over on WhatsApp. If saving ever fails, visitors still get WhatsApp so no request
           is lost.
         </p>

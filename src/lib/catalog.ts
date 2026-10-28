@@ -5,7 +5,6 @@ import "server-only";
 import { cache } from "react";
 import { createClient } from "@supabase/supabase-js";
 import { localDestinations, type Destination } from "@/data/destinations";
-import { localSafaris, type Safari } from "@/data/safaris";
 import { localVisaServices, type VisaService } from "@/data/visas";
 import {
   DEFAULT_DELIVERY_FEE_DT,
@@ -16,8 +15,8 @@ import {
 } from "./payments";
 import { DEFAULT_WHATSAPP_NUMBER, type BookingConfig, type BookingMode } from "./requests";
 import type { Database } from "./supabase/database.types";
-import { toDestination, toSafari, toVisaService } from "./supabase/mappers";
-import { localizeDestination, localizeSafari, localizeVisaService } from "./localize";
+import { toDestination, toVisaService } from "./supabase/mappers";
+import { localizeDestination, localizeVisaService } from "./localize";
 import type { Locale } from "@/i18n/config";
 
 const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
@@ -50,14 +49,6 @@ const getRawDestinations = cache(
     }),
 );
 
-const getRawSafaris = cache(
-  (): Promise<Safari[]> =>
-    readOr("safaris", localSafaris, async () => {
-      const { data, error } = await publicClient().from("safaris").select("*").order("sort_order");
-      if (error) throw error;
-      return data.map(toSafari);
-    }),
-);
 
 const getRawVisaServices = cache(
   (): Promise<VisaService[]> =>
@@ -73,9 +64,6 @@ export async function getDestinations(locale: Locale = "en"): Promise<Destinatio
   return (await getRawDestinations()).map((d) => localizeDestination(d, locale));
 }
 
-export async function getSafaris(locale: Locale = "en"): Promise<Safari[]> {
-  return (await getRawSafaris()).map((x) => localizeSafari(x, locale));
-}
 
 export async function getVisaServices(locale: Locale = "en"): Promise<VisaService[]> {
   return (await getRawVisaServices()).map((v) => localizeVisaService(v, locale));

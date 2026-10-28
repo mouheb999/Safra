@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import { TripRequestForm } from "@/components/request/TripRequestForm";
+import { getPacks } from "@/data/packs";
 import { VisaRequest } from "@/components/request/VisaRequest";
 import { getMessages } from "@/i18n";
 import { routeLocale, type LocaleParams } from "@/i18n/server";
@@ -25,14 +26,20 @@ export default async function TripRequestPage({ params, searchParams }: Props) {
   ]);
   const prefill = parseTripRequestParams(sp, "trip", destinations);
   const selected = destinations.find((d) => d.slug === prefill.selectedSlug);
-  const destination = selected ? { title: selected.title, country: selected.country, image: selected.cardImage.src } : undefined;
+  // ?pack= from "Our packs": the summary shows the pack, and its name is noted on the request.
+  const pack = getPacks(locale).find((p) => p.slug === sp.pack);
+  const destination = pack
+    ? { title: pack.title, country: pack.country, image: pack.image }
+    : selected
+      ? { title: selected.title, country: selected.country, image: selected.cardImage.src }
+      : undefined;
   const service = typeof sp.service === "string" ? sp.service : undefined;
   return (
     <main className="py-10">
       {prefill.mode === "visa" ? (
         <VisaRequest services={await getVisaServices(locale)} booking={booking} category={prefill.category} initialSlug={service} />
       ) : (
-        <TripRequestForm prefill={prefill} booking={booking} checkout={checkout} destination={destination} />
+        <TripRequestForm prefill={prefill} booking={booking} checkout={checkout} destination={destination} packTitle={pack?.title} />
       )}
     </main>
   );

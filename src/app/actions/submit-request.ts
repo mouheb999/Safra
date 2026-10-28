@@ -89,25 +89,11 @@ function requestSchema(e: Messages["errors"]) {
       previousVisaRefusal: yesNo,
       notes: text(1500),
     }),
-    z.object({
-      kind: z.literal("safari"),
-      locale,
-      safari: required(80),
-      safariSlug: text(40),
-      fullName: required(120),
-      whatsapp,
-      travelers,
-      preferredDate: optionalDate,
-      preferredDuration: text(60),
-      budgetDT: amount,
-      specialRequests: text(1000),
-    }),
   ]);
 }
 
 /** submit_request() raises these (22023) in English; the visitor sees them in their language. */
 const DATABASE_MESSAGES: Record<string, keyof Messages["errors"]> = {
-  "Unknown safari": "unknownSafari",
   "This visa service is not available.": "serviceUnavailable",
   "Arrival date must be today or later.": "arrivalPast",
   "Passport expiry must be in the future.": "passportExpired",
@@ -141,9 +127,7 @@ export async function submitRequest(request: ConciergeRequest, honeypot = ""): P
   const payload =
     data.kind === "visa"
       ? { ...data, service: undefined, serviceSlug: data.service.slug, source: "visa" }
-      : data.kind === "safari"
-        ? { ...data, source: "safari" }
-        : data;
+      : data;
 
   const { data: rows, error } = await admin.rpc("submit_request", { payload });
   if (error) {

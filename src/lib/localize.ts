@@ -22,18 +22,6 @@ export function localizeDestination(d: Destination, locale: Locale): Destination
   };
 }
 
-export function localizeSafari(s: Safari, locale: Locale): Safari {
-  if (locale === "en") return s;
-  const t = s.translations;
-  return {
-    ...s,
-    name: pick(t, locale, "name", s.name),
-    description: pick(t, locale, "description", s.description),
-    duration: pick(t, locale, "duration", s.duration),
-    highlights: pick(t, locale, "highlights", s.highlights),
-    image: { ...s.image, alt: pick(t, locale, "imageAlt", s.image.alt) },
-  };
-}
 
 export function localizeVisaService(v: VisaService, locale: Locale): VisaService {
   if (locale === "en") return v;

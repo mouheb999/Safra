@@ -7,7 +7,7 @@ import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { z } from "zod";
 import { requireAdmin } from "@/lib/admin/session";
-import { DESTINATION_FIELDS, SAFARI_FIELDS, VISA_FIELDS, readTranslations } from "@/lib/admin/translations";
+import { DESTINATION_FIELDS, VISA_FIELDS, readTranslations } from "@/lib/admin/translations";
 import { IMAGE_HOSTS, isAllowedImageUrl } from "@/lib/images";
 
 export type FormState = { error: string | null };
@@ -61,16 +61,6 @@ const destinationSchema = z
   })
   .refine((d) => d.max_budget >= d.min_budget, "Maximum budget must be at least the minimum budget.");
 
-const safariSchema = z.object({
-  name: text("Name", 80),
-  description: text("Description", 600),
-  duration: text("Duration", 40),
-  highlights: z.array(z.string().max(80)).min(1, "Add at least one highlight.").max(6, "At most 6 highlights."),
-  image_url: imageUrl("Image"),
-  image_alt: z.string().max(160),
-  sort_order: sortOrder,
-  is_active: z.boolean(),
-});
 
 const firstIssue = (error: z.ZodError) => error.issues[0]?.message ?? "Please check the form.";
 
@@ -136,36 +126,6 @@ export async function saveDestination(originalSlug: string | null, _prev: FormSt
   redirect(`/admin/catalog?saved=${encodeURIComponent(parsed.data.title)}`);
 }
 
-export async function saveSafari(originalSlug: string | null, _prev: FormState, fd: FormData): Promise<FormState> {
-  const { supabase } = await requireAdmin();
-  const parsed = safariSchema.safeParse({
-    name: get(fd, "name"),
-    description: get(fd, "description"),
-    duration: get(fd, "duration"),
-    highlights: lines(fd, "highlights"),
-    image_url: get(fd, "image_url"),
-    image_alt: get(fd, "image_alt"),
-    sort_order: get(fd, "sort_order") || "0",
-    is_active: fd.get("is_active") === "on",
-  });
-  if (!parsed.success) return { error: firstIssue(parsed.error) };
-  const { translations, error: translationError } = readTranslations(fd, SAFARI_FIELDS);
-  if (translationError !== null) return { error: translationError };
-  const row = { ...parsed.data, translations };
-
-  if (originalSlug === null) {
-    const newSlug = slug.safeParse(get(fd, "slug"));
-    if (!newSlug.success) return { error: firstIssue(newSlug.error) };
-    const { error } = await supabase.from("safaris").insert({ slug: newSlug.data, ...row });
-    if (error) return { error: dbMessage(error) };
-  } else {
-    const { data, error } = await supabase.from("safaris").update(row).eq("slug", originalSlug).select("slug");
-    if (error) return { error: dbMessage(error) };
-    if (!data?.length) return { error: "That safari no longer exists." };
-  }
-  refreshSite();
-  redirect(`/admin/catalog?saved=${encodeURIComponent(parsed.data.name)}`);
-}
 
 const visaServiceSchema = z.object({
   name: text("Name", 120),
@@ -213,7 +173,7 @@ export async function saveVisaService(originalSlug: string | null, _prev: FormSt
 }
 
 /** Show/hide a catalog item on the public site. */
-export async function setActive(table: "destinations" | "safaris" | "services", slugValue: string, active: boolean) {
+export async function setActive(table: "destinations" | "services", slugValue: string, active: boolean) {
   const { supabase } = await requireAdmin();
   if (!slug.safeParse(slugValue).success) return;
   const { error } = await supabase.from(table).update({ is_active: active }).eq("slug", slugValue);

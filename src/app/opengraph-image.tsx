@@ -32,7 +32,7 @@ export default function OpenGraphImage() {
           <div style={{ fontSize: 44 }}>{SITE_TAGLINE}</div>
         </div>
         <div style={{ display: "flex", gap: 16 }}>
-          {["Trips", "Safaris", "Visas"].map((t) => (
+          {["Trips", "Packs", "Visas"].map((t) => (
             <div key={t} style={{ background: "#FF8055", borderRadius: 999, padding: "12px 28px", fontSize: 30, fontWeight: 800 }}>
               {t}
             </div>

@@ -1,7 +1,7 @@
 // French / Arabic versions of catalog text, edited in /admin/catalog and stored in each row's
 // `translations` column ({ fr: {...}, ar: {...} }). Empty fields fall back to the English text.
 
-import type { DestinationText, SafariText, VisaText } from "@/data/catalog-translations";
+import type { DestinationText, VisaText } from "@/data/catalog-translations";
 import type { TranslatedLocale } from "@/data/translations";
 
 export const TRANSLATED_LOCALES: { locale: TranslatedLocale; label: string; dir: "ltr" | "rtl" }[] = [
@@ -28,13 +28,6 @@ export const DESTINATION_FIELDS: TranslatedField<keyof DestinationText>[] = [
   { key: "cardAlt", label: "Card image description", kind: "text", max: 160 },
 ];
 
-export const SAFARI_FIELDS: TranslatedField<keyof SafariText>[] = [
-  { key: "name", label: "Name", kind: "text", max: 80 },
-  { key: "duration", label: "Suggested duration", kind: "text", max: 40 },
-  { key: "description", label: "Description", kind: "textarea", max: 600 },
-  { key: "highlights", label: "Highlights (one per line)", kind: "lines", max: 80 },
-  { key: "imageAlt", label: "Image description", kind: "text", max: 160 },
-];
 
 export const VISA_FIELDS: TranslatedField<keyof VisaText>[] = [
   { key: "name", label: "Name", kind: "text", max: 120 },

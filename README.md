@@ -12,13 +12,13 @@ npm run build      # production build + type check
 
 | Route | Rendering | Content |
 |---|---|---|
-| `/` | static | Home: hero, budget slider whose destination cards re-rank and re-price as it moves |
-| `/find-my-trip` | dynamic | 5-step quiz → scored results (`?budget=`, `?category=safari` prefill) |
+| `/` | static | Home: hero (video or poster, see `HERO_VIDEO` in `src/lib/site.ts`), budget slider that glides through the packs |
+| `/find-my-trip` | dynamic | 5-step quiz → scored results (`?budget=`, `?category=` prefill) |
 | `/trip?destination=thailand\|egypt\|turkiye` | dynamic, server-only | Destination preview carrying the quiz answers |
 | `/trip-request` | dynamic | Trip plan checkout (`?mode=direct`), or the visa form (`?mode=visa`) |
 | `/visas` | static | Thailand visa service + application |
-| `/safari` | static | Safari collection + request dialog |
-| `/experiences` | static | Every destination with budget, duration and highlights |
+| `/packs` | static | Our packs: ready-made trips with a price per person (placeholders in `src/data/packs.ts`); a pack opens the checkout with `?pack=` |
+| `/safari`, `/experiences` | redirect | Old links, sent to `/packs` |
 | `/robots.txt`, `/sitemap.xml`, `/opengraph-image`, `/icon.svg` | static | SEO: `/admin` and `/trip-request` are not indexed; canonical URLs and social cards come from `src/lib/site.ts` |
 
 ## Languages
@@ -26,7 +26,7 @@ npm run build      # production build + type check
 Every public route exists in English (no prefix), French (`/fr/…`) and Arabic (`/ar/…`, right-to-left). `src/proxy.ts` sends first-time visitors to their browser's language and remembers the switcher choice in the `NEXT_LOCALE` cookie; `/en/…` redirects to the unprefixed URL. The admin stays in English.
 
 - Interface text: `src/i18n/messages/{en,fr,ar}.ts` (English is the reference; the other two must have the same keys, or the build fails). Client components use `useI18n()` and import `fmt`/`label` from `@/i18n/fmt`; server code uses `getMessages(locale)`.
-- Catalog text: each destination / safari / visa service has a `translations` column (`{ "fr": {…}, "ar": {…} }`), edited under **Translations** in the admin editors. Empty fields show the English text.
+- Catalog text: each destination / visa service has a `translations` column (`{ "fr": {…}, "ar": {…} }`), edited under **Translations** in the admin editors. Empty fields show the English text.
 - Requests store the visitor's language (`requests.locale`, shown in the admin), and the WhatsApp message is written in that language. The English message is unchanged from the original site.
 
 ## Layout
@@ -35,14 +35,16 @@ Every public route exists in English (no prefix), French (`/fr/…`) and Arabic 
 src/
   app/                 routes
   components/
-    budget/            BudgetRange (shared track) + home BudgetDiscovery (slider + cards)
+    budget/            BudgetRange (shared slider track)
+    packs/             PackCard + home PacksSlider
+    HeroMedia.tsx      home hero video (or its poster)
+    Flags.tsx          round SVG flags for the language switcher
     quiz/TripQuiz      quiz UI
     trip/              TripExperience (server component)
     request/           TripRequestForm (trip plan checkout), VisaRequest
-    safari/            SafariCard (server) + SafariRequestDialog (client, native <dialog>)
     forms.tsx          Field, input styles, validation + WhatsApp launch hooks
     icons.tsx
-  data/                destinations + safaris (seed source for Supabase)
+  data/                destinations (seed source for Supabase), packs (placeholders)
   lib/
     quiz.ts            answer model + destination scoring (pure)
     requests.ts        request payload types + WhatsApp message text
@@ -60,7 +62,7 @@ Both migrations and the seed are applied there; Supabase's security advisor is c
 
 The site also runs without a backend: with no env vars, `src/lib/catalog.ts` serves the local data in `src/data/`.
 Set `NEXT_PUBLIC_SUPABASE_URL` + `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY` (see `.env.example`) and it reads
-destinations, safaris and the visa price from Supabase instead (re-read every 5 minutes; on errors it logs
+destinations and the visa price from Supabase instead (re-read every 5 minutes; on errors it logs
 `[catalog] … falling back` and serves the local copy).
 
 ```
@@ -71,7 +73,7 @@ scripts/verify-db.mts                      schema + RLS test suite (in-process P
 
 | Table | Who can read | Who can write |
 |---|---|---|
-| `destinations`, `safaris`, `services` | everyone (active rows) | admins |
+| `destinations`, `services` (and the retired `safaris`) | everyone (active rows) | admins |
 | `requests`, `visa_applications`, `request_events` | admins only | server only, via `submit_request()` |
 | `admins` | own row | SQL editor |
 
@@ -97,7 +99,7 @@ Seed a linked project by running `supabase/seed.sql` in the SQL editor. Admin ac
   and search by reference, name, phone or destination. Each request page shows everything the customer sent
   (passport details for visas), a "Message on WhatsApp" button that opens with their reference, the status
   pipeline, and the history of who changed what.
-- **Catalog**: add, edit, hide/show destinations, safaris and visa services (country, flag, price, what's
+- **Catalog**: add, edit, hide/show destinations and visa services (country, flag, price, what's
   included, required documents). Images are uploaded straight to the public Supabase Storage bucket `catalog`
   (admins only), or can be links on the hosts in `src/lib/images.ts` (shared with `next.config.ts`).
   Saves refresh the public site immediately.

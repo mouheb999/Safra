@@ -94,7 +94,7 @@ export default async function InboxPage({
 
       <div className="flex flex-wrap items-center gap-1.5 text-sm">
         <span className="font-bold opacity-60">Type:</span>
-        {([undefined, "trip", "visa", "safari"] as const).map((k) => (
+        {([undefined, "trip", "visa"] as const).map((k) => (
           <Link
             key={k ?? "any"}
             href={href({ kind: k })}

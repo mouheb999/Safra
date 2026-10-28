@@ -9,6 +9,14 @@ export const SITE_URL = (process.env.NEXT_PUBLIC_SITE_URL || "https://safra.webs
 
 export const SITE_NAME = "SAFRA";
 
+/**
+ * Home page hero video. null → the poster photo is shown instead (the current state).
+ * To switch: drop the file in public/videos/ and set e.g. { src: "/videos/hero.mp4", type: "video/mp4" }.
+ */
+export const HERO_VIDEO: { src: string; type: string } | null = null;
+/** Shown before the video loads, when there is no video, and to visitors who reduce motion. */
+export const HERO_POSTER = "https://framerusercontent.com/images/GL4tcr2qJCc1BJINLyIiLL1ySA.jpg";
+
 /** hreflang map for a path: every language version + x-default (English). */
 export function languageAlternates(path: string): Record<string, string> {
   return {

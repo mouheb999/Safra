@@ -1,13 +1,14 @@
 import type { Metadata } from "next";
-import Image from "next/image";
 import Link from "next/link";
-import { BudgetDiscovery } from "@/components/budget/BudgetDiscovery";
-import { CompassIcon, GlobeIcon, SparklesIcon } from "@/components/icons";
+import { HeroMedia } from "@/components/HeroMedia";
+import { PacksSlider } from "@/components/packs/PacksSlider";
+import { getPacks } from "@/data/packs";
+import { ArrowIcon, CompassIcon, GlobeIcon, SparklesIcon } from "@/components/icons";
 import { getMessages } from "@/i18n";
 import { localizedPath, type Locale } from "@/i18n/config";
 import { routeLocale, type LocaleParams } from "@/i18n/server";
 import { getDestinations, getSiteSettings } from "@/lib/catalog";
-import { SITE_NAME, SITE_URL, pageMetadata } from "@/lib/site";
+import { HERO_POSTER, HERO_VIDEO, SITE_NAME, SITE_URL, pageMetadata } from "@/lib/site";
 
 // Re-read the catalog every 5 minutes (static otherwise).
 export const revalidate = 300;
@@ -27,52 +28,34 @@ export default async function HomePage({ params }: LocaleParams) {
   return (
     <main className="overflow-x-hidden pb-24">
       <JsonLd locale={locale} destinations={destinations} phone={settings.whatsappNumber} description={t.meta.description} />
-      {/* Hero */}
-      <section className="mx-auto max-w-[460px] px-4 pt-14 sm:pt-16">
-        <h1 className="text-[64px] leading-[1.02] font-black tracking-[-0.03em] sm:text-[96px] rtl:text-[56px] rtl:leading-[1.15] rtl:tracking-normal sm:rtl:text-[80px]">
-          {t.home.title1}
-          <br />
-          {t.home.title2}
-        </h1>
-        <p className="mt-6 text-lg sm:text-xl">{t.meta.tagline}</p>
+      {/* Hero: text and the two ways to start on one side, the video (or its poster) on the other. */}
+      <section className="mx-auto grid max-w-[1180px] items-center gap-12 px-4 pt-12 sm:px-7 sm:pt-16 md:grid-cols-[minmax(0,1.05fr)_minmax(0,.95fr)] md:gap-10 lg:gap-16 lg:pt-14">
+        <div className="mx-auto w-full max-w-[560px] md:mx-0">
+          <h1 className="m-0 text-[64px] leading-[1.02] font-black tracking-[-0.035em] sm:text-[96px] md:text-[76px] lg:text-[104px] rtl:text-[56px] rtl:leading-[1.15] rtl:tracking-normal sm:rtl:text-[80px] md:rtl:text-[64px] lg:rtl:text-[72px]">
+            {t.home.title1}
+            <br />
+            {t.home.title2}
+          </h1>
+          <p className="m-0 mt-6 max-w-[480px] text-lg leading-relaxed text-pretty opacity-85 sm:text-xl">{t.home.lead}</p>
 
-        <div className="mt-8 grid grid-cols-2 gap-2.5">
+          <div className="mt-8 grid grid-cols-2 gap-3">
+            <StartCard href={href("/trip-request")} tone="bg-orange" icon={<CompassIcon size={28} color="#203D35" strokeWidth={1.6} />} title={t.home.knowTitle} body={t.home.knowBody} />
+            <StartCard href={href("/find-my-trip")} tone="bg-sky" icon={<SparklesIcon size={28} color="#203D35" strokeWidth={1.6} />} title={t.home.surpriseTitle} body={t.home.surpriseBody} />
+          </div>
+
           <Link
-            href={href("/trip-request")}
-            className="flex min-h-[174px] flex-col gap-3 rounded-[24px] bg-orange p-5 transition-transform hover:-translate-y-0.5"
+            href={href("/visas")}
+            className="mt-5 inline-flex items-center gap-2 rounded-full border border-ink/10 bg-white/70 px-4 py-2.5 text-sm font-bold transition-colors hover:bg-white"
           >
-            <CompassIcon size={28} color="#203D35" strokeWidth={1.6} />
-            <span className="text-lg leading-tight font-extrabold">{t.home.knowTitle}</span>
-            <span className="text-[13px] leading-snug">{t.home.knowBody}</span>
-          </Link>
-          <Link
-            href={href("/find-my-trip")}
-            className="flex min-h-[174px] flex-col gap-3 rounded-[24px] bg-sky p-5 transition-transform hover:-translate-y-0.5"
-          >
-            <SparklesIcon size={28} color="#203D35" strokeWidth={1.6} />
-            <span className="text-lg leading-tight font-extrabold">{t.home.surpriseTitle}</span>
-            <span className="text-[13px] leading-snug">{t.home.surpriseBody}</span>
+            <GlobeIcon size={16} color="#317DA1" strokeWidth={1.8} />
+            {t.home.visaHelp}
+            <ArrowIcon size={13} />
           </Link>
         </div>
 
-        <Link
-          href={href("/visas")}
-          className="mt-5 inline-flex items-center gap-2 rounded-full border border-ink/10 bg-white/70 px-4 py-2 text-sm font-bold hover:bg-white"
-        >
-          <GlobeIcon size={16} color="#203D35" strokeWidth={1.8} />
-          {t.home.visaHelp}
-        </Link>
-
-        <div className="relative mt-14">
-          <div className="relative aspect-[4/5] overflow-hidden rounded-[40px_40px_180px_40px] rtl:rounded-[40px_40px_40px_180px]">
-            <Image
-              src="https://framerusercontent.com/images/GL4tcr2qJCc1BJINLyIiLL1ySA.jpg"
-              alt={t.home.heroAlt}
-              fill
-              preload
-              sizes="(max-width: 500px) 100vw, 460px"
-              className="object-cover"
-            />
+        <div className="relative mx-auto w-full max-w-[460px] md:max-w-none">
+          <div className="relative aspect-[4/5] overflow-hidden rounded-[40px_40px_180px_40px] bg-sky lg:aspect-[11/12] rtl:rounded-[40px_40px_40px_180px]">
+            <HeroMedia video={HERO_VIDEO} poster={HERO_POSTER} alt={t.home.heroAlt} />
           </div>
           <div className="absolute -bottom-3 -start-2 -rotate-6 rounded-xl border-2 border-dashed border-sea bg-cream px-5 py-2 text-center text-sea rtl:rotate-6" dir="ltr">
             <div className="text-base font-black tracking-[0.12em]">SAFRA</div>
@@ -81,8 +64,27 @@ export default async function HomePage({ params }: LocaleParams) {
         </div>
       </section>
 
-      <BudgetDiscovery destinations={destinations} />
+      <PacksSlider packs={getPacks(locale)} />
     </main>
+  );
+}
+
+/** One of the two ways to start: a coloured card with an icon, a title and one line. */
+function StartCard({ href, tone, icon, title, body }: { href: string; tone: string; icon: React.ReactNode; title: string; body: string }) {
+  return (
+    <Link
+      href={href}
+      className={`group relative flex min-h-[176px] flex-col gap-3 rounded-[24px] p-5 transition-[transform,box-shadow] duration-300 ease-out hover:-translate-y-1 hover:shadow-[0_18px_30px_-18px_rgba(32,61,53,.45)] motion-reduce:transition-none motion-reduce:hover:translate-none lg:min-h-[190px] ${tone}`}
+    >
+      {icon}
+      <span className="mt-auto grid gap-1.5">
+        <span className="text-lg leading-tight font-extrabold">{title}</span>
+        <span className="text-[13px] leading-snug opacity-85">{body}</span>
+      </span>
+      <span aria-hidden className="absolute end-4 top-4 opacity-40 transition-[opacity,transform] duration-300 group-hover:translate-x-0.5 group-hover:opacity-90 rtl:group-hover:-translate-x-0.5">
+        <ArrowIcon size={18} />
+      </span>
+    </Link>
   );
 }
 
