@@ -92,7 +92,7 @@ export const localBrainCountries: BrainCountry[] = [
     code: "thailand",
     name: "Thailand",
     airport: "BKK",
-    flightTND: 2900,
+    flightTND: 2400,
     flightHours: 15,
     visaTND: 55,
     internalMoveTND: 220,
@@ -106,7 +106,7 @@ export const localBrainCountries: BrainCountry[] = [
     code: "bali",
     name: "Bali, Indonesia",
     airport: "DPS",
-    flightTND: 3400,
+    flightTND: 2900,
     flightHours: 19,
     visaTND: 140,
     internalMoveTND: 120,
@@ -120,7 +120,7 @@ export const localBrainCountries: BrainCountry[] = [
     code: "malaysia",
     name: "Malaysia",
     airport: "KUL",
-    flightTND: 2700,
+    flightTND: 2300,
     flightHours: 14,
     visaTND: 0,
     internalMoveTND: 200,
@@ -134,7 +134,7 @@ export const localBrainCountries: BrainCountry[] = [
     code: "vietnam",
     name: "Vietnam",
     airport: "HAN / SGN",
-    flightTND: 3000,
+    flightTND: 2600,
     flightHours: 17,
     visaTND: 90,
     internalMoveTND: 230,
@@ -148,7 +148,7 @@ export const localBrainCountries: BrainCountry[] = [
     code: "philippines",
     name: "Philippines",
     airport: "MNL",
-    flightTND: 3300,
+    flightTND: 2800,
     flightHours: 18,
     visaTND: 0,
     internalMoveTND: 300,
@@ -167,7 +167,7 @@ export const localBrainBases: BrainBase[] = [
     strengths: ["City", "Food", "Nightlife", "Culture"],
     bestMonths: months(11, 12, 1, 2), okMonths: months(3, 4, 5, 6, 7, 8, 9, 10),
     stayAreas: ["Sukhumvit (Asok–Phrom Phong)", "Silom", "Riverside"], minNights: 2, familyOk: true,
-    groupFit: fit(0.9, 0.8, 0.6, 0.9, 0.7), stayTND: stay(110, 230, 190), foodTND: { budget: 45, mid: 85 }, transportDayTND: 20, transferTND: 90,
+    groupFit: fit(0.9, 0.8, 0.6, 0.9, 0.7), stayTND: stay(110, 230, 190), foodTND: { budget: 35, mid: 65 }, transportDayTND: 20, transferTND: 90,
     activities: [
       act("Grand Palace & Wat Pho", 70, ["Culture"], false, true),
       act("Chao Phraya dinner cruise", 130, ["Food", "Luxury"], true, true),
@@ -181,7 +181,7 @@ export const localBrainBases: BrainBase[] = [
     strengths: ["Beach", "Nightlife", "Luxury"],
     bestMonths: months(11, 12, 1, 2, 3, 4), okMonths: months(5, 10),
     stayAreas: ["Kata", "Karon", "Kamala"], minNights: 3, familyOk: true,
-    groupFit: fit(0.6, 0.9, 0.9, 0.9, 0.8), stayTND: stay(120, 260, 220), foodTND: { budget: 50, mid: 95 }, transportDayTND: 30, transferTND: 110,
+    groupFit: fit(0.6, 0.9, 0.9, 0.9, 0.8), stayTND: stay(120, 260, 220), foodTND: { budget: 40, mid: 70 }, transportDayTND: 30, transferTND: 110,
     activities: [
       act("Phi Phi & Maya Bay speedboat day", 230, ["Beach", "Nature", "Adventure"], true, true),
       act("Big Buddha & Old Phuket Town", 60, ["Culture"], false, true),
@@ -195,7 +195,7 @@ export const localBrainBases: BrainBase[] = [
     strengths: ["Beach", "Nature", "Adventure"],
     bestMonths: months(11, 12, 1, 2, 3, 4), okMonths: months(5, 10),
     stayAreas: ["Ao Nang", "Railay", "Klong Muang"], minNights: 3, familyOk: true,
-    groupFit: fit(0.8, 0.9, 0.8, 0.9, 0.8), stayTND: stay(100, 220, 180), foodTND: { budget: 45, mid: 85 }, transportDayTND: 25, transferTND: 80,
+    groupFit: fit(0.8, 0.9, 0.8, 0.9, 0.8), stayTND: stay(100, 220, 180), foodTND: { budget: 35, mid: 65 }, transportDayTND: 25, transferTND: 80,
     activities: [
       act("Four Islands longtail tour", 120, ["Beach", "Nature"], true, true),
       act("Railay rock climbing half-day", 190, ["Adventure"], true, false),
@@ -208,7 +208,7 @@ export const localBrainBases: BrainBase[] = [
     strengths: ["Culture", "Nature", "Food", "Adventure"],
     bestMonths: months(11, 12, 1, 2), okMonths: months(5, 6, 7, 8, 9, 10),
     stayAreas: ["Old City", "Nimmanhaemin"], minNights: 3, familyOk: true,
-    groupFit: fit(0.9, 0.8, 0.6, 0.8, 0.8), stayTND: stay(80, 180, 150), foodTND: { budget: 35, mid: 70 }, transportDayTND: 15, transferTND: 50,
+    groupFit: fit(0.9, 0.8, 0.6, 0.8, 0.8), stayTND: stay(80, 180, 150), foodTND: { budget: 30, mid: 50 }, transportDayTND: 15, transferTND: 50,
     activities: [
       act("Ethical elephant sanctuary day", 260, ["Nature"], true, true),
       act("Doi Suthep temple & viewpoint", 50, ["Culture"], false, true),
@@ -221,7 +221,7 @@ export const localBrainBases: BrainBase[] = [
     strengths: ["Beach", "Luxury", "Nature"],
     bestMonths: months(1, 2, 3, 4, 5, 6, 7, 8), okMonths: months(9),
     stayAreas: ["Chaweng Noi", "Lamai", "Bophut"], minNights: 3, familyOk: true,
-    groupFit: fit(0.5, 0.9, 1, 0.7, 0.8), stayTND: stay(130, 280, 230), foodTND: { budget: 55, mid: 100 }, transportDayTND: 30, transferTND: 90,
+    groupFit: fit(0.5, 0.9, 1, 0.7, 0.8), stayTND: stay(130, 280, 230), foodTND: { budget: 45, mid: 75 }, transportDayTND: 30, transferTND: 90,
     activities: [
       act("Ang Thong Marine Park day", 220, ["Nature", "Beach"], true, true),
       act("Fisherman's Village evening market", 40, ["Food", "Culture"], false, true),
@@ -235,7 +235,7 @@ export const localBrainBases: BrainBase[] = [
     strengths: ["Culture", "Nature", "Food"],
     bestMonths: months(4, 5, 6, 7, 8, 9, 10), okMonths: months(3, 11),
     stayAreas: ["Central Ubud", "Penestanan", "Sayan"], minNights: 2, familyOk: true,
-    groupFit: fit(0.9, 0.9, 0.9, 0.7, 0.7), stayTND: stay(90, 200, 170), foodTND: { budget: 40, mid: 80 }, transportDayTND: 25, transferTND: 70,
+    groupFit: fit(0.9, 0.9, 0.9, 0.7, 0.7), stayTND: stay(90, 200, 170), foodTND: { budget: 30, mid: 60 }, transportDayTND: 25, transferTND: 70,
     activities: [
       act("Tegallalang rice terraces", 90, ["Nature"], false, true),
       act("Mount Batur sunrise trek", 170, ["Adventure", "Nature"], true, false),
@@ -248,7 +248,7 @@ export const localBrainBases: BrainBase[] = [
     strengths: ["Beach", "Nightlife", "Food", "Luxury"],
     bestMonths: months(4, 5, 6, 7, 8, 9, 10), okMonths: months(3, 11),
     stayAreas: ["Seminyak", "Berawa (Canggu)"], minNights: 3, familyOk: true,
-    groupFit: fit(0.8, 0.9, 0.8, 1, 0.6), stayTND: stay(110, 240, 200), foodTND: { budget: 50, mid: 95 }, transportDayTND: 25, transferTND: 50,
+    groupFit: fit(0.8, 0.9, 0.8, 1, 0.6), stayTND: stay(110, 240, 200), foodTND: { budget: 40, mid: 70 }, transportDayTND: 25, transferTND: 50,
     activities: [
       act("Surf lesson", 110, ["Adventure", "Beach"], true, true),
       act("Beach club afternoon", 120, ["Nightlife", "Luxury"], false, false),
@@ -261,7 +261,7 @@ export const localBrainBases: BrainBase[] = [
     strengths: ["Beach", "Luxury", "Adventure"],
     bestMonths: months(4, 5, 6, 7, 8, 9, 10), okMonths: months(3, 11),
     stayAreas: ["Uluwatu", "Bingin", "Jimbaran"], minNights: 2, familyOk: true,
-    groupFit: fit(0.6, 0.9, 1, 0.8, 0.6), stayTND: stay(120, 280, 230), foodTND: { budget: 50, mid: 100 }, transportDayTND: 30, transferTND: 60,
+    groupFit: fit(0.6, 0.9, 1, 0.8, 0.6), stayTND: stay(120, 280, 230), foodTND: { budget: 40, mid: 75 }, transportDayTND: 30, transferTND: 60,
     activities: [
       act("Uluwatu temple & Kecak fire dance", 60, ["Culture"], true, true),
       act("Jimbaran seafood dinner on the beach", 100, ["Food"], false, true),
@@ -275,7 +275,7 @@ export const localBrainBases: BrainBase[] = [
     strengths: ["City", "Food", "Culture", "Nightlife"],
     bestMonths: months(1, 2, 6, 7, 8), okMonths: months(3, 4, 5, 9, 10, 11, 12),
     stayAreas: ["Bukit Bintang", "KLCC"], minNights: 2, familyOk: true,
-    groupFit: fit(0.9, 0.8, 0.6, 0.9, 0.8), stayTND: stay(90, 190, 150), foodTND: { budget: 35, mid: 70 }, transportDayTND: 15, transferTND: 60,
+    groupFit: fit(0.9, 0.8, 0.6, 0.9, 0.8), stayTND: stay(90, 190, 150), foodTND: { budget: 30, mid: 50 }, transportDayTND: 15, transferTND: 60,
     activities: [
       act("Petronas Towers skybridge", 110, ["City"], true, true),
       act("Batu Caves", 20, ["Culture"], false, true),
@@ -288,7 +288,7 @@ export const localBrainBases: BrainBase[] = [
     strengths: ["Beach", "Nature", "Luxury"],
     bestMonths: months(12, 1, 2, 3), okMonths: months(4, 5, 6, 7, 8, 11),
     stayAreas: ["Pantai Cenang", "Pantai Tengah"], minNights: 3, familyOk: true,
-    groupFit: fit(0.6, 0.9, 0.9, 0.7, 0.9), stayTND: stay(100, 230, 190), foodTND: { budget: 40, mid: 80 }, transportDayTND: 30, transferTND: 40,
+    groupFit: fit(0.6, 0.9, 0.9, 0.7, 0.9), stayTND: stay(100, 230, 190), foodTND: { budget: 30, mid: 60 }, transportDayTND: 30, transferTND: 40,
     activities: [
       act("SkyCab & Sky Bridge", 90, ["Nature"], true, true),
       act("Mangrove kayak & eagle watching", 140, ["Nature", "Adventure"], true, true),
@@ -301,7 +301,7 @@ export const localBrainBases: BrainBase[] = [
     strengths: ["Food", "Culture", "City"],
     bestMonths: months(12, 1, 2, 3, 4), okMonths: months(5, 6, 7, 8, 9, 10, 11),
     stayAreas: ["George Town heritage zone", "Gurney"], minNights: 2, familyOk: true,
-    groupFit: fit(0.9, 0.8, 0.6, 0.8, 0.8), stayTND: stay(80, 170, 140), foodTND: { budget: 30, mid: 60 }, transportDayTND: 15, transferTND: 50,
+    groupFit: fit(0.9, 0.8, 0.6, 0.8, 0.8), stayTND: stay(80, 170, 140), foodTND: { budget: 25, mid: 45 }, transportDayTND: 15, transferTND: 50,
     activities: [
       act("Street art & clan houses walk", 40, ["Culture"], false, true),
       act("Penang Hill & Kek Lok Si", 70, ["Culture", "Nature"], false, true),
@@ -315,7 +315,7 @@ export const localBrainBases: BrainBase[] = [
     strengths: ["City", "Culture", "Food"],
     bestMonths: months(10, 11, 3, 4), okMonths: months(12, 1, 2, 5, 6, 7, 8, 9),
     stayAreas: ["Old Quarter", "Hoan Kiem"], minNights: 2, familyOk: true,
-    groupFit: fit(0.9, 0.8, 0.6, 0.8, 0.7), stayTND: stay(70, 160, 130), foodTND: { budget: 30, mid: 60 }, transportDayTND: 15, transferTND: 60,
+    groupFit: fit(0.9, 0.8, 0.6, 0.8, 0.7), stayTND: stay(70, 160, 130), foodTND: { budget: 25, mid: 45 }, transportDayTND: 15, transferTND: 60,
     activities: [
       act("Old Quarter street-food walk", 80, ["Food"], true, true),
       act("Temple of Literature & Hoan Kiem Lake", 30, ["Culture"], false, true),
@@ -328,7 +328,7 @@ export const localBrainBases: BrainBase[] = [
     strengths: ["Nature", "Luxury", "Adventure"],
     bestMonths: months(3, 4, 5, 10, 11), okMonths: months(9, 12, 1, 2),
     stayAreas: ["Overnight cruise (Lan Ha side)"], minNights: 1, familyOk: true,
-    groupFit: fit(0.7, 0.9, 1, 0.8, 0.8), stayTND: stay(200, 380, 380), foodTND: { budget: 40, mid: 70 }, transportDayTND: 10, transferTND: 120,
+    groupFit: fit(0.7, 0.9, 1, 0.8, 0.8), stayTND: stay(200, 380, 380), foodTND: { budget: 30, mid: 50 }, transportDayTND: 10, transferTND: 120,
     activities: [
       act("Kayaking among the karsts", 60, ["Nature", "Adventure"], true, true),
       act("Cave & floating village visit", 50, ["Nature", "Culture"], true, true),
@@ -340,7 +340,7 @@ export const localBrainBases: BrainBase[] = [
     strengths: ["Culture", "Food", "Beach"],
     bestMonths: months(2, 3, 4, 5, 6, 7), okMonths: months(1, 8),
     stayAreas: ["Old Town", "An Bang beach"], minNights: 3, familyOk: true,
-    groupFit: fit(0.8, 0.9, 0.9, 0.7, 0.9), stayTND: stay(70, 160, 130), foodTND: { budget: 30, mid: 60 }, transportDayTND: 15, transferTND: 70,
+    groupFit: fit(0.8, 0.9, 0.9, 0.7, 0.9), stayTND: stay(70, 160, 130), foodTND: { budget: 25, mid: 45 }, transportDayTND: 15, transferTND: 70,
     activities: [
       act("Lantern-making & Old Town by night", 40, ["Culture"], false, true),
       act("Basket boat & cooking class", 120, ["Food"], true, true),
@@ -353,7 +353,7 @@ export const localBrainBases: BrainBase[] = [
     strengths: ["City", "Nightlife", "Food"],
     bestMonths: months(12, 1, 2, 3, 4), okMonths: months(5, 6, 7, 8, 9, 10, 11),
     stayAreas: ["District 1", "District 3"], minNights: 2, familyOk: true,
-    groupFit: fit(0.9, 0.7, 0.5, 0.9, 0.6), stayTND: stay(75, 170, 140), foodTND: { budget: 30, mid: 60 }, transportDayTND: 15, transferTND: 50,
+    groupFit: fit(0.9, 0.7, 0.5, 0.9, 0.6), stayTND: stay(75, 170, 140), foodTND: { budget: 25, mid: 45 }, transportDayTND: 15, transferTND: 50,
     activities: [
       act("Cu Chi tunnels half-day", 90, ["Culture", "Adventure"], true, true),
       act("Mekong Delta day", 130, ["Nature", "Food"], true, true),
@@ -366,7 +366,7 @@ export const localBrainBases: BrainBase[] = [
     strengths: ["Beach", "Luxury", "Nature"],
     bestMonths: months(11, 12, 1, 2, 3, 4), okMonths: months(5, 10),
     stayAreas: ["Long Beach", "Ong Lang"], minNights: 3, familyOk: true,
-    groupFit: fit(0.5, 0.9, 1, 0.7, 0.9), stayTND: stay(100, 230, 190), foodTND: { budget: 40, mid: 80 }, transportDayTND: 25, transferTND: 50,
+    groupFit: fit(0.5, 0.9, 1, 0.7, 0.9), stayTND: stay(100, 230, 190), foodTND: { budget: 30, mid: 60 }, transportDayTND: 25, transferTND: 50,
     activities: [
       act("Southern islands snorkelling", 150, ["Beach", "Nature"], true, true),
       act("Hon Thom cable car", 110, ["Adventure"], true, true),
@@ -380,7 +380,7 @@ export const localBrainBases: BrainBase[] = [
     strengths: ["Beach", "Nature", "Adventure"],
     bestMonths: months(12, 1, 2, 3, 4, 5), okMonths: months(6, 11),
     stayAreas: ["El Nido town", "Corong-Corong", "Las Cabanas"], minNights: 3, familyOk: true,
-    groupFit: fit(0.8, 0.9, 0.9, 1, 0.7), stayTND: stay(110, 250, 200), foodTND: { budget: 45, mid: 85 }, transportDayTND: 25, transferTND: 120,
+    groupFit: fit(0.8, 0.9, 0.9, 1, 0.7), stayTND: stay(110, 250, 200), foodTND: { budget: 35, mid: 65 }, transportDayTND: 25, transferTND: 120,
     activities: [
       act("Island hopping: lagoons tour", 120, ["Beach", "Nature"], true, true),
       act("Kayaking the Big Lagoon", 60, ["Adventure", "Nature"], true, true),
@@ -393,7 +393,7 @@ export const localBrainBases: BrainBase[] = [
     strengths: ["Adventure", "Nature", "Beach"],
     bestMonths: months(12, 1, 2, 3, 4, 5), okMonths: months(6, 11),
     stayAreas: ["Coron town", "Busuanga"], minNights: 2, familyOk: true,
-    groupFit: fit(0.8, 0.8, 0.7, 0.9, 0.6), stayTND: stay(90, 200, 170), foodTND: { budget: 40, mid: 80 }, transportDayTND: 25, transferTND: 80,
+    groupFit: fit(0.8, 0.8, 0.7, 0.9, 0.6), stayTND: stay(90, 200, 170), foodTND: { budget: 30, mid: 60 }, transportDayTND: 25, transferTND: 80,
     activities: [
       act("Kayangan Lake & Twin Lagoon tour", 120, ["Nature", "Beach"], true, true),
       act("Wreck diving (2 dives)", 330, ["Adventure"], true, false),
@@ -406,7 +406,7 @@ export const localBrainBases: BrainBase[] = [
     strengths: ["Beach", "Nature", "Adventure"],
     bestMonths: months(1, 2, 3, 4, 5), okMonths: months(6, 12),
     stayAreas: ["Alona Beach", "Dumaluan"], minNights: 3, familyOk: true,
-    groupFit: fit(0.6, 0.8, 0.8, 0.8, 0.9), stayTND: stay(90, 200, 170), foodTND: { budget: 40, mid: 75 }, transportDayTND: 25, transferTND: 60,
+    groupFit: fit(0.6, 0.8, 0.8, 0.8, 0.9), stayTND: stay(90, 200, 170), foodTND: { budget: 30, mid: 55 }, transportDayTND: 25, transferTND: 60,
     activities: [
       act("Chocolate Hills & tarsiers day", 150, ["Nature"], true, true),
       act("Balicasag island snorkelling", 130, ["Beach", "Nature"], true, true),
@@ -419,7 +419,7 @@ export const localBrainBases: BrainBase[] = [
     strengths: ["Beach", "Adventure", "Nightlife"],
     bestMonths: months(3, 4, 5, 6, 7, 8, 9), okMonths: months(2, 10),
     stayAreas: ["General Luna", "Cloud 9 area"], minNights: 3, familyOk: true,
-    groupFit: fit(0.9, 0.8, 0.8, 1, 0.5), stayTND: stay(90, 210, 170), foodTND: { budget: 40, mid: 80 }, transportDayTND: 30, transferTND: 90,
+    groupFit: fit(0.9, 0.8, 0.8, 1, 0.5), stayTND: stay(90, 210, 170), foodTND: { budget: 30, mid: 60 }, transportDayTND: 30, transferTND: 90,
     activities: [
       act("Surf lesson at Cloud 9", 100, ["Adventure", "Beach"], true, true),
       act("Three-islands hopping", 110, ["Beach", "Nature"], true, true),
@@ -439,4 +439,4 @@ export interface BrainSettings {
   activityEveryDays: number;
 }
 
-export const DEFAULT_BRAIN_SETTINGS: BrainSettings = { minPocketTND: 60, cardFeePct: 3, maxFlightSharePct: 45, activityEveryDays: 2 };
+export const DEFAULT_BRAIN_SETTINGS: BrainSettings = { minPocketTND: 25, cardFeePct: 3, maxFlightSharePct: 45, activityEveryDays: 2 };

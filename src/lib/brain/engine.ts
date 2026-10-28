@@ -1,9 +1,12 @@
 // SAFRA trip brain, Mode A (Suggest): picks and costs up to 3 trips in 3 countries for a client's answers.
-// Deterministic and pure (no I/O, type-only imports) so it runs the same on the server, in the admin and in
-// scripts/verify-brain.mts. Follows "Safra Trip Brain v0.5" steps 1 and 4–7; prices come from SAFRA's
+// Deterministic and pure (no I/O) so it runs the same in the browser (the trip builder's suggested route), on
+// the server and in scripts/verify-brain.mts. Follows "Safra Trip Brain v0.5" steps 1 and 4–7; prices come from SAFRA's
 // tables (src/data/brain.ts / brain_* tables) and are estimates until live sources are connected.
 
 import type { BrainActivity, BrainBase, BrainCountry, BrainSettings, GroupType, StayType } from "../../data/brain";
+import { priceStops, type Budget } from "./pricing.ts";
+
+export { CATEGORIES, type Budget, type Category } from "./pricing.ts";
 
 export interface BrainInput {
   budgetTND: number;
@@ -22,20 +25,6 @@ export interface BrainInput {
   vibes: string[];
   stay: StayType;
 }
-
-export const CATEGORIES = [
-  "flights",
-  "stays",
-  "visa",
-  "local_transport",
-  "food",
-  "activities",
-  "insurance",
-  "sim_esim",
-  "pocket_money",
-] as const;
-export type Category = (typeof CATEGORIES)[number];
-export type Budget = Record<Category, number>;
 
 export type Season = "best" | "ok";
 export type Label = "best_value" | "best_experience" | "easiest";
@@ -88,7 +77,13 @@ export interface NoFit {
 export type BrainResult =
   | { status: "need_info"; missing: ("budget" | "travelers" | "dates" | "nights")[] }
   | ({ status: "ok"; options: BrainOption[]; warnings: string[] } & Trip)
-  | ({ status: "no_fit"; closest: NoFit | null; warnings: string[] } & Trip);
+  | ({
+      status: "no_fit";
+      closest: NoFit | null;
+      /** Only when a better stay was asked for: whether a budget hotel fits, or what it would still miss. */
+      budgetHotel: { fits: boolean; shortfallTND: number } | null;
+      warnings: string[];
+    } & Trip);
 
 // ---- Answers ----------------------------------------------------------------------------
 
@@ -233,15 +228,10 @@ interface Costed {
   pocketPerPersonPerDay: number;
 }
 
-/** Steps 4–6: the 9 categories for the whole group, in TND. Card fee on everything paid abroad. */
+/** Steps 4–6: the 9 categories for the whole group, in TND (src/lib/brain/pricing.ts). */
 function cost(country: BrainCountry, unit: Unit, activityEvery: number, ctx: Ctx): Costed {
   const { input, trip, settings } = ctx;
-  const fee = 1 + settings.cardFeePct / 100;
   const nights = splitNights(unit, trip.nights, input.vibes);
-  const rooms = input.stay === "apartment" ? Math.ceil((input.adults + input.children) / 4) : Math.ceil((input.adults + input.children * 0.5) / 2);
-  const eaters = input.adults + input.children * 0.6;
-  const tier = input.stay === "budget_hotel" ? "budget" : "mid";
-
   const bases: PlannedBase[] = unit.bases.map((b, i) => ({
     slug: b.slug,
     nights: nights[i],
@@ -249,31 +239,14 @@ function cost(country: BrainCountry, unit: Unit, activityEvery: number, ctx: Ctx
     stayArea: b.stayAreas[0] ?? "",
     activities: pickActivities(b, nights[i], activityEvery, ctx),
   }));
-
-  const sum = (f: (b: BrainBase, i: number) => number) => unit.bases.reduce((n, b, i) => n + f(b, i), 0);
-  const budget: Budget = {
-    flights: flightCost(country, ctx),
-    stays: Math.round(sum((b, i) => nights[i] * b.stayTND[input.stay] * rooms) * fee),
-    visa: country.visaTND * trip.travelers,
-    local_transport: Math.round(
-      (sum((b, i) => nights[i] * b.transportDayTND * trip.travelers + b.transferTND * 2) +
-        country.internalMoveTND * trip.travelers * (unit.bases.length - 1)) *
-        fee,
-    ),
-    food: Math.round(sum((b, i) => nights[i] * b.foodTND[tier] * eaters) * fee),
-    activities: Math.round(bases.reduce((n, b) => n + b.activities.reduce((m, a) => m + a.priceTND, 0), 0) * trip.travelers * fee),
-    insurance: country.insuranceDayTND * trip.travelers * trip.days,
-    sim_esim: Math.round(country.esimTND * input.adults * fee),
-    pocket_money: 0,
-  };
-  const tripCostTND = CATEGORIES.slice(0, 8).reduce((n, c) => n + budget[c], 0);
-  budget.pocket_money = trip.totalBudgetTND - tripCostTND;
-  return {
-    bases,
-    budget,
-    tripCostTND,
-    pocketPerPersonPerDay: Math.floor(budget.pocket_money / trip.travelers / trip.days),
-  };
+  const priced = priceStops(
+    country,
+    unit.bases.map((b, i) => ({ base: b, nights: nights[i], stay: input.stay, activityPrices: bases[i].activities.map((a) => a.priceTND) })),
+    input,
+    settings,
+    trip.totalBudgetTND,
+  );
+  return { bases, budget: priced.budget, tripCostTND: priced.tripCostTND, pocketPerPersonPerDay: priced.pocketPerPersonPerDay };
 }
 
 const flightCost = (country: BrainCountry, ctx: Ctx) =>
@@ -315,8 +288,11 @@ function planCountry(country: BrainCountry, bases: BrainBase[], ctx: Ctx) {
 /** Step 7: 0–100 from the client's answers and the costed trip. */
 function score(country: BrainCountry, unit: Unit, costed: Costed, ctx: Ctx) {
   const min = ctx.settings.minPocketTND;
+  // Flights taking more than the allowed share of the budget lower the budget score (0 at 25 points over).
+  const flightShare = (costed.budget.flights * 100) / ctx.trip.totalBudgetTND;
+  const flightPenalty = clamp01(1 - Math.max(0, flightShare - ctx.settings.maxFlightSharePct) / 25);
   const parts = {
-    budget: 30 * clamp01(min > 0 ? (costed.pocketPerPersonPerDay - min) / (2 * min) : costed.pocketPerPersonPerDay / 150),
+    budget: 30 * clamp01((costed.pocketPerPersonPerDay - min) / Math.max(2 * min, 60)) * flightPenalty,
     vibe: 25 * unit.vibeCover,
     season: 20 * avg(unit.seasons.map(seasonScore)),
     group: 15 * unit.groupFit,
@@ -365,14 +341,9 @@ export function suggestTrips(input: BrainInput, countries: BrainCountry[], bases
   const near: { country: BrainCountry; unit: Unit; costed: Costed; gap: number }[] = [];
   for (const country of [...countries].sort((a, b) => a.sortOrder - b.sortOrder)) {
     const plan = planCountry(country, bases, ctx);
-    // Step 2's cut-off: flights (card fee included, as in the budget) over the allowed share rule the country out.
-    const flightBudget = Math.ceil((flightCost(country, ctx) * 100) / settings.maxFlightSharePct);
-    if (flightBudget > trip.totalBudgetTND) {
-      warnings.push(`flight_share:${country.code}`);
-      const p = plan.fitted ?? plan.closest;
-      if (p) near.push({ country, unit: p.unit, costed: p.costed, gap: Math.max(shortfall(p.costed, ctx), flightBudget - trip.totalBudgetTND) });
-      continue;
-    }
+    // Flights over the allowed share don't rule a country out (that asked for budgets far above the real
+    // cost); they lower its score instead, and are flagged for SAFRA.
+    if (flightCost(country, ctx) * 100 > trip.totalBudgetTND * settings.maxFlightSharePct) warnings.push(`flight_share:${country.code}`);
     if (plan.fitted) {
       const { unit, costed, adjustments } = plan.fitted;
       const s = score(country, unit, costed, ctx);
@@ -398,15 +369,21 @@ export function suggestTrips(input: BrainInput, countries: BrainCountry[], bases
     return { status: "ok", options: assignLabels(top), warnings, ...trip };
   }
 
-  // Section 7: nothing fits — the closest option, what's missing, and how many nights would fit.
+  // Section 7: nothing fits — the closest option, what's missing, how many nights would fit, and what a
+  // budget hotel would change (quality is never lowered on its own, so the visitor decides).
+  let budgetHotel: { fits: boolean; shortfallTND: number } | null = null;
+  if (input.stay !== "budget_hotel") {
+    const alt = suggestTrips({ ...input, stay: "budget_hotel" }, countries, bases, settings);
+    if (alt.status === "ok") budgetHotel = { fits: true, shortfallTND: 0 };
+    else if (alt.status === "no_fit" && alt.closest) budgetHotel = { fits: false, shortfallTND: alt.closest.shortfallTND };
+  }
   const closest = near.sort((a, b) => a.gap - b.gap)[0];
-  if (!closest) return { status: "no_fit", closest: null, warnings, ...trip };
+  if (!closest) return { status: "no_fit", closest: null, budgetHotel, warnings, ...trip };
   let fitsWithNights: number | null = null;
   const minNights = closest.unit.bases.reduce((n, b) => n + b.minNights, 0);
   for (let n = nights - 1; n >= Math.max(3, minNights); n--) {
     const shorter: Ctx = { ...ctx, trip: { ...trip, nights: n, days: n + 1 } };
-    const flightsOk = flightCost(closest.country, ctx) * 100 <= trip.totalBudgetTND * settings.maxFlightSharePct;
-    if (flightsOk && fits(cost(closest.country, closest.unit, 0, shorter), shorter)) {
+    if (fits(cost(closest.country, closest.unit, 0, shorter), shorter)) {
       fitsWithNights = n;
       break;
     }
@@ -420,13 +397,8 @@ export function suggestTrips(input: BrainInput, countries: BrainCountry[], bases
       shortfallTND: Math.ceil(closest.gap / 50) * 50,
       fitsWithNights,
     },
+    budgetHotel,
     warnings,
     ...trip,
   };
 }
-
-/** The locked preview: every amount rounded to the nearest 50 TND so it can't be matched to a hotel or flight. */
-export function previewBudget(budget: Budget): Budget {
-  return Object.fromEntries(CATEGORIES.map((c) => [c, Math.round(budget[c] / 50) * 50])) as Budget;
-}
-export const round50 = (n: number) => Math.round(n / 50) * 50;

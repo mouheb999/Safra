@@ -2,7 +2,8 @@ import type { Metadata } from "next";
 import { BrainQuiz } from "@/components/quiz/BrainQuiz";
 import { getMessages } from "@/i18n";
 import { routeLocale, type LocaleParams } from "@/i18n/server";
-import { getSiteSettings } from "@/lib/catalog";
+import type { BuilderData } from "@/lib/brain/builder";
+import { getBrainData } from "@/lib/catalog";
 import { parseQuizParams, type SearchParams } from "@/lib/search-params";
 import { pageMetadata } from "@/lib/site";
 
@@ -15,10 +16,12 @@ export async function generateMetadata({ params }: LocaleParams): Promise<Metada
 
 export default async function FindMyTripPage({ params, searchParams }: Props) {
   await routeLocale(params);
-  const [sp, settings] = await Promise.all([searchParams, getSiteSettings()]);
+  const [sp, brain] = await Promise.all([searchParams, getBrainData()]);
+  // The builder prices trips in the browser; the areas SAFRA recommends stay in the paid plan.
+  const data: BuilderData = { ...brain, bases: brain.bases.map((b) => ({ ...b, stayAreas: [] })) };
   return (
     <main className="px-4 py-10 sm:px-7">
-      <BrainQuiz prefill={parseQuizParams(sp)} whatsappNumber={settings.whatsappNumber} />
+      <BrainQuiz prefill={parseQuizParams(sp)} data={data} />
     </main>
   );
 }

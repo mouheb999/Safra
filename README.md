@@ -13,7 +13,7 @@ npm run build      # production build + type check
 | Route | Rendering | Content |
 |---|---|---|
 | `/` | static | Home: hero (video or poster, see `HERO_VIDEO` in `src/lib/site.ts`), budget slider + packs carousel (main pack in the middle, swipe/arrows/dots) |
-| `/find-my-trip` | dynamic | Trip brain questionnaire (budget, when, who, vibe, stay) → up to 3 costed trips; `?budget=`, `?category=` prefill |
+| `/find-my-trip` | dynamic | 4 questions, then the trip builder with a live budget; `?budget=`, `?category=` prefill |
 | `/trip?destination=thailand\|egypt\|turkiye` | dynamic, server-only | Destination preview carrying the quiz answers |
 | `/trip-request` | dynamic | Trip plan checkout (`?mode=direct`), or the visa form (`?mode=visa`) |
 | `/visas` | static | Thailand visa service + application |
@@ -39,14 +39,14 @@ src/
     packs/             PackCard + home PacksSlider
     HeroMedia.tsx      home hero video (or its poster)
     Flags.tsx          round SVG flags for the language switcher
-    quiz/BrainQuiz     "Find my trip" questionnaire + results
+    quiz/              BrainQuiz (the questions) + TripBuilder (country picker, builder, live budget)
     trip/              TripExperience (server component)
     request/           TripRequestForm (trip plan checkout), VisaRequest
     forms.tsx          Field, input styles, validation + WhatsApp launch hooks
     icons.tsx
   data/                destinations + packs (seed source for Supabase and local fallback)
   lib/
-    brain/             trip brain: engine (pure), input validation, locked preview, order snapshot
+    brain/             trip brain: pricing, engine (starting route), builder (live pricing + tips), input validation, order snapshot
     quiz.ts            vibe list shared by the brain, packs and the admin
     requests.ts        request payload types + WhatsApp message text
     payments.ts        checkout: payment methods, governorates, prices
@@ -136,27 +136,34 @@ mode), because the customer needs to see how to pay.
 
 ## Trip brain ("Find my trip")
 
-Follows "Safra Trip Brain v0.5". `src/lib/brain/engine.ts` is deterministic and pure: same answers + same data
-→ same trips. It drops places in their bad season or without a shared vibe, splits the nights across 1–3 places,
-costs 9 categories (card fee on foreign-currency items), drops countries whose flights take more than the max
-share, cuts activities → then a place before giving up, scores (budget 30, vibe 25, season 20, group 15, ease 10)
-and returns the top 3 countries labelled Best value / Best experience / Easiest — or the closest trip and what's
-missing.
+Four quick questions (budget per person, dates or a month, who's going, vibes), then the **trip builder**: the
+visitor picks a country and shapes their own trip — places, nights, hotel level per place, activities — while the
+budget and the brain's tips update live. Everything runs in the browser from the same pure functions the server
+uses, so the price on screen is the price stored with the order.
 
-- The visitor sees a locked preview (`preview.ts`): places, nights, season, amounts rounded to 50 DT. Stay areas
-  and activities stay hidden until they order.
-- "Choose this trip" carries the encoded answers to the checkout, which recomputes the trip on the server. The
-  order stores the exact result in `requests.quiz_answers` (`snapshot.ts`), shown as a **Trip brain** card on
-  the admin request page.
+- `src/lib/brain/pricing.ts`: the cost formulas — 9 categories, card fee on foreign-currency items, rooms per hotel
+  type, food per eater, moves between places. Used by everything below.
+- `src/lib/brain/engine.ts` (Safra Trip Brain v0.5): picks the **starting route** in a country — skips places in
+  their rainy season or without a shared vibe, splits the nights, adds about one activity every 2 days, and cuts
+  activities or a place to fit the budget. The visitor can change all of it or start from scratch.
+- `src/lib/brain/builder.ts`: country cards (weather on the dates, suggested route, fits / tight / over), live
+  pricing of the visitor's trip, and tips with one-tap fixes: over budget or too little pocket money (with the
+  biggest priced saving: a cheaper hotel or skipping an activity), rainy season, too few nights for a place,
+  nights that don't match the dates, too many moves, and — with money to spare — a place that fits or a better hotel.
+- Visitors see places, nights, hotel levels and activities with prices (to the nearest 10 DT). SAFRA's recommended
+  areas never reach the browser; they and the day-by-day plan come with the paid plan.
+- "Get my full plan" carries the answers + trip to the checkout (`?build=`, validated in `input.ts`), which re-prices
+  it on the server; the order stores the exact result in `requests.quiz_answers` (`snapshot.ts`), shown as a
+  **Trip built by the customer** card on the admin request page, with anything the brain still flagged.
 - Prices are starter estimates (marked as such everywhere) until SAFRA corrects them in **/admin/brain**.
 
 ```bash
-npm run brain:verify         # client profiles through the engine + the brain's rules on every result
+npm run brain:verify         # engine scenarios + the builder: pricing, tips, country cards, server re-pricing
 ```
 
 ## How the flow works
 
-Home slider → `sessionStorage` → Find my trip → `/trip-request?brain=…&option=…` → WhatsApp (`api.whatsapp.com/send?phone=21697433003`).
+Home slider → `sessionStorage` → Find my trip (questions → builder) → `/trip-request?build=…` → WhatsApp (`api.whatsapp.com/send?phone=21697433003`).
 Each form first stores the request via the `submitRequest` server action → `public.submit_request()`, and the
 message carries its reference (`Reference: SAFRA-1000`). If storage is unavailable the visitor still gets
 WhatsApp, just without a reference. Apart from that line, the message text is byte-identical to the original

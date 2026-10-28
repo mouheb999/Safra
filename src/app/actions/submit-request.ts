@@ -7,8 +7,8 @@
 import { z } from "zod";
 import { getMessages, type Messages } from "@/i18n";
 import { isLocale, type Locale } from "@/i18n/config";
-import { decodeBrainInput } from "@/lib/brain/input";
-import { brainSnapshot } from "@/lib/brain/snapshot";
+import { decodeBuild } from "@/lib/brain/input";
+import { buildSnapshot } from "@/lib/brain/snapshot";
 import { getBrainData, getSiteSettings } from "@/lib/catalog";
 import { GOVERNORATES, PAYMENT_METHODS } from "@/lib/payments";
 import type { BookingConfig, ConciergeRequest } from "@/lib/requests";
@@ -66,7 +66,7 @@ function requestSchema(e: Messages["errors"]) {
       paymentMethod: z.enum(PAYMENT_METHODS, e.payment),
       governorate,
       address: text(300),
-      brain: z.object({ input: z.string().max(2000), option: z.string().max(40) }).optional(),
+      brain: z.object({ build: z.string().max(6000) }).optional(),
     })
       // Cash on delivery needs somewhere to deliver; online payments keep no address.
       .refine((r) => r.paymentMethod !== "cod" || (r.governorate && r.address), { message: e.address, path: ["address"] })
@@ -110,15 +110,15 @@ const DATABASE_MESSAGES: Record<string, keyof Messages["errors"]> = {
 /** Postgres codes raised by submit_request / table constraints for bad input. */
 const INPUT_ERRORS = new Set(["22023", "23514", "22007", "22008", "22P02"]);
 
-/** A trip chosen on "Find my trip", recomputed from its answers (the browser's numbers are never stored). */
-async function brainAnswers(brain: { input: string; option: string } | undefined): Promise<Json | undefined> {
-  const input = brain && decodeBrainInput(brain.input);
-  if (!brain || !input) return undefined;
+/** A trip built on "Find my trip", re-priced from its answers (the browser's numbers are never stored). */
+async function brainAnswers(brain: { build: string } | undefined): Promise<Json | undefined> {
+  const build = brain && decodeBuild(brain.build);
+  if (!build) return undefined;
   try {
-    return brainSnapshot(input, brain.option, await getBrainData()) as unknown as Json;
+    return (buildSnapshot(build, await getBrainData()) ?? undefined) as unknown as Json | undefined;
   } catch (error) {
-    console.error("[submit_request] trip brain snapshot failed", error);
-    return { kind: "trip_brain", input: { ...input }, choice: brain.option, option: null };
+    console.error("[submit_request] trip builder snapshot failed", error);
+    return undefined;
   }
 }
 
