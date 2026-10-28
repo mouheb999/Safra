@@ -9,7 +9,8 @@
     "typecheck": "tsc --noEmit",
     "db:verify": "node --experimental-strip-types --no-warnings scripts/verify-db.mts",
     "db:seed:generate": "node --experimental-strip-types --no-warnings scripts/generate-seed.mts",
-    "db:types": "supabase gen types typescript --project-id vuuoytevikywqymgabws --schema public > src/lib/supabase/database.types.ts"
+    "db:types": "supabase gen types typescript --project-id vuuoytevikywqymgabws --schema public > src/lib/supabase/database.types.ts",
+    "brain:verify": "node --experimental-strip-types --no-warnings scripts/verify-brain.mts"
   },
   "dependencies": {
     "@supabase/ssr": "^0.12.7",

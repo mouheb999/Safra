@@ -27,7 +27,22 @@ import { cardClass, chipClass } from "./RequestHeader";
 export interface CheckoutDestination {
   title: string;
   country: string;
+  /** May be empty (a trip-brain country without a photo yet). */
   image: string;
+}
+
+/** The trip chosen on "Find my trip", as recomputed by the checkout page. */
+export interface BrainCheckoutTrip {
+  /** The encoded answers (src/lib/brain/input.ts); the server recomputes the trip from them. */
+  input: string;
+  /** Country code of the chosen trip. */
+  option: string;
+  label: string;
+  countryName: string;
+  image: string;
+  /** "Bangkok · 4 nights + Krabi · 6 nights" */
+  itinerary: string;
+  tripCostTND: number;
 }
 
 interface PlacedOrder {
@@ -49,6 +64,7 @@ export function TripRequestForm({
   checkout,
   destination,
   packTitle,
+  brainTrip,
 }: {
   prefill: TripRequestPrefill;
   booking: BookingConfig;
@@ -56,11 +72,13 @@ export function TripRequestForm({
   destination?: CheckoutDestination;
   /** Set when the visitor came from "Our packs"; noted on the request. */
   packTitle?: string;
+  /** Set when the visitor chose a trip on "Find my trip"; the server stores its full breakdown. */
+  brainTrip?: BrainCheckoutTrip;
 }) {
   const { t, locale } = useI18n();
   const c = t.checkout;
   const hasSelection = prefill.selectedCountry !== "";
-  const askDestination = prefill.mode === "direct" || !hasSelection;
+  const askDestination = !brainTrip && (prefill.mode === "direct" || !hasSelection);
 
   const onlineMethods = availableOnlineMethods(checkout.accounts);
   const [payMode, setPayMode] = useState<"cod" | "online">("cod");
@@ -77,13 +95,13 @@ export function TripRequestForm({
     const request: TripRequest = {
       kind: "trip",
       locale,
-      source: askDestination ? "direct" : "trip",
+      source: brainTrip ? "quiz" : askDestination ? "direct" : "trip",
       // Keep the catalog link only while the destination is still the one picked upstream.
       destinationSlug: !typedDestination || typedDestination === prefill.selectedCountry ? prefill.selectedSlug : "",
       fullName: str(data, "fullName"),
       whatsapp: str(data, "whatsapp"),
       travelers: str(data, "travelers"),
-      destination: (askDestination ? typedDestination : prefill.desiredDestination) || prefill.selectedCountry,
+      destination: brainTrip?.countryName ?? ((askDestination ? typedDestination : prefill.desiredDestination) || prefill.selectedCountry),
       category: prefill.category,
       preferredDate: str(data, "preferredDate"),
       durationDays: str(data, "durationDays"),
@@ -92,6 +110,7 @@ export function TripRequestForm({
       paymentMethod: method,
       governorate: method === "cod" ? str(data, "governorate") : "",
       address: method === "cod" ? str(data, "address") : "",
+      ...(brainTrip ? { brain: { input: brainTrip.input, option: brainTrip.option }, itinerary: brainTrip.itinerary } : {}),
     };
     setError(null);
     startTransition(async () => {
@@ -116,7 +135,7 @@ export function TripRequestForm({
     if (placed) window.scrollTo({ top: 0, behavior: "smooth" });
   }, [placed]);
 
-  const summary = <OrderSummary checkout={checkout} method={method} destination={destination} />;
+  const summary = <OrderSummary checkout={checkout} method={method} destination={destination} tripCostTND={brainTrip?.tripCostTND} />;
 
   return (
     <section className="@container px-[clamp(20px,3vw,32px)]">
@@ -132,6 +151,7 @@ export function TripRequestForm({
               </h1>
               <p className="m-0 font-bold">{c.intro}</p>
               <div className="flex flex-wrap gap-2">
+                {brainTrip ? <div className={chipClass}>{fmt(t.brain.chip, { value: brainTrip.label })}</div> : null}
                 {packTitle ? <div className={chipClass}>{fmt(t.request.packChip, { value: packTitle })}</div> : null}
                 {hasSelection ? <div className={chipClass}>{fmt(t.request.destinationChip, { value: prefill.selectedCountry })}</div> : null}
                 {prefill.category ? (
@@ -401,23 +421,39 @@ function CopyButton({ value }: { value: string }) {
   );
 }
 
-function OrderSummary({ checkout, method, destination }: { checkout: CheckoutConfig; method: PaymentMethod; destination?: CheckoutDestination }) {
+function OrderSummary({
+  checkout,
+  method,
+  destination,
+  tripCostTND,
+}: {
+  checkout: CheckoutConfig;
+  method: PaymentMethod;
+  destination?: CheckoutDestination;
+  /** The trip brain's estimate for the trip itself (paid later, not part of this order). */
+  tripCostTND?: number;
+}) {
   const { t, locale } = useI18n();
   const c = t.checkout;
   const fee = method === "cod" ? checkout.deliveryFeeDT : 0;
   return (
     <div className="grid gap-4 overflow-hidden rounded-3xl bg-ink text-cream">
-      {destination ? (
+      {destination?.image ? (
         <div className="relative h-[150px]">
           <Image src={destination.image} alt="" fill sizes="(max-width: 880px) 100vw, 400px" className="object-cover" />
           <div aria-hidden className="absolute inset-0 bg-[linear-gradient(180deg,rgba(32,61,53,0)_30%,rgba(32,61,53,.95)_100%)]" />
         </div>
       ) : null}
-      <div className={`grid gap-4 px-5 pb-5 ${destination ? "-mt-12 relative" : "pt-5"}`}>
+      <div className={`grid gap-4 px-5 pb-5 ${destination?.image ? "-mt-12 relative" : "pt-5"}`}>
         <div className="grid gap-1">
           <span className="text-xs font-black tracking-[.12em] text-orange rtl:tracking-normal">{c.summaryTitle}</span>
           <span className="text-2xl leading-tight font-black">{destination ? destination.title : c.customDestination}</span>
           {destination ? <span className="font-bold opacity-80">{destination.country}</span> : null}
+          {tripCostTND ? (
+            <span className="text-sm opacity-80">
+              {t.brain.summaryCost} ≈ {formatDT(tripCostTND, locale)}
+            </span>
+          ) : null}
         </div>
 
         <dl className="m-0 grid gap-2 border-y border-cream/15 py-4">

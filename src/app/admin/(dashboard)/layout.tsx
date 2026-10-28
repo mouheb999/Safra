@@ -39,6 +39,9 @@ export default async function DashboardLayout({ children }: { children: React.Re
             <Link href="/admin/catalog" className="hover:text-orange">
               Catalog
             </Link>
+            <Link href="/admin/brain" className="hover:text-orange">
+              Trip brain
+            </Link>
             <Link href="/admin/settings" className="hover:text-orange">
               Settings
             </Link>

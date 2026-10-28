@@ -35,6 +35,140 @@ export type Database = {
         }
         Relationships: []
       }
+      brain_bases: {
+        Row: {
+          activities: Json
+          best_months: number[]
+          country_code: string
+          created_at: string
+          family_ok: boolean
+          food_budget_tnd: number
+          food_mid_tnd: number
+          group_fit: Json
+          is_active: boolean
+          min_nights: number
+          ok_months: number[]
+          place: string
+          slug: string
+          sort_order: number
+          stay_areas: string[]
+          stay_tnd: Json
+          strengths: string[]
+          transfer_tnd: number
+          translations: Json
+          transport_day_tnd: number
+          updated_at: string
+        }
+        Insert: {
+          activities?: Json
+          best_months?: number[]
+          country_code: string
+          created_at?: string
+          family_ok?: boolean
+          food_budget_tnd: number
+          food_mid_tnd: number
+          group_fit?: Json
+          is_active?: boolean
+          min_nights?: number
+          ok_months?: number[]
+          place: string
+          slug: string
+          sort_order?: number
+          stay_areas?: string[]
+          stay_tnd: Json
+          strengths?: string[]
+          transfer_tnd?: number
+          translations?: Json
+          transport_day_tnd?: number
+          updated_at?: string
+        }
+        Update: {
+          activities?: Json
+          best_months?: number[]
+          country_code?: string
+          created_at?: string
+          family_ok?: boolean
+          food_budget_tnd?: number
+          food_mid_tnd?: number
+          group_fit?: Json
+          is_active?: boolean
+          min_nights?: number
+          ok_months?: number[]
+          place?: string
+          slug?: string
+          sort_order?: number
+          stay_areas?: string[]
+          stay_tnd?: Json
+          strengths?: string[]
+          transfer_tnd?: number
+          translations?: Json
+          transport_day_tnd?: number
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "brain_bases_country_code_fkey"
+            columns: ["country_code"]
+            isOneToOne: false
+            referencedRelation: "brain_countries"
+            referencedColumns: ["code"]
+          },
+        ]
+      }
+      brain_countries: {
+        Row: {
+          airport: string
+          code: string
+          created_at: string
+          esim_tnd: number
+          flight_hours: number
+          flight_tnd: number
+          image_url: string
+          insurance_day_tnd: number
+          internal_move_tnd: number
+          is_active: boolean
+          name: string
+          sort_order: number
+          translations: Json
+          updated_at: string
+          visa_tnd: number
+        }
+        Insert: {
+          airport?: string
+          code: string
+          created_at?: string
+          esim_tnd?: number
+          flight_hours: number
+          flight_tnd: number
+          image_url?: string
+          insurance_day_tnd?: number
+          internal_move_tnd?: number
+          is_active?: boolean
+          name: string
+          sort_order?: number
+          translations?: Json
+          updated_at?: string
+          visa_tnd?: number
+        }
+        Update: {
+          airport?: string
+          code?: string
+          created_at?: string
+          esim_tnd?: number
+          flight_hours?: number
+          flight_tnd?: number
+          image_url?: string
+          insurance_day_tnd?: number
+          internal_move_tnd?: number
+          is_active?: boolean
+          name?: string
+          sort_order?: number
+          translations?: Json
+          updated_at?: string
+          visa_tnd?: number
+        }
+        Relationships: []
+      }
       destinations: {
         Row: {
           card_image_alt: string
@@ -432,6 +566,10 @@ export type Database = {
           bank_name: string
           bank_rib: string
           booking_mode: string
+          brain_activity_every: number
+          brain_card_fee_pct: number
+          brain_max_flight_share: number
+          brain_min_pocket_tnd: number
           d17_number: string
           delivery_fee_dt: number
           flouci_number: string
@@ -447,6 +585,10 @@ export type Database = {
           bank_name?: string
           bank_rib?: string
           booking_mode?: string
+          brain_activity_every?: number
+          brain_card_fee_pct?: number
+          brain_max_flight_share?: number
+          brain_min_pocket_tnd?: number
           d17_number?: string
           delivery_fee_dt?: number
           flouci_number?: string
@@ -462,6 +604,10 @@ export type Database = {
           bank_name?: string
           bank_rib?: string
           booking_mode?: string
+          brain_activity_every?: number
+          brain_card_fee_pct?: number
+          brain_max_flight_share?: number
+          brain_min_pocket_tnd?: number
           d17_number?: string
           delivery_fee_dt?: number
           flouci_number?: string

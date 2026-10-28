@@ -13,7 +13,7 @@ npm run build      # production build + type check
 | Route | Rendering | Content |
 |---|---|---|
 | `/` | static | Home: hero (video or poster, see `HERO_VIDEO` in `src/lib/site.ts`), budget slider + packs carousel (main pack in the middle, swipe/arrows/dots) |
-| `/find-my-trip` | dynamic | 5-step quiz → scored results (`?budget=`, `?category=` prefill) |
+| `/find-my-trip` | dynamic | Trip brain questionnaire (budget, when, who, vibe, stay) → up to 3 costed trips; `?budget=`, `?category=` prefill |
 | `/trip?destination=thailand\|egypt\|turkiye` | dynamic, server-only | Destination preview carrying the quiz answers |
 | `/trip-request` | dynamic | Trip plan checkout (`?mode=direct`), or the visa form (`?mode=visa`) |
 | `/visas` | static | Thailand visa service + application |
@@ -39,14 +39,15 @@ src/
     packs/             PackCard + home PacksSlider
     HeroMedia.tsx      home hero video (or its poster)
     Flags.tsx          round SVG flags for the language switcher
-    quiz/TripQuiz      quiz UI
+    quiz/BrainQuiz     "Find my trip" questionnaire + results
     trip/              TripExperience (server component)
     request/           TripRequestForm (trip plan checkout), VisaRequest
     forms.tsx          Field, input styles, validation + WhatsApp launch hooks
     icons.tsx
   data/                destinations + packs (seed source for Supabase and local fallback)
   lib/
-    quiz.ts            answer model + destination scoring (pure)
+    brain/             trip brain: engine (pure), input validation, locked preview, order snapshot
+    quiz.ts            vibe list shared by the brain, packs and the admin
     requests.ts        request payload types + WhatsApp message text
     payments.ts        checkout: payment methods, governorates, prices
     search-params.ts   server-side parsing of the URLs pages pass to each other
@@ -73,7 +74,7 @@ scripts/verify-db.mts                      schema + RLS test suite (in-process P
 
 | Table | Who can read | Who can write |
 |---|---|---|
-| `packs`, `destinations`, `services` (and the retired `safaris`) | everyone (active rows) | admins |
+| `packs`, `destinations`, `services`, `brain_countries`, `brain_bases` (and the retired `safaris`) | everyone (active rows) | admins |
 | `requests`, `visa_applications`, `request_events` | admins only | server only, via `submit_request()` |
 | `admins` | own row | SQL editor |
 
@@ -81,7 +82,7 @@ Requests get a human reference (`SAFRA-1000`, `SAFRA-1001`, …); every status c
 `request_events` with the admin who made it.
 
 ```bash
-npm run db:verify            # apply migrations + seed to an in-process Postgres and run 34 checks
+npm run db:verify            # apply migrations + seed to an in-process Postgres and run 66 checks
 npm run db:seed:generate     # after editing src/data
 npx supabase login           # once, with the account that owns the project
 npx supabase link --project-ref vuuoytevikywqymgabws
@@ -103,6 +104,9 @@ Seed a linked project by running `supabase/seed.sql` in the SQL editor. Admin ac
   included, required documents). Images are uploaded straight to the public Supabase Storage bucket `catalog`
   (admins only), or can be links on the hosts in `src/lib/images.ts` (shared with `next.config.ts`).
   Saves refresh the public site immediately.
+- **Trip brain**: the rules (minimum pocket money, card fee, max flight share, activity rhythm), the countries
+  (flight price and time, visa, insurance, eSIM, moves between places) and their places (best / okay months,
+  strengths, stay areas, stay / food / transport prices, who it suits, activities). Hidden items are never suggested.
 - **Settings → Trip plan & payments**: the plan price, the cash-on-delivery fee, and the accounts customers pay
   into (D17 number, Flouci number, Wafacash recipient + phone, bank holder / bank / RIB). An empty method is
   hidden from the checkout; with none filled in, only cash on delivery is offered.
@@ -117,7 +121,7 @@ Pages and server actions check admin membership on the server, and RLS checks it
 
 ## Trip plan checkout
 
-The quiz and the home cards lead to `/trip`, whose "Get my complete trip plan" opens the checkout at
+"Find my trip", the packs and `/trip`'s "Get my complete trip plan" open the checkout at
 `/trip-request`: trip details, contact, then payment.
 
 - **Cash on delivery**: governorate + address; a delivery company brings the order to the customer’s home, paid in cash (plan price + delivery fee).
@@ -130,9 +134,29 @@ online method whose account details are empty. Orders show as "Plan order" in Re
 amounts and delivery address on the request page. Trip orders always confirm on the site (whatever the booking
 mode), because the customer needs to see how to pay.
 
+## Trip brain ("Find my trip")
+
+Follows "Safra Trip Brain v0.5". `src/lib/brain/engine.ts` is deterministic and pure: same answers + same data
+→ same trips. It drops places in their bad season or without a shared vibe, splits the nights across 1–3 places,
+costs 9 categories (card fee on foreign-currency items), drops countries whose flights take more than the max
+share, cuts activities → then a place before giving up, scores (budget 30, vibe 25, season 20, group 15, ease 10)
+and returns the top 3 countries labelled Best value / Best experience / Easiest — or the closest trip and what's
+missing.
+
+- The visitor sees a locked preview (`preview.ts`): places, nights, season, amounts rounded to 50 DT. Stay areas
+  and activities stay hidden until they order.
+- "Choose this trip" carries the encoded answers to the checkout, which recomputes the trip on the server. The
+  order stores the exact result in `requests.quiz_answers` (`snapshot.ts`), shown as a **Trip brain** card on
+  the admin request page.
+- Prices are starter estimates (marked as such everywhere) until SAFRA corrects them in **/admin/brain**.
+
+```bash
+npm run brain:verify         # client profiles through the engine + the brain's rules on every result
+```
+
 ## How the flow works
 
-Home slider → `sessionStorage` → quiz → `/trip?…` → `/trip-request?…` → WhatsApp (`api.whatsapp.com/send?phone=21697433003`).
+Home slider → `sessionStorage` → Find my trip → `/trip-request?brain=…&option=…` → WhatsApp (`api.whatsapp.com/send?phone=21697433003`).
 Each form first stores the request via the `submitRequest` server action → `public.submit_request()`, and the
 message carries its reference (`Reference: SAFRA-1000`). If storage is unavailable the visitor still gets
 WhatsApp, just without a reference. Apart from that line, the message text is byte-identical to the original

@@ -25,8 +25,8 @@ export interface TripRequest {
   kind: "trip";
   /** Language the visitor used (stored with the request, and the WhatsApp message language). */
   locale: Locale;
-  /** "trip" when the visitor came from a destination page, "direct" when they typed one in. */
-  source: "trip" | "direct";
+  /** "trip" from a destination page, "direct" when typed in, "quiz" when chosen on "Find my trip". */
+  source: "trip" | "direct" | "quiz";
   /** Catalog slug of the selected destination, or "" for free text. */
   destinationSlug: string;
   fullName: string;
@@ -44,6 +44,10 @@ export interface TripRequest {
   /** Cash on delivery only. */
   governorate: string;
   address: string;
+  /** Chosen on "Find my trip": the encoded answers + the country, recomputed and stored by the server. */
+  brain?: { input: string; option: string };
+  /** The chosen trip's places and nights, for the WhatsApp message. */
+  itinerary?: string;
 }
 
 export interface VisaRequest {
@@ -129,6 +133,7 @@ function tripRequestMessage(r: TripRequest | VisaRequest, w: Wording, reference?
         ]
       : [
           line(w.destination, dash(r.destination)),
+          ...(r.itinerary ? [line(w.itinerary, r.itinerary)] : []),
           line(w.preferredDate, dash(r.preferredDate)),
           line(w.duration, dash(r.durationDays)),
           line(w.budget, dash(r.budgetDT)),

@@ -79,3 +79,7 @@ export function readTranslations(
   }
   return { translations, error: null };
 }
+
+export const BRAIN_COUNTRY_FIELDS: TranslatedField<"name">[] = [{ key: "name", label: "Country name", kind: "text", max: 80 }];
+
+export const BRAIN_BASE_FIELDS: TranslatedField<"place">[] = [{ key: "place", label: "Place name", kind: "text", max: 80 }];

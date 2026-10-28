@@ -4,6 +4,14 @@
 import "server-only";
 import { cache } from "react";
 import { createClient } from "@supabase/supabase-js";
+import {
+  DEFAULT_BRAIN_SETTINGS,
+  localBrainBases,
+  localBrainCountries,
+  type BrainBase,
+  type BrainCountry,
+  type BrainSettings,
+} from "@/data/brain";
 import { localDestinations, type Destination } from "@/data/destinations";
 import { localPacks, type Pack } from "@/data/packs";
 import { localVisaServices, type VisaService } from "@/data/visas";
@@ -16,7 +24,7 @@ import {
 } from "./payments";
 import { DEFAULT_WHATSAPP_NUMBER, type BookingConfig, type BookingMode } from "./requests";
 import type { Database } from "./supabase/database.types";
-import { toDestination, toPack, toVisaService } from "./supabase/mappers";
+import { toBrainBase, toBrainCountry, toDestination, toPack, toVisaService } from "./supabase/mappers";
 import { localizeDestination, localizePack, localizeVisaService } from "./localize";
 import type { Locale } from "@/i18n/config";
 
@@ -75,6 +83,31 @@ export async function getDestinations(locale: Locale = "en"): Promise<Destinatio
 }
 
 
+/** What the trip brain works from: active countries and bases (English; pages translate names) and its thresholds. */
+export interface BrainData {
+  countries: BrainCountry[];
+  bases: BrainBase[];
+  settings: BrainSettings;
+}
+
+const getRawBrain = cache(
+  (): Promise<{ countries: BrainCountry[]; bases: BrainBase[] }> =>
+    readOr("brain", { countries: localBrainCountries, bases: localBrainBases }, async () => {
+      const [countries, bases] = await Promise.all([
+        publicClient().from("brain_countries").select("*").order("sort_order"),
+        publicClient().from("brain_bases").select("*").order("sort_order"),
+      ]);
+      if (countries.error) throw countries.error;
+      if (bases.error) throw bases.error;
+      return { countries: countries.data.map(toBrainCountry), bases: bases.data.map(toBrainBase) };
+    }),
+);
+
+export async function getBrainData(): Promise<BrainData> {
+  const [raw, settings] = await Promise.all([getRawBrain(), getSiteSettings()]);
+  return { ...raw, settings: settings.brain };
+}
+
 /** Active packs, cheapest first, in the visitor's language. */
 export async function getPacks(locale: Locale = "en"): Promise<Pack[]> {
   return [...(await getRawPacks())].sort((a, b) => a.priceDT - b.priceDT).map((p) => localizePack(p, locale));
@@ -86,6 +119,7 @@ export async function getVisaServices(locale: Locale = "en"): Promise<VisaServic
 
 export interface SiteSettings {
   bookingMode: BookingMode;
+  brain: BrainSettings;
   whatsappNumber: string;
   planPriceDT: number;
   deliveryFeeDT: number;
@@ -107,6 +141,7 @@ export async function getCheckoutConfig(): Promise<CheckoutConfig> {
 // Without settings, only cash on delivery is offered: no account numbers are ever made up.
 const DEFAULT_SETTINGS: SiteSettings = {
   bookingMode: "whatsapp",
+  brain: DEFAULT_BRAIN_SETTINGS,
   whatsappNumber: DEFAULT_WHATSAPP_NUMBER,
   planPriceDT: DEFAULT_PLAN_PRICE_DT,
   deliveryFeeDT: DEFAULT_DELIVERY_FEE_DT,
@@ -121,6 +156,12 @@ export const getSiteSettings = cache(
       // `?? defaults`: the columns arrive with migration 20261026120000_plan_checkout; until then, keep working.
       return {
         bookingMode: data.booking_mode === "onsite" ? "onsite" : "whatsapp",
+        brain: {
+          minPocketTND: data.brain_min_pocket_tnd ?? DEFAULT_BRAIN_SETTINGS.minPocketTND,
+          cardFeePct: data.brain_card_fee_pct == null ? DEFAULT_BRAIN_SETTINGS.cardFeePct : Number(data.brain_card_fee_pct),
+          maxFlightSharePct: data.brain_max_flight_share ?? DEFAULT_BRAIN_SETTINGS.maxFlightSharePct,
+          activityEveryDays: data.brain_activity_every ?? DEFAULT_BRAIN_SETTINGS.activityEveryDays,
+        },
         whatsappNumber: data.whatsapp_number,
         planPriceDT: data.plan_price_dt ?? DEFAULT_PLAN_PRICE_DT,
         deliveryFeeDT: data.delivery_fee_dt ?? DEFAULT_DELIVERY_FEE_DT,

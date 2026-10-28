@@ -6,9 +6,10 @@ import { readdirSync, readFileSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 import { PGlite } from "@electric-sql/pglite";
 import { localDestinations } from "../src/data/destinations.ts";
+import { localBrainBases, localBrainCountries } from "../src/data/brain.ts";
 import { localPacks } from "../src/data/packs.ts";
 import { localSafaris } from "../src/data/safaris.ts";
-import { toDestination, toPack, toSafari } from "../src/lib/supabase/mappers.ts";
+import { toBrainBase, toBrainCountry, toDestination, toPack, toSafari } from "../src/lib/supabase/mappers.ts";
 
 const root = process.env.SUPABASE_DIR ?? fileURLToPath(new URL("../supabase/", import.meta.url));
 const db = new PGlite();
@@ -501,6 +502,38 @@ await check("deleting a destination keeps its packs, unlinked", async () => {
   await rows(`delete from destinations where slug = 'turkiye'`);
   const [r] = await rows<{ destination_slug: string | null }>(`select destination_slug from packs where slug = 'cappadocia-istanbul'`);
   assertEqual(r.destination_slug, null);
+});
+
+console.log("\nTrip brain");
+
+await check("seeded brain countries and bases map back to exactly the app's local data", async () => {
+  const c = await rows<Parameters<typeof toBrainCountry>[0]>(`select * from brain_countries order by sort_order`);
+  assertEqual(c.map(toBrainCountry), localBrainCountries);
+  const b = await rows<Parameters<typeof toBrainBase>[0]>(`select * from brain_bases`);
+  const bySlug = new Map(b.map((r) => [r.slug, toBrainBase(r)]));
+  assertEqual(localBrainBases.map((x) => bySlug.get(x.slug)), localBrainBases);
+});
+
+await check("visitors read the brain; only admins change it", async () => {
+  const r = await as("anon", () => rows(`select code from brain_countries`));
+  assertEqual(r.length, 5);
+  await expectError(as("anon", () => rows(`update brain_bases set min_nights = 9`)), /permission denied/);
+  await as("authenticated", () => rows(`update brain_bases set min_nights = 9`), USER);
+  const [x] = await rows<{ min_nights: number }>(`select min_nights from brain_bases where slug = 'bangkok'`);
+  assertEqual(x.min_nights, 2);
+  const a = await as("authenticated", () => rows(`update brain_countries set flight_tnd = 3000 where code = 'thailand' returning flight_tnd`), ADMIN);
+  assertEqual(a, [{ flight_tnd: 3000 }]);
+  await rows(`update brain_countries set flight_tnd = 2900 where code = 'thailand'`);
+});
+
+await check("a month can't be both best and ok, and months stay within 1–12", async () => {
+  await expectError(rows(`update brain_bases set ok_months = array[1]::smallint[] where slug = 'bangkok'`), /check constraint/);
+  await expectError(rows(`update brain_bases set best_months = array[13]::smallint[] where slug = 'bangkok'`), /check constraint/);
+});
+
+await check("brain thresholds default to 60 TND / 3% / 45% / one activity every 2 days", async () => {
+  const [r] = await rows(`select brain_min_pocket_tnd, brain_card_fee_pct::float as fee, brain_max_flight_share, brain_activity_every from site_settings`);
+  assertEqual(r, { brain_min_pocket_tnd: 60, fee: 3, brain_max_flight_share: 45, brain_activity_every: 2 });
 });
 
 console.log(`\n${passed} passed, ${failures.length} failed`);
