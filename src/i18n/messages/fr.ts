@@ -52,6 +52,7 @@ const fr: Messages = {
     heroAlt: "Un bateau traditionnel thaïlandais à longue queue sur une eau turquoise, sous un ciel de coucher de soleil, avec des îles calcaires au loin",
     videoPause: "Mettre la vidéo en pause",
     videoPlay: "Lire la vidéo",
+    videoSoon: "Vidéo bientôt disponible",
     budgetEyebrow: "NOS PACKS",
     budgetTitle: "Jusqu’où peut vous emmener votre budget ?",
     budgetBody: "Glissez jusqu’à votre budget par personne : les packs qu’il couvre passent devant.",
