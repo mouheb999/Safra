@@ -11,9 +11,8 @@ export default async function CatalogPage({ searchParams }: { searchParams: Prom
   const { supabase } = await requireAdmin();
   const { saved } = await searchParams;
 
-  const [{ data: destinations }, { data: safaris }, { data: services }] = await Promise.all([
+  const [{ data: destinations }, { data: services }] = await Promise.all([
     supabase.from("destinations").select("slug, country, title, min_budget, max_budget, sort_order, is_active").order("sort_order"),
-    supabase.from("safaris").select("slug, name, duration, sort_order, is_active").order("sort_order"),
     supabase.from("services").select("slug, name, country, flag, price_dt, sort_order, is_active").order("sort_order").order("name"),
   ]);
 
@@ -47,25 +46,6 @@ export default async function CatalogPage({ searchParams }: { searchParams: Prom
         />
       </Card>
 
-      <Card
-        title="Safaris"
-        actions={
-          <Link href="/admin/catalog/safaris/new" className={adminPrimaryButton}>
-            + New safari
-          </Link>
-        }
-      >
-        <CatalogTable
-          rows={(safaris ?? []).map((s) => ({
-            slug: s.slug,
-            name: s.name,
-            detail: s.duration,
-            active: s.is_active,
-            order: s.sort_order,
-          }))}
-          table="safaris"
-        />
-      </Card>
 
       <Card
         title="Visa services"
@@ -95,7 +75,7 @@ function CatalogTable({
   table,
 }: {
   rows: { slug: string; name: string; detail: string; active: boolean; order: number }[];
-  table: "destinations" | "safaris" | "services";
+  table: "destinations" | "services";
 }) {
   if (rows.length === 0) return <p className="m-0 text-sm opacity-70">Nothing here yet.</p>;
   return (

@@ -23,8 +23,7 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   return [
     ...page("/", 1),
     ...page("/find-my-trip", 0.9),
-    ...page("/experiences", 0.9),
-    ...page("/safari", 0.8),
+    ...page("/packs", 0.9),
     ...page("/visas", 0.8),
     ...destinations.flatMap((d) => page(`/trip?destination=${d.slug}`, 0.7)),
   ];

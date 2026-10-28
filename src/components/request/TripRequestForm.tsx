@@ -48,11 +48,14 @@ export function TripRequestForm({
   booking,
   checkout,
   destination,
+  packTitle,
 }: {
   prefill: TripRequestPrefill;
   booking: BookingConfig;
   checkout: CheckoutConfig;
   destination?: CheckoutDestination;
+  /** Set when the visitor came from "Our packs"; noted on the request. */
+  packTitle?: string;
 }) {
   const { t, locale } = useI18n();
   const c = t.checkout;
@@ -129,6 +132,7 @@ export function TripRequestForm({
               </h1>
               <p className="m-0 font-bold">{c.intro}</p>
               <div className="flex flex-wrap gap-2">
+                {packTitle ? <div className={chipClass}>{fmt(t.request.packChip, { value: packTitle })}</div> : null}
                 {hasSelection ? <div className={chipClass}>{fmt(t.request.destinationChip, { value: prefill.selectedCountry })}</div> : null}
                 {prefill.category ? (
                   <div className={chipClass}>{fmt(t.request.categoryChip, { value: label(t.options.vibes, prefill.category) })}</div>
@@ -169,7 +173,14 @@ export function TripRequestForm({
                     <input name="budgetDT" required type="number" min={1} defaultValue={prefill.budgetDT} placeholder="2900" className={inputClass} />
                   </Field>
                   <Field label={t.forms.notes}>
-                    <textarea name="notes" rows={3} maxLength={1500} placeholder={t.forms.notesPlaceholder} className={`${inputClass} resize-y`} />
+                    <textarea
+                      name="notes"
+                      rows={3}
+                      maxLength={1500}
+                      defaultValue={packTitle ? `${fmt(t.request.packChip, { value: packTitle })}\n` : undefined}
+                      placeholder={t.forms.notesPlaceholder}
+                      className={`${inputClass} resize-y`}
+                    />
                   </Field>
                 </section>
 

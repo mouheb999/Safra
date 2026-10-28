@@ -71,22 +71,8 @@ export interface VisaRequest {
   notes: string;
 }
 
-export interface SafariRequest {
-  kind: "safari";
-  /** Language the visitor used (stored with the request, and the WhatsApp message language). */
-  locale: Locale;
-  safari: string;
-  safariSlug: string;
-  fullName: string;
-  whatsapp: string;
-  travelers: string;
-  preferredDate: string;
-  preferredDuration: string;
-  budgetDT: string;
-  specialRequests: string;
-}
 
-export type ConciergeRequest = TripRequest | VisaRequest | SafariRequest;
+export type ConciergeRequest = TripRequest | VisaRequest;
 
 /** A request as the forms build it; useConciergeSubmit adds the page's language. */
 export type RequestDraft = DistributiveOmit<ConciergeRequest, "locale">;
@@ -158,30 +144,13 @@ function tripRequestMessage(r: TripRequest | VisaRequest, w: Wording, reference?
   return lines.join("\n");
 }
 
-function safariRequestMessage(r: SafariRequest, w: Wording, reference?: string): string {
-  const line = (template: string, v: string) => fmt(template, { v });
-  return [
-    w.hi,
-    `${referenceLine(w, reference)}${w.safariIntro}`,
-    "",
-    line(w.safari, r.safari),
-    line(w.name, dash(r.fullName)),
-    line(w.travelers, dash(r.travelers)),
-    line(w.preferredDate, dash(r.preferredDate)),
-    line(w.safariDuration, dash(r.preferredDuration)),
-    line(w.safariBudget, dash(r.budgetDT)),
-    line(w.special, dash(r.specialRequests)),
-    "",
-    w.closingSafari,
-  ].join("\n");
-}
 
 /**
  * The message SAFRA receives, written with `wording` (the visitor's language; English by default).
  * `totalDT`: the amount of a trip plan order, as charged by submit_request().
  */
 export function requestMessage(r: ConciergeRequest, reference?: string, wording: Wording = en.whatsapp, totalDT?: number): string {
-  return r.kind === "safari" ? safariRequestMessage(r, wording, reference) : tripRequestMessage(r, wording, reference, totalDT);
+  return tripRequestMessage(r, wording, reference, totalDT);
 }
 
 // Straight to api.whatsapp.com: the wa.me short link redirects there but turns 4-byte emoji

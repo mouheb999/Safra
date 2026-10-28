@@ -3,19 +3,19 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { Suspense, useCallback, useEffect, useRef, useState, type ReactNode } from "react";
-import { ArrowIcon, CompassIcon, GlobeIcon, OptionIcon } from "@/components/icons";
+import { ArrowIcon, GlobeIcon } from "@/components/icons";
 import { useI18n } from "@/i18n/client";
 import { splitLocale } from "@/i18n/config";
 import { DEFAULT_WHATSAPP_NUMBER, whatsappUrl } from "@/lib/requests";
-import { LanguageSegmented, LanguageSwitcher } from "./LanguageSwitcher";
+import { LanguageSwitcher } from "./LanguageSwitcher";
 
 /**
- * Site navigation. Desktop: links, "Plan my trip" and the language dropdown in one bar.
- * Phones: a floating bar (logo, "Plan my trip", menu button) that slides away while scrolling down
- * and comes back on scroll up; the menu is a full-screen sheet (native <dialog>: focus trap, Escape,
- * scroll lock via globals.css) with the sections, the two ways to start, languages and WhatsApp.
+ * Site navigation: logo, "Our packs" and "Visa", and the language flags.
+ * Phones: a floating bar (logo, flags, menu button) that slides away while scrolling down and comes
+ * back on scroll up; the menu is a full-screen sheet (native <dialog>: focus trap, Escape, scroll lock
+ * via globals.css) with the sections, the two ways to start a trip, and WhatsApp.
+ * `whatsappNumber` comes from /admin/settings; the 404 page (client-only) uses the default.
  */
-/** `whatsappNumber` comes from /admin/settings; the 404 page (client-only) uses the default. */
 export function Nav({ whatsappNumber = DEFAULT_WHATSAPP_NUMBER }: { whatsappNumber?: string }) {
   const { t, href } = useI18n();
   const pathname = usePathname();
@@ -25,8 +25,7 @@ export function Nav({ whatsappNumber = DEFAULT_WHATSAPP_NUMBER }: { whatsappNumb
   const menuRef = useRef<HTMLDialogElement>(null);
 
   const links = [
-    { path: "/experiences", label: t.nav.experiences, desc: t.nav.desc.experiences, icon: <CompassIcon size={22} strokeWidth={1.8} /> },
-    { path: "/safari", label: t.nav.safari, desc: t.nav.desc.safari, icon: <OptionIcon kind="vibe" name="Nature" /> },
+    { path: "/packs", label: t.nav.packs, desc: t.nav.desc.packs, icon: <SuitcaseIcon /> },
     { path: "/visas", label: t.nav.visa, desc: t.nav.desc.visa, icon: <GlobeIcon size={22} strokeWidth={1.8} /> },
   ];
 
@@ -52,8 +51,8 @@ export function Nav({ whatsappNumber = DEFAULT_WHATSAPP_NUMBER }: { whatsappNumb
         className="mx-auto flex max-w-[1180px] items-center justify-between gap-3 rounded-[28px] bg-white/85 py-2.5 ps-5 pe-2.5 shadow-[0_6px_24px_rgba(32,61,53,0.08)] backdrop-blur-md md:bg-white/80 md:px-6 md:py-3"
       >
         <Logo href={href("/")} />
-        <div className="flex items-center gap-2 md:gap-4">
-          <ul className="m-0 hidden list-none items-center gap-5 p-0 text-[15px] font-bold md:flex">
+        <div className="flex items-center gap-2 md:gap-6">
+          <ul className="m-0 hidden list-none items-center gap-6 p-0 text-[15px] font-bold md:flex">
             {links.map((l) => (
               <li key={l.path}>
                 <Link
@@ -66,18 +65,10 @@ export function Nav({ whatsappNumber = DEFAULT_WHATSAPP_NUMBER }: { whatsappNumb
               </li>
             ))}
           </ul>
-          <Link
-            href={href("/find-my-trip")}
-            className="rounded-full bg-ink px-4 py-2.5 text-sm font-extrabold whitespace-nowrap text-cream hover:opacity-90 max-[359px]:hidden md:px-5"
-          >
-            {t.nav.planTrip}
-          </Link>
-          <div className="hidden md:block">
-            {/* useSearchParams needs a Suspense boundary on statically rendered pages. */}
-            <Suspense fallback={null}>
-              <LanguageSwitcher />
-            </Suspense>
-          </div>
+          {/* useSearchParams needs a Suspense boundary on statically rendered pages; the fallback keeps the bar's size. */}
+          <Suspense fallback={<div className="h-[46px] w-[122px]" />}>
+            <LanguageSwitcher />
+          </Suspense>
           <button
             type="button"
             aria-haspopup="dialog"
@@ -164,16 +155,10 @@ export function Nav({ whatsappNumber = DEFAULT_WHATSAPP_NUMBER }: { whatsappNumb
               </Link>
             </section>
 
-            <section className="grid animate-step gap-2.5 [animation-delay:270ms] motion-reduce:animate-none">
-              <Eyebrow>{t.nav.language}</Eyebrow>
-              <Suspense fallback={null}>
-                <LanguageSegmented />
-              </Suspense>
-            </section>
 
             <a
               href={whatsappUrl(t.whatsapp.hi, whatsappNumber)}
-              className="flex animate-step items-center gap-3.5 rounded-[22px] bg-ink p-3 pe-4 text-cream [animation-delay:320ms] motion-reduce:animate-none"
+              className="flex animate-step items-center gap-3.5 rounded-[22px] bg-ink p-3 pe-4 text-cream [animation-delay:270ms] motion-reduce:animate-none"
             >
               <span className="grid size-12 shrink-0 place-items-center rounded-2xl bg-cream/10 text-orange">
                 <ChatIcon />
@@ -246,6 +231,15 @@ function useHiddenOnScroll(): boolean {
     };
   }, []);
   return hidden;
+}
+
+function SuitcaseIcon() {
+  return (
+    <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+      <rect x="3" y="7" width="18" height="13" rx="3" />
+      <path d="M9 7V5.5A1.5 1.5 0 0 1 10.5 4h3A1.5 1.5 0 0 1 15 5.5V7M3 12.5h18M10 12.5v2M14 12.5v2" />
+    </svg>
+  );
 }
 
 function MenuIcon() {
