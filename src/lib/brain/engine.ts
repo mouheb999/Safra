@@ -1,9 +1,12 @@
 // SAFRA trip brain, Mode A (Suggest): picks and costs up to 3 trips in 3 countries for a client's answers.
-// Deterministic and pure (no I/O, type-only imports) so it runs the same on the server, in the admin and in
-// scripts/verify-brain.mts. Follows "Safra Trip Brain v0.5" steps 1 and 4–7; prices come from SAFRA's
+// Deterministic and pure (no I/O) so it runs the same in the browser (the trip builder's suggested route), on
+// the server and in scripts/verify-brain.mts. Follows "Safra Trip Brain v0.5" steps 1 and 4–7; prices come from SAFRA's
 // tables (src/data/brain.ts / brain_* tables) and are estimates until live sources are connected.
 
 import type { BrainActivity, BrainBase, BrainCountry, BrainSettings, GroupType, StayType } from "../../data/brain";
+import { priceStops, type Budget } from "./pricing.ts";
+
+export { CATEGORIES, type Budget, type Category } from "./pricing.ts";
 
 export interface BrainInput {
   budgetTND: number;
@@ -22,20 +25,6 @@ export interface BrainInput {
   vibes: string[];
   stay: StayType;
 }
-
-export const CATEGORIES = [
-  "flights",
-  "stays",
-  "visa",
-  "local_transport",
-  "food",
-  "activities",
-  "insurance",
-  "sim_esim",
-  "pocket_money",
-] as const;
-export type Category = (typeof CATEGORIES)[number];
-export type Budget = Record<Category, number>;
 
 export type Season = "best" | "ok";
 export type Label = "best_value" | "best_experience" | "easiest";
@@ -239,15 +228,10 @@ interface Costed {
   pocketPerPersonPerDay: number;
 }
 
-/** Steps 4–6: the 9 categories for the whole group, in TND. Card fee on everything paid abroad. */
+/** Steps 4–6: the 9 categories for the whole group, in TND (src/lib/brain/pricing.ts). */
 function cost(country: BrainCountry, unit: Unit, activityEvery: number, ctx: Ctx): Costed {
   const { input, trip, settings } = ctx;
-  const fee = 1 + settings.cardFeePct / 100;
   const nights = splitNights(unit, trip.nights, input.vibes);
-  const rooms = input.stay === "apartment" ? Math.ceil((input.adults + input.children) / 4) : Math.ceil((input.adults + input.children * 0.5) / 2);
-  const eaters = input.adults + input.children * 0.6;
-  const tier = input.stay === "budget_hotel" ? "budget" : "mid";
-
   const bases: PlannedBase[] = unit.bases.map((b, i) => ({
     slug: b.slug,
     nights: nights[i],
@@ -255,31 +239,14 @@ function cost(country: BrainCountry, unit: Unit, activityEvery: number, ctx: Ctx
     stayArea: b.stayAreas[0] ?? "",
     activities: pickActivities(b, nights[i], activityEvery, ctx),
   }));
-
-  const sum = (f: (b: BrainBase, i: number) => number) => unit.bases.reduce((n, b, i) => n + f(b, i), 0);
-  const budget: Budget = {
-    flights: flightCost(country, ctx),
-    stays: Math.round(sum((b, i) => nights[i] * b.stayTND[input.stay] * rooms) * fee),
-    visa: country.visaTND * trip.travelers,
-    local_transport: Math.round(
-      (sum((b, i) => nights[i] * b.transportDayTND * trip.travelers + b.transferTND * 2) +
-        country.internalMoveTND * trip.travelers * (unit.bases.length - 1)) *
-        fee,
-    ),
-    food: Math.round(sum((b, i) => nights[i] * b.foodTND[tier] * eaters) * fee),
-    activities: Math.round(bases.reduce((n, b) => n + b.activities.reduce((m, a) => m + a.priceTND, 0), 0) * trip.travelers * fee),
-    insurance: country.insuranceDayTND * trip.travelers * trip.days,
-    sim_esim: Math.round(country.esimTND * input.adults * fee),
-    pocket_money: 0,
-  };
-  const tripCostTND = CATEGORIES.slice(0, 8).reduce((n, c) => n + budget[c], 0);
-  budget.pocket_money = trip.totalBudgetTND - tripCostTND;
-  return {
-    bases,
-    budget,
-    tripCostTND,
-    pocketPerPersonPerDay: Math.floor(budget.pocket_money / trip.travelers / trip.days),
-  };
+  const priced = priceStops(
+    country,
+    unit.bases.map((b, i) => ({ base: b, nights: nights[i], stay: input.stay, activityPrices: bases[i].activities.map((a) => a.priceTND) })),
+    input,
+    settings,
+    trip.totalBudgetTND,
+  );
+  return { bases, budget: priced.budget, tripCostTND: priced.tripCostTND, pocketPerPersonPerDay: priced.pocketPerPersonPerDay };
 }
 
 const flightCost = (country: BrainCountry, ctx: Ctx) =>
@@ -435,9 +402,3 @@ export function suggestTrips(input: BrainInput, countries: BrainCountry[], bases
     ...trip,
   };
 }
-
-/** The locked preview: every amount rounded to the nearest 50 TND so it can't be matched to a hotel or flight. */
-export function previewBudget(budget: Budget): Budget {
-  return Object.fromEntries(CATEGORIES.map((c) => [c, Math.round(budget[c] / 50) * 50])) as Budget;
-}
-export const round50 = (n: number) => Math.round(n / 50) * 50;

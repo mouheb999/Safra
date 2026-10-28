@@ -31,13 +31,10 @@ export interface CheckoutDestination {
   image: string;
 }
 
-/** The trip chosen on "Find my trip", as recomputed by the checkout page. */
+/** The trip the visitor built on "Find my trip", as re-priced by the checkout page. */
 export interface BrainCheckoutTrip {
-  /** The encoded answers (src/lib/brain/input.ts); the server recomputes the trip from them. */
-  input: string;
-  /** Country code of the chosen trip. */
-  option: string;
-  label: string;
+  /** The encoded answers + trip (src/lib/brain/input.ts); the server re-prices it when the order is stored. */
+  build: string;
   countryName: string;
   image: string;
   /** "Bangkok · 4 nights + Krabi · 6 nights" */
@@ -110,7 +107,7 @@ export function TripRequestForm({
       paymentMethod: method,
       governorate: method === "cod" ? str(data, "governorate") : "",
       address: method === "cod" ? str(data, "address") : "",
-      ...(brainTrip ? { brain: { input: brainTrip.input, option: brainTrip.option }, itinerary: brainTrip.itinerary } : {}),
+      ...(brainTrip ? { brain: { build: brainTrip.build }, itinerary: brainTrip.itinerary } : {}),
     };
     setError(null);
     startTransition(async () => {
@@ -151,7 +148,7 @@ export function TripRequestForm({
               </h1>
               <p className="m-0 font-bold">{c.intro}</p>
               <div className="flex flex-wrap gap-2">
-                {brainTrip ? <div className={chipClass}>{fmt(t.brain.chip, { value: brainTrip.label })}</div> : null}
+                {brainTrip ? <div className={chipClass}>{t.brain.chip}</div> : null}
                 {packTitle ? <div className={chipClass}>{fmt(t.request.packChip, { value: packTitle })}</div> : null}
                 {hasSelection ? <div className={chipClass}>{fmt(t.request.destinationChip, { value: prefill.selectedCountry })}</div> : null}
                 {prefill.category ? (

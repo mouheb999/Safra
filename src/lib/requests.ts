@@ -44,8 +44,8 @@ export interface TripRequest {
   /** Cash on delivery only. */
   governorate: string;
   address: string;
-  /** Chosen on "Find my trip": the encoded answers + the country, recomputed and stored by the server. */
-  brain?: { input: string; option: string };
+  /** Built on "Find my trip": the encoded answers + trip, re-priced and stored by the server. */
+  brain?: { build: string };
   /** The chosen trip's places and nights, for the WhatsApp message. */
   itinerary?: string;
 }
