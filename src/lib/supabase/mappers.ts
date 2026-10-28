@@ -1,5 +1,6 @@
 // Database rows → app models. Type-only imports keep this runnable from scripts/verify-db.mts.
 
+import type { BrainActivity, BrainBase, BrainCountry, GroupType, StayType } from "@/data/brain";
 import type { Destination, DurationBand, Traveler } from "@/data/destinations";
 import type { Pack, PackInclude, PackText } from "@/data/packs";
 import type { Safari } from "@/data/safaris";
@@ -17,6 +18,49 @@ export type DestinationRow = Tables<"destinations">;
 export type SafariRow = Tables<"safaris">;
 export type ServiceRow = Tables<"services">;
 export type PackRow = Tables<"packs">;
+export type BrainCountryRow = Tables<"brain_countries">;
+export type BrainBaseRow = Tables<"brain_bases">;
+
+export function toBrainCountry(row: BrainCountryRow): BrainCountry {
+  return {
+    code: row.code,
+    name: row.name,
+    airport: row.airport,
+    flightTND: row.flight_tnd,
+    flightHours: Number(row.flight_hours),
+    visaTND: row.visa_tnd,
+    internalMoveTND: row.internal_move_tnd,
+    insuranceDayTND: row.insurance_day_tnd,
+    esimTND: row.esim_tnd,
+    image: row.image_url,
+    sortOrder: row.sort_order,
+    translations: translationsOf<{ name: string }>(row.translations),
+  };
+}
+
+export function toBrainBase(row: BrainBaseRow): BrainBase {
+  const fit = (row.group_fit ?? {}) as Partial<Record<GroupType, number>>;
+  const stay = row.stay_tnd as Record<StayType, number>;
+  return {
+    slug: row.slug,
+    countryCode: row.country_code,
+    place: row.place,
+    strengths: row.strengths,
+    bestMonths: row.best_months,
+    okMonths: row.ok_months,
+    stayAreas: row.stay_areas,
+    minNights: row.min_nights,
+    familyOk: row.family_ok,
+    groupFit: { solo: fit.solo ?? 0.5, couple: fit.couple ?? 0.5, honeymoon: fit.honeymoon ?? 0.5, friends: fit.friends ?? 0.5, family: fit.family ?? 0.5 },
+    stayTND: { budget_hotel: stay.budget_hotel, good_hotel: stay.good_hotel, apartment: stay.apartment },
+    foodTND: { budget: row.food_budget_tnd, mid: row.food_mid_tnd },
+    transportDayTND: row.transport_day_tnd,
+    transferTND: row.transfer_tnd,
+    activities: (Array.isArray(row.activities) ? row.activities : []) as unknown as BrainActivity[],
+    sortOrder: row.sort_order,
+    translations: translationsOf<{ place: string }>(row.translations),
+  };
+}
 
 export function toPack(row: PackRow): Pack {
   return {

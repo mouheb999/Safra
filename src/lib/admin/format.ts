@@ -47,7 +47,7 @@ export const CHANNEL_LABEL: Record<string, string> = {
 export const paymentLabel = (method: string) => (isPaymentMethod(method) ? METHOD_NAME[method] : method);
 
 export const SOURCE_LABEL: Record<Enums<"request_source">, string> = {
-  quiz: "Quiz",
+  quiz: "Find my trip",
   trip: "Destination page",
   direct: "Typed destination",
   visa: "Visa page",

@@ -1,8 +1,8 @@
 import type { Metadata } from "next";
-import { TripQuiz } from "@/components/quiz/TripQuiz";
+import { BrainQuiz } from "@/components/quiz/BrainQuiz";
 import { getMessages } from "@/i18n";
 import { routeLocale, type LocaleParams } from "@/i18n/server";
-import { getDestinations } from "@/lib/catalog";
+import { getSiteSettings } from "@/lib/catalog";
 import { parseQuizParams, type SearchParams } from "@/lib/search-params";
 import { pageMetadata } from "@/lib/site";
 
@@ -14,12 +14,11 @@ export async function generateMetadata({ params }: LocaleParams): Promise<Metada
 }
 
 export default async function FindMyTripPage({ params, searchParams }: Props) {
-  const locale = await routeLocale(params);
-  const [sp, destinations] = await Promise.all([searchParams, getDestinations(locale)]);
-  const prefill = parseQuizParams(sp);
+  await routeLocale(params);
+  const [sp, settings] = await Promise.all([searchParams, getSiteSettings()]);
   return (
     <main className="px-4 py-10 sm:px-7">
-      <TripQuiz destinations={destinations} prefill={prefill} />
+      <BrainQuiz prefill={parseQuizParams(sp)} whatsappNumber={settings.whatsappNumber} />
     </main>
   );
 }

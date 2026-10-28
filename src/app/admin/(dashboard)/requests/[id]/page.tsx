@@ -15,7 +15,9 @@ import {
 } from "@/lib/admin/format";
 import { requireAdmin } from "@/lib/admin/session";
 import { BackLink, Card, Facts, StatusBadge, adminPrimaryButton } from "../../../ui";
+import { isBrainSnapshot } from "@/lib/brain/snapshot";
 import { StatusControl } from "./StatusControl";
+import { TripBrainCard } from "./TripBrainCard";
 
 type Props = { params: Promise<{ id: string }> };
 
@@ -106,6 +108,8 @@ export default async function RequestPage({ params }: Props) {
               ]}
             />
           </Card>
+
+          {isBrainSnapshot(r.quiz_answers) ? <TripBrainCard snapshot={r.quiz_answers} /> : null}
 
           {r.payment_method ? (
             <Card title={`Trip plan order · ${formatDT(r.total_dt)}`}>

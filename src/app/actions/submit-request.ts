@@ -7,10 +7,13 @@
 import { z } from "zod";
 import { getMessages, type Messages } from "@/i18n";
 import { isLocale, type Locale } from "@/i18n/config";
-import { getSiteSettings } from "@/lib/catalog";
+import { decodeBrainInput } from "@/lib/brain/input";
+import { brainSnapshot } from "@/lib/brain/snapshot";
+import { getBrainData, getSiteSettings } from "@/lib/catalog";
 import { GOVERNORATES, PAYMENT_METHODS } from "@/lib/payments";
 import type { BookingConfig, ConciergeRequest } from "@/lib/requests";
 import { getAdminClient } from "@/lib/supabase/admin";
+import type { Json } from "@/lib/supabase/database.types";
 
 /** What a trip plan order was charged (by submit_request, from /admin/settings). */
 export interface OrderAmounts {
@@ -49,7 +52,7 @@ function requestSchema(e: Messages["errors"]) {
       .object({
       kind: z.literal("trip"),
       locale,
-      source: z.enum(["trip", "direct"]),
+      source: z.enum(["trip", "direct", "quiz"]),
       destinationSlug: text(40),
       fullName: required(120),
       whatsapp,
@@ -63,6 +66,7 @@ function requestSchema(e: Messages["errors"]) {
       paymentMethod: z.enum(PAYMENT_METHODS, e.payment),
       governorate,
       address: text(300),
+      brain: z.object({ input: z.string().max(2000), option: z.string().max(40) }).optional(),
     })
       // Cash on delivery needs somewhere to deliver; online payments keep no address.
       .refine((r) => r.paymentMethod !== "cod" || (r.governorate && r.address), { message: e.address, path: ["address"] })
@@ -106,6 +110,18 @@ const DATABASE_MESSAGES: Record<string, keyof Messages["errors"]> = {
 /** Postgres codes raised by submit_request / table constraints for bad input. */
 const INPUT_ERRORS = new Set(["22023", "23514", "22007", "22008", "22P02"]);
 
+/** A trip chosen on "Find my trip", recomputed from its answers (the browser's numbers are never stored). */
+async function brainAnswers(brain: { input: string; option: string } | undefined): Promise<Json | undefined> {
+  const input = brain && decodeBrainInput(brain.input);
+  if (!brain || !input) return undefined;
+  try {
+    return brainSnapshot(input, brain.option, await getBrainData()) as unknown as Json;
+  } catch (error) {
+    console.error("[submit_request] trip brain snapshot failed", error);
+    return { kind: "trip_brain", input: { ...input }, choice: brain.option, option: null };
+  }
+}
+
 export async function submitRequest(request: ConciergeRequest, honeypot = ""): Promise<SubmitResult> {
   const settings = await getSiteSettings();
   const booking: BookingConfig = { mode: settings.bookingMode, whatsappNumber: settings.whatsappNumber };
@@ -127,7 +143,7 @@ export async function submitRequest(request: ConciergeRequest, honeypot = ""): P
   const payload =
     data.kind === "visa"
       ? { ...data, service: undefined, serviceSlug: data.service.slug, source: "visa" }
-      : data;
+      : { ...data, brain: undefined, quizAnswers: await brainAnswers(data.brain) };
 
   const { data: rows, error } = await admin.rpc("submit_request", { payload });
   if (error) {
