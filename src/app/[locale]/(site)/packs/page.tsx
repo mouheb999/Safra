@@ -1,12 +1,15 @@
 import type { Metadata } from "next";
 import Link from "next/link";
-import { getPacks } from "@/data/packs";
 import { ArrowIcon, SparklesIcon } from "@/components/icons";
 import { PackCard } from "@/components/packs/PackCard";
 import { getMessages } from "@/i18n";
 import { localizedPath } from "@/i18n/config";
 import { routeLocale, type LocaleParams } from "@/i18n/server";
+import { getPacks } from "@/lib/catalog";
 import { pageMetadata } from "@/lib/site";
+
+// Re-read the catalog every 5 minutes (admin saves refresh it at once).
+export const revalidate = 300;
 
 export async function generateMetadata({ params }: LocaleParams): Promise<Metadata> {
   const locale = await routeLocale(params);
@@ -16,7 +19,7 @@ export async function generateMetadata({ params }: LocaleParams): Promise<Metada
 export default async function PacksPage({ params }: LocaleParams) {
   const locale = await routeLocale(params);
   const t = getMessages(locale);
-  const packs = getPacks(locale);
+  const packs = await getPacks(locale);
 
   return (
     <main className="px-4 pt-12 pb-24 sm:px-7 lg:pt-16">

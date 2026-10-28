@@ -122,6 +122,71 @@ export type Database = {
         }
         Relationships: []
       }
+      packs: {
+        Row: {
+          blurb: string
+          country: string
+          created_at: string
+          destination_slug: string | null
+          image_url: string
+          includes: string[]
+          is_active: boolean
+          nights: number
+          price_dt: number
+          route: string
+          slug: string
+          sort_order: number
+          title: string
+          translations: Json
+          updated_at: string
+          vibes: string[]
+        }
+        Insert: {
+          blurb?: string
+          country: string
+          created_at?: string
+          destination_slug?: string | null
+          image_url: string
+          includes?: string[]
+          is_active?: boolean
+          nights: number
+          price_dt: number
+          route?: string
+          slug: string
+          sort_order?: number
+          title: string
+          translations?: Json
+          updated_at?: string
+          vibes?: string[]
+        }
+        Update: {
+          blurb?: string
+          country?: string
+          created_at?: string
+          destination_slug?: string | null
+          image_url?: string
+          includes?: string[]
+          is_active?: boolean
+          nights?: number
+          price_dt?: number
+          route?: string
+          slug?: string
+          sort_order?: number
+          title?: string
+          translations?: Json
+          updated_at?: string
+          vibes?: string[]
+        }
+        Relationships: [
+          {
+            foreignKeyName: "packs_destination_slug_fkey"
+            columns: ["destination_slug"]
+            isOneToOne: false
+            referencedRelation: "destinations"
+            referencedColumns: ["slug"]
+          },
+        ]
+      }
       request_events: {
         Row: {
           actor: string | null

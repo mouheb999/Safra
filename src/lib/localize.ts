@@ -1,7 +1,7 @@
 // Catalog items in the visitor's language. Missing translations fall back to English field by field.
 
 import type { Destination } from "@/data/destinations";
-import type { Safari } from "@/data/safaris";
+import type { Pack } from "@/data/packs";
 import { pick } from "@/data/translations";
 import type { VisaService } from "@/data/visas";
 import type { Locale } from "@/i18n/config";
@@ -33,5 +33,17 @@ export function localizeVisaService(v: VisaService, locale: Locale): VisaService
     description: v.description ? pick(t, locale, "description", v.description) : (t?.[locale]?.description ?? ""),
     includes: pick(t, locale, "includes", v.includes),
     documents: pick(t, locale, "documents", v.documents),
+  };
+}
+
+export function localizePack(p: Pack, locale: Locale): Pack {
+  if (locale === "en") return p;
+  const t = p.translations;
+  return {
+    ...p,
+    title: pick(t, locale, "title", p.title),
+    country: pick(t, locale, "country", p.country),
+    route: p.route ? pick(t, locale, "route", p.route) : (t?.[locale]?.route ?? ""),
+    blurb: p.blurb ? pick(t, locale, "blurb", p.blurb) : (t?.[locale]?.blurb ?? ""),
   };
 }

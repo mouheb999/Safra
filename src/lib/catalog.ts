@@ -5,6 +5,7 @@ import "server-only";
 import { cache } from "react";
 import { createClient } from "@supabase/supabase-js";
 import { localDestinations, type Destination } from "@/data/destinations";
+import { localPacks, type Pack } from "@/data/packs";
 import { localVisaServices, type VisaService } from "@/data/visas";
 import {
   DEFAULT_DELIVERY_FEE_DT,
@@ -15,8 +16,8 @@ import {
 } from "./payments";
 import { DEFAULT_WHATSAPP_NUMBER, type BookingConfig, type BookingMode } from "./requests";
 import type { Database } from "./supabase/database.types";
-import { toDestination, toVisaService } from "./supabase/mappers";
-import { localizeDestination, localizeVisaService } from "./localize";
+import { toDestination, toPack, toVisaService } from "./supabase/mappers";
+import { localizeDestination, localizePack, localizeVisaService } from "./localize";
 import type { Locale } from "@/i18n/config";
 
 const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
@@ -59,11 +60,25 @@ const getRawVisaServices = cache(
     }),
 );
 
+const getRawPacks = cache(
+  (): Promise<Pack[]> =>
+    readOr("packs", localPacks, async () => {
+      const { data, error } = await publicClient().from("packs").select("*").order("price_dt").order("sort_order");
+      if (error) throw error;
+      return data.map(toPack);
+    }),
+);
+
 /** Catalog in the visitor's language (English when no locale is given). */
 export async function getDestinations(locale: Locale = "en"): Promise<Destination[]> {
   return (await getRawDestinations()).map((d) => localizeDestination(d, locale));
 }
 
+
+/** Active packs, cheapest first, in the visitor's language. */
+export async function getPacks(locale: Locale = "en"): Promise<Pack[]> {
+  return [...(await getRawPacks())].sort((a, b) => a.priceDT - b.priceDT).map((p) => localizePack(p, locale));
+}
 
 export async function getVisaServices(locale: Locale = "en"): Promise<VisaService[]> {
   return (await getRawVisaServices()).map((v) => localizeVisaService(v, locale));

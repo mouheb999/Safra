@@ -1,6 +1,7 @@
 // Database rows → app models. Type-only imports keep this runnable from scripts/verify-db.mts.
 
 import type { Destination, DurationBand, Traveler } from "@/data/destinations";
+import type { Pack, PackInclude, PackText } from "@/data/packs";
 import type { Safari } from "@/data/safaris";
 import type { Tables } from "./database.types";
 
@@ -15,6 +16,25 @@ const translationsOf = <T,>(value: unknown): Translations<T> =>
 export type DestinationRow = Tables<"destinations">;
 export type SafariRow = Tables<"safaris">;
 export type ServiceRow = Tables<"services">;
+export type PackRow = Tables<"packs">;
+
+export function toPack(row: PackRow): Pack {
+  return {
+    slug: row.slug,
+    title: row.title,
+    country: row.country,
+    route: row.route,
+    blurb: row.blurb,
+    destinationSlug: row.destination_slug ?? "",
+    priceDT: row.price_dt,
+    nights: row.nights,
+    image: row.image_url,
+    // The table only accepts known values (check constraint).
+    includes: row.includes as PackInclude[],
+    vibes: row.vibes,
+    translations: translationsOf<PackText>(row.translations),
+  };
+}
 
 export function toVisaService(row: ServiceRow): VisaService {
   return {

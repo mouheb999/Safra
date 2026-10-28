@@ -63,6 +63,8 @@ const en = {
     custom: "Build my own trip",
     prev: "Previous packs",
     next: "Next packs",
+    position: "Pack {n} of {total}: {title}",
+    showPack: "Show {title}",
     disclaimer: "Example prices per person, from Tunis. Your final price is confirmed before you pay.",
   },
 
