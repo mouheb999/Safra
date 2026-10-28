@@ -66,7 +66,6 @@ function rules(r: BrainResult, input: BrainInput) {
       assert(pb.nights >= b.minNights, `${pb.slug}: respects min nights`);
       if (input.vibes.length) assert(b.strengths.some((s) => input.vibes.includes(s)), `${pb.slug}: shares a vibe`);
     }
-    assert(o.budget.flights <= (r.totalBudgetTND * DEFAULT_BRAIN_SETTINGS.maxFlightSharePct) / 100 + 1, `${o.country}: flights within the allowed share`);
   }
   const scores = r.options.map((o) => o.score);
   assert(scores.every((s, i) => i === 0 || s <= scores[i - 1]), "options ordered by score");
@@ -84,10 +83,24 @@ check("month without nights → need_info (nights)", () => {
   assert(r.status === "need_info" && r.missing.includes("nights"), JSON.stringify(r));
 });
 
-check("the file's example (couple, 9,000 TND, 10 nights) can't meet the 45% flight rule → no_fit", () => {
-  const r = run({ budgetTND: 9000 });
-  assert(r.status === "no_fit" && r.closest !== null, `expected no_fit, got ${r.status}`);
-  console.log(`      closest: ${r.closest.country}, missing ${r.closest.shortfallTND} TND`);
+check("the file's example (couple, 9,000 TND, 10 nights, budget hotel) gets real trips", () => {
+  const input = { ...base, budgetTND: 9000, stay: "budget_hotel" as const };
+  const r = run(input);
+  console.log(`      ${describe(r)}`);
+  rules(r, input);
+});
+
+check("flights over the allowed share lower the score instead of ruling the country out", () => {
+  const r = run({ budgetTND: 10000, stay: "budget_hotel" });
+  assert(r.status === "ok" && r.warnings.some((w) => w.startsWith("flight_share:")), "flagged");
+  assert(r.options.some((o) => (o.budget.flights * 100) / r.totalBudgetTND > DEFAULT_BRAIN_SETTINGS.maxFlightSharePct), "still suggested");
+});
+
+check("a short budget with a good hotel says what a budget hotel would change", () => {
+  const r = run({ budgetTND: 3000, budgetScope: "per_person", stay: "good_hotel" });
+  assert(r.status === "no_fit" && r.budgetHotel !== null, JSON.stringify(r).slice(0, 200));
+  assert(r.budgetHotel.fits || r.budgetHotel.shortfallTND < r.closest!.shortfallTND, "budget hotel is cheaper");
+  console.log(`      good hotel missing ${r.closest!.shortfallTND} TND; budget hotel ${r.budgetHotel.fits ? "fits" : `missing ${r.budgetHotel.shortfallTND} TND`}`);
 });
 
 check("couple, 14,000 TND, 10 nights in December, beach + nightlife", () => {
@@ -97,7 +110,7 @@ check("couple, 14,000 TND, 10 nights in December, beach + nightlife", () => {
   assert(r.status === "ok" && !r.options.some((o) => o.country === "bali"), "Bali is in its rainy season in December");
 });
 
-check("friends ×4, 6,500 per person, 2 weeks in July, adventure + nightlife (45% flight rule leaves Malaysia)", () => {
+check("friends ×4, 6,500 per person, 2 weeks in July, adventure + nightlife", () => {
   const input = { ...base, adults: 4, group: "friends" as const, budgetTND: 6500, budgetScope: "per_person" as const, depart: "2027-07-03", ret: "2027-07-17", vibes: ["Adventure", "Nightlife"], stay: "budget_hotel" as const };
   const r = run(input);
   console.log(`      ${describe(r)}`);

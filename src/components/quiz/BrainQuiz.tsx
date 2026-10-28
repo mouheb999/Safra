@@ -166,9 +166,9 @@ export function BrainQuiz({ prefill, whatsappNumber }: { prefill: QuizPrefill; w
     });
   };
 
-  /** New budget from the results page: recompute in place, without going back through the questions. */
-  const changeBudget = (budget: number) => {
-    const next = { ...answers, budget };
+  /** New budget (or stay) from the results page: recompute in place, without going back through the questions. */
+  const update = (patch: Partial<Answers>) => {
+    const next = { ...answers, ...patch };
     setAnswers(next);
     setRefreshing(true);
     const id = ++requestId.current;
@@ -209,7 +209,7 @@ export function BrainQuiz({ prefill, whatsappNumber }: { prefill: QuizPrefill; w
       </div>
 
       <div className={`grid min-w-0 items-start gap-7 ${isQuestion ? "grid-cols-[minmax(0,1.6fr)_minmax(220px,.95fr)] @max-[810px]:grid-cols-1 @max-[810px]:gap-4" : ""}`}>
-        <main className="min-w-0">
+        <div className="min-w-0">
           {step !== "Budget" && step !== "Loading" ? (
             <button type="button" onClick={goBack} className="mb-2.5 cursor-pointer p-0 font-extrabold">
               {t.quiz.back}
@@ -304,7 +304,7 @@ export function BrainQuiz({ prefill, whatsappNumber }: { prefill: QuizPrefill; w
               headingRef={headingRef}
               whatsappNumber={whatsappNumber}
               refreshing={refreshing}
-              onBudget={changeBudget}
+              onUpdate={update}
               onChange={() => setStep("Budget")}
               onRestart={() => {
                 setAnswers((a) => ({ ...a, depart: "", ret: "", month: null, group: "", vibes: [], stay: "", children: 0, childAges: [] }));
@@ -312,7 +312,7 @@ export function BrainQuiz({ prefill, whatsappNumber }: { prefill: QuizPrefill; w
               }}
             />
           ) : null}
-        </main>
+        </div>
 
         {isQuestion ? (
           <aside className="relative w-full self-stretch @max-[810px]:hidden">
@@ -470,7 +470,7 @@ function Results({
   headingRef,
   whatsappNumber,
   refreshing,
-  onBudget,
+  onUpdate,
   onChange,
   onRestart,
 }: {
@@ -479,7 +479,7 @@ function Results({
   headingRef: RefObject<HTMLHeadingElement | null>;
   whatsappNumber: string;
   refreshing: boolean;
-  onBudget: (budget: number) => void;
+  onUpdate: (patch: Partial<Answers>) => void;
   onChange: () => void;
   onRestart: () => void;
 }) {
@@ -508,7 +508,7 @@ function Results({
 
   const travelers = preview.travelers === 1 ? t.brain.oneTraveler : fmt(t.brain.travelersValue, { n: preview.travelers });
   const nights = fmt(t.brain.nightsValue, { n: preview.nights });
-  const budgetEditor = <BudgetEditor value={answers.budget} refreshing={refreshing} onCommit={onBudget} />;
+  const budgetEditor = <BudgetEditor value={answers.budget} refreshing={refreshing} onCommit={(budget) => onUpdate({ budget })} />;
   const dim = `transition-opacity duration-300 ${refreshing ? "pointer-events-none opacity-45" : ""}`;
 
   if (preview.status === "no_fit") {
@@ -532,7 +532,7 @@ function Results({
               {canReach ? (
                 <button
                   type="button"
-                  onClick={() => onBudget(needed)}
+                  onClick={() => onUpdate({ budget: needed })}
                   className="mt-1 cursor-pointer justify-self-start rounded-full bg-ink px-6 py-3.5 font-black text-cream hover:brightness-110"
                 >
                   {fmt(t.brain.tryBudget, { amount: formatDT(needed, locale) })}
@@ -542,6 +542,20 @@ function Results({
           ) : (
             <p className="m-0 text-lg font-bold">{t.brain.noFitNone}</p>
           )}
+          {preview.budgetHotel ? (
+            <div className="mt-1 grid gap-2 border-t border-ink/10 pt-4">
+              <p className="m-0 font-bold">
+                {preview.budgetHotel.fits ? t.brain.budgetHotelFits : fmt(t.brain.budgetHotelShort, { missing: formatDT(preview.budgetHotel.missingTND, locale) })}
+              </p>
+              <button
+                type="button"
+                onClick={() => onUpdate({ stay: "budget_hotel" })}
+                className="cursor-pointer justify-self-start rounded-full border border-ink/20 bg-white px-5 py-3 font-extrabold hover:border-ink/40"
+              >
+                {t.brain.switchBudgetHotel}
+              </button>
+            </div>
+          ) : null}
           <a href={whatsappUrl(t.whatsapp.hi, whatsappNumber)} className="mt-2 justify-self-start rounded-full bg-orange px-6 py-3.5 font-black hover:brightness-95">
             {t.brain.talk}
           </a>

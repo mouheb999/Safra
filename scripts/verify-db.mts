@@ -531,9 +531,9 @@ await check("a month can't be both best and ok, and months stay within 1–12", 
   await expectError(rows(`update brain_bases set best_months = array[13]::smallint[] where slug = 'bangkok'`), /check constraint/);
 });
 
-await check("brain thresholds default to 60 TND / 3% / 45% / one activity every 2 days", async () => {
+await check("brain thresholds default to 25 TND / 3% / 45% / one activity every 2 days", async () => {
   const [r] = await rows(`select brain_min_pocket_tnd, brain_card_fee_pct::float as fee, brain_max_flight_share, brain_activity_every from site_settings`);
-  assertEqual(r, { brain_min_pocket_tnd: 60, fee: 3, brain_max_flight_share: 45, brain_activity_every: 2 });
+  assertEqual(r, { brain_min_pocket_tnd: 25, fee: 3, brain_max_flight_share: 45, brain_activity_every: 2 });
 });
 
 console.log(`\n${passed} passed, ${failures.length} failed`);

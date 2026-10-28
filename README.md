@@ -138,10 +138,11 @@ mode), because the customer needs to see how to pay.
 
 Follows "Safra Trip Brain v0.5". `src/lib/brain/engine.ts` is deterministic and pure: same answers + same data
 → same trips. It drops places in their bad season or without a shared vibe, splits the nights across 1–3 places,
-costs 9 categories (card fee on foreign-currency items), drops countries whose flights take more than the max
-share, cuts activities → then a place before giving up, scores (budget 30, vibe 25, season 20, group 15, ease 10)
-and returns the top 3 countries labelled Best value / Best experience / Easiest — or the closest trip and what's
-missing.
+costs 9 categories (card fee on foreign-currency items), cuts activities → then a place before giving up, scores
+(budget 30, vibe 25, season 20, group 15, ease 10; flights over the warning share lower the budget score) and
+returns the top 3 countries labelled Best value / Best experience / Easiest — or the closest trip, what's missing,
+and what a budget hotel would change. The results page lets the visitor move the budget (or switch to a budget
+hotel) and see the trips update in place.
 
 - The visitor sees a locked preview (`preview.ts`): places, nights, season, amounts rounded to 50 DT. Stay areas
   and activities stay hidden until they order.

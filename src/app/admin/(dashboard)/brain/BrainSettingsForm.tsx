@@ -17,13 +17,13 @@ export function BrainSettingsForm({ values: v }: { values: BrainSettingsValues }
   return (
     <form action={action} className="grid gap-4">
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-        <Field label="Minimum pocket money (DT)" hint="Per person per day. A trip that leaves less is cut down or not suggested.">
+        <Field label="Minimum pocket money (DT)" hint="Per person per day, for extras only (food, transport and activities are already counted). A trip that leaves less is cut down or not suggested.">
           <TextInput name="brain_min_pocket_tnd" type="number" min={0} max={10000} required defaultValue={v.brain_min_pocket_tnd} />
         </Field>
         <Field label="Card fee (%)" hint="Added to everything paid in a foreign currency (flights, stays, activities…).">
           <TextInput name="brain_card_fee_pct" type="number" min={0} max={20} step={0.1} required defaultValue={v.brain_card_fee_pct} />
         </Field>
-        <Field label="Max share for flights (%)" hint="A country whose flights take more of the budget than this is dropped.">
+        <Field label="Flight share warning (%)" hint="When flights take more of the budget than this, the country scores lower (it can still be suggested).">
           <TextInput name="brain_max_flight_share" type="number" min={5} max={100} required defaultValue={v.brain_max_flight_share} />
         </Field>
         <Field label="One activity every … days" hint="How many paid activities a trip gets (2 = one every two days).">

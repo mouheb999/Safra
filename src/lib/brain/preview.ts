@@ -29,6 +29,7 @@ export type BrainPreview =
       travelers: number;
       totalBudgetTND: number;
       closest: { countryName: string; places: string[]; missingTND: number; fitsWithNights: number | null } | null;
+      budgetHotel: { fits: boolean; missingTND: number } | null;
     };
 
 export function buildPreview(input: BrainInput, data: BrainData, locale: Locale): BrainPreview {
@@ -56,6 +57,7 @@ export function buildPreview(input: BrainInput, data: BrainData, locale: Locale)
         missingTND: result.closest.shortfallTND,
         fitsWithNights: result.closest.fitsWithNights,
       },
+      budgetHotel: result.budgetHotel && { fits: result.budgetHotel.fits, missingTND: result.budgetHotel.shortfallTND },
     };
   }
   return {
