@@ -52,6 +52,7 @@ const en = {
     heroAlt: "A traditional Thai long-tail boat on blue-green water beneath a warm sunset sky, with distant limestone islands",
     videoPause: "Pause video",
     videoPlay: "Play video",
+    videoSoon: "Video coming soon",
     budgetEyebrow: "OUR PACKS",
     budgetTitle: "How far can your budget take you?",
     budgetBody: "Slide to your budget per person. The packs it covers move to the front.",
