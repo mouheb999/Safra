@@ -2,6 +2,7 @@
 // `translations` column ({ fr: {...}, ar: {...} }). Empty fields fall back to the English text.
 
 import type { DestinationText, VisaText } from "@/data/catalog-translations";
+import type { PackText } from "@/data/packs";
 import type { TranslatedLocale } from "@/data/translations";
 
 export const TRANSLATED_LOCALES: { locale: TranslatedLocale; label: string; dir: "ltr" | "rtl" }[] = [
@@ -28,6 +29,13 @@ export const DESTINATION_FIELDS: TranslatedField<keyof DestinationText>[] = [
   { key: "cardAlt", label: "Card image description", kind: "text", max: 160 },
 ];
 
+
+export const PACK_FIELDS: TranslatedField<keyof PackText>[] = [
+  { key: "title", label: "Title", kind: "text", max: 80 },
+  { key: "country", label: "Country", kind: "text", max: 60 },
+  { key: "route", label: "Route", kind: "text", max: 120 },
+  { key: "blurb", label: "Short description", kind: "textarea", max: 300 },
+];
 
 export const VISA_FIELDS: TranslatedField<keyof VisaText>[] = [
   { key: "name", label: "Name", kind: "text", max: 120 },

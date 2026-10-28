@@ -12,12 +12,12 @@ npm run build      # production build + type check
 
 | Route | Rendering | Content |
 |---|---|---|
-| `/` | static | Home: hero (video or poster, see `HERO_VIDEO` in `src/lib/site.ts`), budget slider that glides through the packs |
+| `/` | static | Home: hero (video or poster, see `HERO_VIDEO` in `src/lib/site.ts`), budget slider + packs carousel (main pack in the middle, swipe/arrows/dots) |
 | `/find-my-trip` | dynamic | 5-step quiz → scored results (`?budget=`, `?category=` prefill) |
 | `/trip?destination=thailand\|egypt\|turkiye` | dynamic, server-only | Destination preview carrying the quiz answers |
 | `/trip-request` | dynamic | Trip plan checkout (`?mode=direct`), or the visa form (`?mode=visa`) |
 | `/visas` | static | Thailand visa service + application |
-| `/packs` | static | Our packs: ready-made trips with a price per person (placeholders in `src/data/packs.ts`); a pack opens the checkout with `?pack=` |
+| `/packs` | static | Our packs: ready-made trips with a price per person, edited in /admin/catalog; a pack opens the checkout with `?pack=` |
 | `/safari`, `/experiences` | redirect | Old links, sent to `/packs` |
 | `/robots.txt`, `/sitemap.xml`, `/opengraph-image`, `/icon.svg` | static | SEO: `/admin` and `/trip-request` are not indexed; canonical URLs and social cards come from `src/lib/site.ts` |
 
@@ -44,7 +44,7 @@ src/
     request/           TripRequestForm (trip plan checkout), VisaRequest
     forms.tsx          Field, input styles, validation + WhatsApp launch hooks
     icons.tsx
-  data/                destinations (seed source for Supabase), packs (placeholders)
+  data/                destinations + packs (seed source for Supabase and local fallback)
   lib/
     quiz.ts            answer model + destination scoring (pure)
     requests.ts        request payload types + WhatsApp message text
@@ -73,7 +73,7 @@ scripts/verify-db.mts                      schema + RLS test suite (in-process P
 
 | Table | Who can read | Who can write |
 |---|---|---|
-| `destinations`, `services` (and the retired `safaris`) | everyone (active rows) | admins |
+| `packs`, `destinations`, `services` (and the retired `safaris`) | everyone (active rows) | admins |
 | `requests`, `visa_applications`, `request_events` | admins only | server only, via `submit_request()` |
 | `admins` | own row | SQL editor |
 
@@ -99,7 +99,7 @@ Seed a linked project by running `supabase/seed.sql` in the SQL editor. Admin ac
   and search by reference, name, phone or destination. Each request page shows everything the customer sent
   (passport details for visas), a "Message on WhatsApp" button that opens with their reference, the status
   pipeline, and the history of who changed what.
-- **Catalog**: add, edit, hide/show destinations and visa services (country, flag, price, what's
+- **Catalog**: add, edit, hide/show (and delete) packs; add, edit, hide/show destinations and visa services (country, flag, price, what's
   included, required documents). Images are uploaded straight to the public Supabase Storage bucket `catalog`
   (admins only), or can be links on the hosts in `src/lib/images.ts` (shared with `next.config.ts`).
   Saves refresh the public site immediately.

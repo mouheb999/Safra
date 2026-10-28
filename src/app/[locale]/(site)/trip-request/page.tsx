@@ -1,10 +1,9 @@
 import type { Metadata } from "next";
 import { TripRequestForm } from "@/components/request/TripRequestForm";
-import { getPacks } from "@/data/packs";
 import { VisaRequest } from "@/components/request/VisaRequest";
 import { getMessages } from "@/i18n";
 import { routeLocale, type LocaleParams } from "@/i18n/server";
-import { getBookingConfig, getCheckoutConfig, getDestinations, getVisaServices } from "@/lib/catalog";
+import { getBookingConfig, getCheckoutConfig, getDestinations, getPacks, getVisaServices } from "@/lib/catalog";
 import { parseTripRequestParams, type SearchParams } from "@/lib/search-params";
 import { pageMetadata } from "@/lib/site";
 
@@ -27,7 +26,7 @@ export default async function TripRequestPage({ params, searchParams }: Props) {
   const prefill = parseTripRequestParams(sp, "trip", destinations);
   const selected = destinations.find((d) => d.slug === prefill.selectedSlug);
   // ?pack= from "Our packs": the summary shows the pack, and its name is noted on the request.
-  const pack = getPacks(locale).find((p) => p.slug === sp.pack);
+  const pack = typeof sp.pack === "string" ? (await getPacks(locale)).find((p) => p.slug === sp.pack) : undefined;
   const destination = pack
     ? { title: pack.title, country: pack.country, image: pack.image }
     : selected

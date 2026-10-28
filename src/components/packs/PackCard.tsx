@@ -2,20 +2,19 @@
 
 import Image from "next/image";
 import Link from "next/link";
-import type { LocalizedPack } from "@/data/packs";
+import type { Pack } from "@/data/packs";
 import { ArrowIcon } from "@/components/icons";
 import { useI18n } from "@/i18n/client";
 import { fmt } from "@/i18n/fmt";
 import { formatDT } from "@/lib/budget";
 
-/** Checkout link for a pack: its destination, the price as the per-person budget, nights + 1 days. */
-export const packHref = (p: LocalizedPack) =>
-  `/trip-request?${new URLSearchParams({
-    destination: p.destinationSlug,
-    pack: p.slug,
-    budget: String(p.priceDT),
-    duration: `${p.nights + 1} days`,
-  })}`;
+/** Checkout link for a pack: its destination (if linked), the price as the per-person budget, nights + 1 days. */
+export function packHref(p: Pack): string {
+  const params = new URLSearchParams({ pack: p.slug, budget: String(p.priceDT), duration: `${p.nights + 1} days` });
+  if (p.destinationSlug) params.set("destination", p.destinationSlug);
+  else params.set("mode", "direct");
+  return `/trip-request?${params}`;
+}
 
 /**
  * A ready-made pack: photo with the nights, country and title, route, what's included, price per person.
@@ -28,7 +27,7 @@ export function PackCard({
   muted = false,
   badge,
 }: {
-  pack: LocalizedPack;
+  pack: Pack;
   sizes: string;
   preload?: boolean;
   muted?: boolean;

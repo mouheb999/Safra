@@ -2,12 +2,11 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { HeroMedia } from "@/components/HeroMedia";
 import { PacksSlider } from "@/components/packs/PacksSlider";
-import { getPacks } from "@/data/packs";
 import { ArrowIcon, CompassIcon, GlobeIcon, SparklesIcon } from "@/components/icons";
 import { getMessages } from "@/i18n";
 import { localizedPath, type Locale } from "@/i18n/config";
 import { routeLocale, type LocaleParams } from "@/i18n/server";
-import { getDestinations, getSiteSettings } from "@/lib/catalog";
+import { getDestinations, getPacks, getSiteSettings } from "@/lib/catalog";
 import { HERO_POSTER, HERO_VIDEO, SITE_NAME, SITE_URL, pageMetadata } from "@/lib/site";
 
 // Re-read the catalog every 5 minutes (static otherwise).
@@ -23,7 +22,7 @@ export default async function HomePage({ params }: LocaleParams) {
   const locale = await routeLocale(params);
   const t = getMessages(locale);
   const href = (path: string) => localizedPath(locale, path);
-  const [destinations, settings] = await Promise.all([getDestinations(locale), getSiteSettings()]);
+  const [destinations, settings, packs] = await Promise.all([getDestinations(locale), getSiteSettings(), getPacks(locale)]);
 
   return (
     <main className="overflow-x-hidden pb-24">
@@ -64,7 +63,7 @@ export default async function HomePage({ params }: LocaleParams) {
         </div>
       </section>
 
-      <PacksSlider packs={getPacks(locale)} />
+      <PacksSlider packs={packs} />
     </main>
   );
 }

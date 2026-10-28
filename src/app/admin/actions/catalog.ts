@@ -7,7 +7,8 @@ import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { z } from "zod";
 import { requireAdmin } from "@/lib/admin/session";
-import { DESTINATION_FIELDS, VISA_FIELDS, readTranslations } from "@/lib/admin/translations";
+import { PACK_INCLUDES } from "@/data/packs";
+import { DESTINATION_FIELDS, PACK_FIELDS, VISA_FIELDS, readTranslations } from "@/lib/admin/translations";
 import { IMAGE_HOSTS, isAllowedImageUrl } from "@/lib/images";
 
 export type FormState = { error: string | null };
@@ -77,6 +78,21 @@ function dbMessage(error: { code?: string; message: string }): string {
 function refreshSite() {
   revalidatePath("/", "layout");
 }
+
+const packSchema = z.object({
+  title: text("Title", 80),
+  country: text("Country", 60),
+  route: z.string().max(120, "Route is too long (max 120)."),
+  blurb: z.string().max(300, "Short description is too long (max 300)."),
+  price_dt: money("Price per person"),
+  nights: z.coerce.number().int("Nights must be a whole number.").min(1, "Nights: at least 1.").max(60, "Nights: at most 60."),
+  image_url: imageUrl("Photo"),
+  includes: z.array(z.enum(PACK_INCLUDES)),
+  vibes: tagList("Vibes"),
+  destination_slug: z.string().transform((v) => v || null),
+  sort_order: sortOrder,
+  is_active: z.boolean(),
+});
 
 // ---- Actions -----------------------------------------------------------------------------
 
@@ -173,7 +189,53 @@ export async function saveVisaService(originalSlug: string | null, _prev: FormSt
 }
 
 /** Show/hide a catalog item on the public site. */
-export async function setActive(table: "destinations" | "services", slugValue: string, active: boolean) {
+/** `originalSlug` is null when creating. */
+export async function savePack(originalSlug: string | null, _prev: FormState, fd: FormData): Promise<FormState> {
+  const { supabase } = await requireAdmin();
+  const parsed = packSchema.safeParse({
+    title: get(fd, "title"),
+    country: get(fd, "country"),
+    route: get(fd, "route"),
+    blurb: get(fd, "blurb"),
+    price_dt: get(fd, "price_dt"),
+    nights: get(fd, "nights"),
+    image_url: get(fd, "image_url"),
+    includes: all(fd, "includes"),
+    vibes: all(fd, "vibes"),
+    destination_slug: get(fd, "destination_slug"),
+    sort_order: get(fd, "sort_order") || "0",
+    is_active: fd.get("is_active") === "on",
+  });
+  if (!parsed.success) return { error: firstIssue(parsed.error) };
+  const { translations, error: translationError } = readTranslations(fd, PACK_FIELDS);
+  if (translationError !== null) return { error: translationError };
+  const row = { ...parsed.data, translations };
+
+  if (originalSlug === null) {
+    const newSlug = slug.safeParse(get(fd, "slug"));
+    if (!newSlug.success) return { error: firstIssue(newSlug.error) };
+    const { error } = await supabase.from("packs").insert({ slug: newSlug.data, ...row });
+    if (error) return { error: dbMessage(error) };
+  } else {
+    const { data, error } = await supabase.from("packs").update(row).eq("slug", originalSlug).select("slug");
+    if (error) return { error: dbMessage(error) };
+    if (!data?.length) return { error: "That pack no longer exists." };
+  }
+  refreshSite();
+  redirect(`/admin/catalog?saved=${encodeURIComponent(parsed.data.title)}`);
+}
+
+/** Packs can be deleted outright (requests only keep the pack's name, in their notes). */
+export async function deletePack(slugValue: string) {
+  const { supabase } = await requireAdmin();
+  if (!slug.safeParse(slugValue).success) return;
+  const { error } = await supabase.from("packs").delete().eq("slug", slugValue);
+  if (error) throw new Error(dbMessage(error));
+  refreshSite();
+  redirect("/admin/catalog?deleted=1");
+}
+
+export async function setActive(table: "destinations" | "services" | "packs", slugValue: string, active: boolean) {
   const { supabase } = await requireAdmin();
   if (!slug.safeParse(slugValue).success) return;
   const { error } = await supabase.from(table).update({ is_active: active }).eq("slug", slugValue);

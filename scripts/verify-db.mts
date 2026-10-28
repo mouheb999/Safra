@@ -6,8 +6,9 @@ import { readdirSync, readFileSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 import { PGlite } from "@electric-sql/pglite";
 import { localDestinations } from "../src/data/destinations.ts";
+import { localPacks } from "../src/data/packs.ts";
 import { localSafaris } from "../src/data/safaris.ts";
-import { toDestination, toSafari } from "../src/lib/supabase/mappers.ts";
+import { toDestination, toPack, toSafari } from "../src/lib/supabase/mappers.ts";
 
 const root = process.env.SUPABASE_DIR ?? fileURLToPath(new URL("../supabase/", import.meta.url));
 const db = new PGlite();
@@ -457,6 +458,49 @@ await check("visitors read the payment settings; only admins change them", async
   const [after] = await rows(`select plan_price_dt from site_settings`);
   assertEqual(after.plan_price_dt, 79);
   await expectError(rows(`update site_settings set plan_price_dt = 0`), /check constraint/);
+});
+
+console.log("\nPacks");
+
+await check("seeded packs map back to exactly the app's local data", async () => {
+  const r = await rows<Parameters<typeof toPack>[0]>(`select * from packs order by sort_order`);
+  assertEqual(r.map(toPack), localPacks);
+});
+
+await check("visitors read active packs only", async () => {
+  await rows(`update packs set is_active = false where slug = 'thai-islands'`);
+  const r = await as("anon", () => rows<{ slug: string }>(`select slug from packs order by price_dt`));
+  assertEqual(r.map((x) => x.slug), ["cairo-weekend", "nile-classic", "cappadocia-istanbul", "bangkok-krabi"]);
+  const admin = await as("authenticated", () => rows(`select slug from packs`), ADMIN);
+  assertEqual(admin.length, 5, "admins see hidden packs too:");
+  await rows(`update packs set is_active = true where slug = 'thai-islands'`);
+});
+
+await check("visitors and non-admins cannot change packs", async () => {
+  await expectError(as("anon", () => rows(`insert into packs (slug, title, country, price_dt, nights, image_url) values ('x', 'x', 'x', 1, 1, 'x')`)), /permission denied|row-level security/);
+  await as("authenticated", () => rows(`update packs set price_dt = 1`), USER);
+  const [r] = await rows<{ price_dt: number }>(`select price_dt from packs where slug = 'cairo-weekend'`);
+  assertEqual(r.price_dt, 1490);
+});
+
+await check("admins add, edit and remove packs", async () => {
+  await as("authenticated", () => rows(`insert into packs (slug, title, country, price_dt, nights, image_url, includes) values ('bali-escape', 'Bali escape', 'Indonesia', 5200, 10, 'https://images.unsplash.com/x', array['flights','hotel'])`), ADMIN);
+  const r = await as("authenticated", () => rows(`update packs set price_dt = 4990 where slug = 'bali-escape' returning price_dt`), ADMIN);
+  assertEqual(r, [{ price_dt: 4990 }]);
+  await as("authenticated", () => rows(`delete from packs where slug = 'bali-escape'`), ADMIN);
+  assertEqual((await rows(`select 1 from packs where slug = 'bali-escape'`)).length, 0);
+});
+
+await check("bad pack data is rejected (unknown inclusion, zero nights, bad slug)", async () => {
+  await expectError(rows(`update packs set includes = array['spa'] where slug = 'cairo-weekend'`), /check constraint/);
+  await expectError(rows(`update packs set nights = 0 where slug = 'cairo-weekend'`), /check constraint/);
+  await expectError(rows(`insert into packs (slug, title, country, price_dt, nights, image_url) values ('Bad Slug', 'x', 'x', 1, 1, 'x')`), /check constraint/);
+});
+
+await check("deleting a destination keeps its packs, unlinked", async () => {
+  await rows(`delete from destinations where slug = 'turkiye'`);
+  const [r] = await rows<{ destination_slug: string | null }>(`select destination_slug from packs where slug = 'cappadocia-istanbul'`);
+  assertEqual(r.destination_slug, null);
 });
 
 console.log(`\n${passed} passed, ${failures.length} failed`);

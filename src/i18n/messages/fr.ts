@@ -63,6 +63,8 @@ const fr: Messages = {
     custom: "Créer mon propre voyage",
     prev: "Packs précédents",
     next: "Packs suivants",
+    position: "Pack {n} sur {total} : {title}",
+    showPack: "Voir {title}",
     disclaimer: "Prix donnés à titre d’exemple, par personne au départ de Tunis. Votre prix final est confirmé avant le paiement.",
   },
 

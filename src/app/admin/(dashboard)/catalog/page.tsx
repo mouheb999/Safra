@@ -7,11 +7,12 @@ import { Card, Notice, adminPrimaryButton, adminSecondaryButton } from "../../ui
 
 export const metadata: Metadata = { title: "Catalog" };
 
-export default async function CatalogPage({ searchParams }: { searchParams: Promise<{ saved?: string }> }) {
+export default async function CatalogPage({ searchParams }: { searchParams: Promise<{ saved?: string; deleted?: string }> }) {
   const { supabase } = await requireAdmin();
-  const { saved } = await searchParams;
+  const { saved, deleted } = await searchParams;
 
-  const [{ data: destinations }, { data: services }] = await Promise.all([
+  const [{ data: packs }, { data: destinations }, { data: services }] = await Promise.all([
+    supabase.from("packs").select("slug, title, country, price_dt, nights, sort_order, is_active").order("price_dt"),
     supabase.from("destinations").select("slug, country, title, min_budget, max_budget, sort_order, is_active").order("sort_order"),
     supabase.from("services").select("slug, name, country, flag, price_dt, sort_order, is_active").order("sort_order").order("name"),
   ]);
@@ -25,6 +26,27 @@ export default async function CatalogPage({ searchParams }: { searchParams: Prom
         </p>
       </div>
       {saved ? <Notice>Saved: {saved}</Notice> : null}
+      {deleted ? <Notice>Pack deleted.</Notice> : null}
+
+      <Card
+        title="Our packs"
+        actions={
+          <Link href="/admin/catalog/packs/new" className={adminPrimaryButton}>
+            + New pack
+          </Link>
+        }
+      >
+        <CatalogTable
+          rows={(packs ?? []).map((p) => ({
+            slug: p.slug,
+            name: p.title,
+            detail: `${p.country} · ${p.nights} nights · ${formatDT(p.price_dt)} per person`,
+            active: p.is_active,
+            order: p.sort_order,
+          }))}
+          table="packs"
+        />
+      </Card>
 
       <Card
         title="Destinations"
@@ -75,7 +97,7 @@ function CatalogTable({
   table,
 }: {
   rows: { slug: string; name: string; detail: string; active: boolean; order: number }[];
-  table: "destinations" | "services";
+  table: "destinations" | "services" | "packs";
 }) {
   if (rows.length === 0) return <p className="m-0 text-sm opacity-70">Nothing here yet.</p>;
   return (
