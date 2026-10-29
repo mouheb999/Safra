@@ -3,7 +3,7 @@
 import Image from "next/image";
 import Link from "next/link";
 import { useEffect, useState, type RefObject } from "react";
-import { ArrowIcon, PaperPlaneIcon } from "@/components/icons";
+import { ArrowIcon, CheckIcon, ClockIcon, LockIcon, PaperPlaneIcon } from "@/components/icons";
 import type { GroupType } from "@/data/brain";
 import { useI18n } from "@/i18n/client";
 import { fmt, label } from "@/i18n/fmt";
@@ -29,6 +29,7 @@ export function SurpriseResults({
   input,
   whenLabel,
   planPriceDT,
+  payOnline,
   whatsappNumber,
   onRestart,
   headingRef,
@@ -37,6 +38,7 @@ export function SurpriseResults({
   input: BrainInput;
   whenLabel: string;
   planPriceDT: number;
+  payOnline: boolean;
   whatsappNumber: string;
   onRestart: () => void;
   headingRef: RefObject<HTMLHeadingElement | null>;
@@ -86,6 +88,7 @@ export function SurpriseResults({
             nights={preview.nights}
             travelers={preview.travelers}
             planPriceDT={planPriceDT}
+            payOnline={payOnline}
           />
         ))}
       </div>
@@ -103,6 +106,7 @@ function OptionCard({
   nights,
   travelers,
   planPriceDT,
+  payOnline,
 }: {
   option: SurpriseOption;
   index: number;
@@ -110,6 +114,7 @@ function OptionCard({
   nights: number;
   travelers: number;
   planPriceDT: number;
+  payOnline: boolean;
 }) {
   const { t, locale, href } = useI18n();
   const b = t.brain;
@@ -166,7 +171,7 @@ function OptionCard({
         </div>
 
 
-        <LockedProgram option={o} unlockHref={unlockHref} planPriceDT={planPriceDT} />
+        <LockedProgram option={o} depart={input.depart} unlockHref={unlockHref} planPriceDT={planPriceDT} payOnline={payOnline} />
       </div>
     </article>
   );
@@ -174,55 +179,128 @@ function OptionCard({
 
 /**
  * What the plan unlocks, stacked: where the money goes (category names, blurred amounts), then the
- * day-by-day program (day numbers and places, blurred details). The amounts and texts under the blur are
- * placeholders — the real split and plan are never sent to the browser, so removing the blur reveals nothing.
+ * day-by-day program (day numbers and places, blurred details), then the unlock panel. The amounts and texts
+ * under the blur are placeholders — the real split and plan are never sent to the browser, so removing the
+ * blur reveals nothing. Urgency stays factual: days until departure, prices checked today, the plan's share
+ * of the trip cost.
  */
-function LockedProgram({ option: o, unlockHref, planPriceDT }: { option: SurpriseOption; unlockHref: string; planPriceDT: number }) {
+function LockedProgram({
+  option: o,
+  depart,
+  unlockHref,
+  planPriceDT,
+  payOnline,
+}: {
+  option: SurpriseOption;
+  /** Departure date (exact-dates answers only). */
+  depart: string | null;
+  unlockHref: string;
+  planPriceDT: number;
+  payOnline: boolean;
+}) {
   const { t, locale } = useI18n();
   const b = t.brain;
   const shown = o.days.slice(0, PREVIEW_DAYS);
   const more = o.days.length - shown.length;
+  const daysToGo = depart ? Math.ceil((Date.parse(`${depart}T00:00:00`) - Date.now()) / 86_400_000) : null;
+  const share = o.tripCostTND > 0 ? Math.ceil((planPriceDT / o.tripCostTND) * 100) : null;
+  const includes = [
+    fmt(b.includes.days, { n: o.days.length }),
+    b.includes.stays,
+    b.includes.flights,
+    ...(o.activityCount ? [fmt(b.includes.activities, { n: o.activityCount })] : []),
+  ];
 
   return (
-    <section aria-label={`${b.split} · ${b.program}`} className="relative mt-auto overflow-hidden rounded-2xl bg-cream/60 ring-1 ring-ink/10">
-      <h4 className="m-0 px-4 pt-3.5 pb-2 text-sm font-black">{b.split}</h4>
-      <ul className="m-0 grid list-none gap-x-4 gap-y-1.5 px-4 pb-3.5 @min-[640px]:grid-cols-2">
-        {CATEGORIES.map((c, i) => (
-          <li key={c} className="flex items-baseline justify-between gap-2 text-[13px]">
-            <span className="truncate opacity-80">{b.categories[c]}</span>
-            <span aria-hidden className="font-black whitespace-nowrap tabular-nums blur-[5px] select-none">
-              {formatDT(placeholderAmount(i, o.country), locale)}
-            </span>
-          </li>
-        ))}
-      </ul>
-      <h4 className="m-0 border-t border-ink/8 px-4 pt-3.5 pb-1 text-sm font-black">{b.program}</h4>
-      <ol className="m-0 grid list-none p-0">
-        {shown.map((d, i) => (
-          <li key={d.day} className="grid grid-cols-[64px_minmax(0,1fr)] gap-x-2 border-t border-ink/6 px-4 py-2.5">
-            <span className="text-xs leading-5 font-black text-sea">{fmt(b.day, { n: d.day })}</span>
-            <span className="text-sm leading-5 font-extrabold">{fmt(b.dayKinds[d.kind], { place: d.place })}</span>
-            <span aria-hidden className="col-start-2 text-[13px] leading-snug opacity-70 blur-[4px] select-none">
-              {b.teaser[(i + o.country.length) % b.teaser.length]}
-            </span>
-          </li>
-        ))}
-      </ol>
-
-      <div className="relative -mt-16 grid justify-items-center gap-2 bg-linear-to-b from-transparent via-white/95 to-white px-4 pt-14 pb-4 text-center">
-        <span aria-hidden className="grid size-10 place-items-center rounded-full bg-ink text-lg text-cream shadow-[0_6px_16px_rgba(32,61,53,.3)]">
-          🔒
+    <section
+      aria-label={b.lockedHeader}
+      className="relative mt-auto overflow-hidden rounded-[22px] bg-white shadow-[0_18px_40px_-28px_rgba(32,61,53,.6)] ring-1 ring-ink/12"
+    >
+      <div className="flex items-center justify-between gap-3 bg-ink px-4 py-3 text-cream">
+        <span className="flex items-center gap-2 text-sm font-black">
+          <LockIcon size={16} strokeWidth={2.4} />
+          {b.lockedHeader}
         </span>
-        <strong className="text-base">{b.lockedTitle}</strong>
-        {more > 0 ? <span className="text-xs font-bold opacity-70">{fmt(b.moreDays, { n: more })}</span> : null}
-        <span className="text-sm opacity-80">{o.activityCount ? fmt(b.lockedBody, { n: o.activityCount }) : b.lockedBodyNoActs}</span>
+        <span className="inline-flex items-center gap-1.5 rounded-full bg-cream/12 px-2.5 py-1 text-[11px] font-black text-[#86EFAC]">
+          <span aria-hidden className="relative flex size-2">
+            <span className="absolute inline-flex size-full animate-ping rounded-full bg-[#86EFAC] opacity-60 motion-reduce:hidden" />
+            <span className="relative inline-flex size-2 rounded-full bg-[#86EFAC]" />
+          </span>
+          {b.lockedReady}
+        </span>
+      </div>
+
+      <div className="relative bg-cream/50">
+        <h4 className="m-0 px-4 pt-3.5 pb-2 text-[13px] font-black tracking-[.04em] uppercase opacity-70 rtl:tracking-normal">{b.split}</h4>
+        <ul className="m-0 grid list-none gap-x-4 gap-y-1.5 px-4 pb-3.5 @min-[640px]:grid-cols-2">
+          {CATEGORIES.map((c, i) => (
+            <li key={c} className="flex items-baseline justify-between gap-2 text-[13px]">
+              <span className="truncate opacity-80">{b.categories[c]}</span>
+              <span aria-hidden className="font-black whitespace-nowrap tabular-nums blur-[5px] select-none">
+                {formatDT(placeholderAmount(i, o.country), locale)}
+              </span>
+            </li>
+          ))}
+        </ul>
+        <h4 className="m-0 border-t border-ink/8 px-4 pt-3.5 pb-1 text-[13px] font-black tracking-[.04em] uppercase opacity-70 rtl:tracking-normal">
+          {b.program}
+        </h4>
+        <ol className="m-0 grid list-none p-0">
+          {shown.map((d, i) => (
+            <li key={d.day} className="grid grid-cols-[64px_minmax(0,1fr)] gap-x-2 border-t border-ink/6 px-4 py-2.5">
+              <span className="text-xs leading-5 font-black text-sea">{fmt(b.day, { n: d.day })}</span>
+              <span className="text-sm leading-5 font-extrabold">{fmt(b.dayKinds[d.kind], { place: d.place })}</span>
+              <span aria-hidden className="col-start-2 text-[13px] leading-snug opacity-70 blur-[4px] select-none">
+                {b.teaser[(i + o.country.length) % b.teaser.length]}
+              </span>
+            </li>
+          ))}
+        </ol>
+        {/* A slow light sweep over the locked rows, then a fade into the unlock panel. */}
+        <span aria-hidden className="pointer-events-none absolute inset-0 overflow-hidden motion-reduce:hidden">
+          <span className="absolute inset-0 animate-shimmer bg-linear-to-r from-transparent via-white/50 to-transparent" />
+        </span>
+        <span aria-hidden className="pointer-events-none absolute inset-x-0 bottom-0 h-24 bg-linear-to-b from-transparent to-white" />
+      </div>
+
+      <div className="relative grid gap-3 px-4 pt-1 pb-4">
+        <div className="grid justify-items-center gap-0.5 text-center">
+          <strong className="text-[17px] leading-tight">{b.lockedTitle}</strong>
+          {more > 0 ? <span className="text-xs font-bold opacity-65">{fmt(b.moreDays, { n: more })}</span> : null}
+        </div>
+
+        <p className="m-0 flex items-start gap-2 rounded-xl bg-[#FFF4ED] px-3 py-2.5 text-[13px] leading-snug font-bold text-[#9A3412]">
+          <ClockIcon size={16} strokeWidth={2.4} className="mt-px shrink-0" />
+          {daysToGo !== null && daysToGo > 0 && daysToGo <= 365 ? fmt(b.urgencyDays, { n: daysToGo }) : b.urgencyGeneric}
+        </p>
+
+        <ul className="m-0 grid list-none gap-1.5 p-0 text-[13.5px] font-semibold">
+          {includes.map((item) => (
+            <li key={item} className="flex items-start gap-2">
+              <CheckIcon size={16} strokeWidth={2.8} className="mt-0.5 shrink-0 text-sea" />
+              {item}
+            </li>
+          ))}
+        </ul>
+
         <Link
           href={unlockHref}
-          className="mt-1 inline-flex w-full items-center justify-center gap-2 rounded-full bg-ink px-5 py-3.5 font-black text-cream transition-colors hover:bg-orange hover:text-ink"
+          className="inline-flex min-h-[52px] w-full items-center justify-center gap-2 rounded-full bg-orange px-5 font-black text-ink shadow-[0_14px_28px_-14px_rgba(255,128,85,.95)] transition-[transform,filter] duration-200 hover:-translate-y-0.5 hover:brightness-105 active:translate-y-0 motion-reduce:transition-none"
         >
+          <LockIcon size={16} strokeWidth={2.6} />
           {fmt(b.unlock, { price: formatDT(planPriceDT, locale) })}
           <ArrowIcon size={14} />
         </Link>
+
+        <p className="m-0 flex flex-wrap items-center justify-center gap-x-2 gap-y-0.5 text-center text-xs font-bold opacity-70">
+          {share !== null && share <= 5 ? (
+            <>
+              <span>{fmt(b.valueShare, { pct: share })}</span>
+              <span aria-hidden>·</span>
+            </>
+          ) : null}
+          <span>{payOnline ? b.trust : b.trustCod}</span>
+        </p>
       </div>
     </section>
   );

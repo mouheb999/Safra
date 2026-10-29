@@ -75,7 +75,18 @@ function toInput(a: Answers): BrainInput {
  * "Find my trip": four quick questions (budget, when, who, vibe), then the trip builder — the visitor picks a
  * country and shapes their own trip while the brain prices it live and advises (src/lib/brain/builder.ts).
  */
-export function BrainQuiz({ prefill, planPriceDT, whatsappNumber }: { prefill: QuizPrefill; planPriceDT: number; whatsappNumber: string }) {
+export function BrainQuiz({
+  prefill,
+  planPriceDT,
+  payOnline,
+  whatsappNumber,
+}: {
+  prefill: QuizPrefill;
+  planPriceDT: number;
+  /** An online payment account is set in /admin/settings (otherwise cash on delivery only). */
+  payOnline: boolean;
+  whatsappNumber: string;
+}) {
   const { t, locale } = useI18n();
   const today = useTodayISO();
   const [answers, setAnswers] = useState<Answers>(() => ({
@@ -279,6 +290,7 @@ export function BrainQuiz({ prefill, planPriceDT, whatsappNumber }: { prefill: Q
               input={input}
               whenLabel={whenText(answers, locale)}
               planPriceDT={planPriceDT}
+              payOnline={payOnline}
               whatsappNumber={whatsappNumber}
               onRestart={() => {
                 setAnswers((a) => ({ ...a, depart: "", ret: "", month: null, group: "", vibes: [], children: 0, childAges: [] }));
