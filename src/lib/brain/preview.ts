@@ -1,11 +1,10 @@
-// What "Surprise me" shows before payment: the 2 trips' places, nights, weather, rounded money and the shape
-// of the day-by-day program (day numbers and places only). Hotels, areas, activity names and the plan itself
-// never leave the server; the browser blurs placeholder text where they would be.
+// What "Surprise me" shows before payment: the 2 trips' places, nights, weather, total cost and the shape of
+// the day-by-day program (day numbers and places only). The money split, hotels, areas, activity names and the
+// plan itself never leave the server; the browser blurs placeholder text where they would be.
 
 import type { Locale } from "@/i18n/config";
 import { pick as tr } from "../../data/translations.ts";
-import type { BrainInput, Budget, Season } from "./engine";
-import { CATEGORIES } from "./pricing.ts";
+import type { BrainInput, Season } from "./engine";
 import type { BuilderData } from "./builder";
 import { pickTwo, type PickLabel } from "./surprise.ts";
 
@@ -24,7 +23,6 @@ export interface SurpriseOption {
   season: Season;
   vibesMatched: string[];
   tripCostTND: number;
-  budget: Budget;
   pocketPerPersonPerDay: number;
   fits: boolean;
   missingTND: number;
@@ -74,7 +72,6 @@ export function buildPreview(input: BrainInput, data: BuilderData, locale: Local
         season: p.season,
         vibesMatched: p.vibesMatched,
         tripCostTND: round50(p.priced.tripCostTND),
-        budget: Object.fromEntries(CATEGORIES.map((c) => [c, round50(p.priced.budget[c])])) as Budget,
         pocketPerPersonPerDay: Math.max(0, Math.floor(p.priced.pocketPerPersonPerDay / 5) * 5),
         fits: p.fits,
         missingTND: p.missingTND,

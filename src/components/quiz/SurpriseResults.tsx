@@ -3,12 +3,11 @@
 import Image from "next/image";
 import Link from "next/link";
 import { useEffect, useState, type RefObject } from "react";
-import { BudgetRange } from "@/components/budget/BudgetRange";
 import { ArrowIcon, PaperPlaneIcon } from "@/components/icons";
 import type { GroupType } from "@/data/brain";
 import { useI18n } from "@/i18n/client";
 import { fmt, label } from "@/i18n/fmt";
-import { BUDGET_STEP, clampBudget, formatBudget, formatDT } from "@/lib/budget";
+import { formatDT } from "@/lib/budget";
 import type { BrainInput } from "@/lib/brain/engine";
 import { encodeInput } from "@/lib/brain/input";
 import type { SurpriseOption, SurprisePreview } from "@/lib/brain/preview";
@@ -22,8 +21,8 @@ const headingClass =
 const PREVIEW_DAYS = 4;
 
 /**
- * "Surprise me" results: the 2 best trips, each with its money and a locked, blurred day-by-day program.
- * The visitor can move the budget here and the trips update; "Unlock my program" opens the checkout.
+ * "Surprise me" results: the 2 best trips for the budget given at the start, each with its total and a locked
+ * block — where the money goes and the day-by-day program, blurred. "Unlock my program" opens the checkout.
  */
 export function SurpriseResults({
   preview,
@@ -31,9 +30,6 @@ export function SurpriseResults({
   whenLabel,
   planPriceDT,
   whatsappNumber,
-  refreshing,
-  onBudget,
-  onChange,
   onRestart,
   headingRef,
 }: {
@@ -42,24 +38,15 @@ export function SurpriseResults({
   whenLabel: string;
   planPriceDT: number;
   whatsappNumber: string;
-  refreshing: boolean;
-  /** New budget per person. */
-  onBudget: (budget: number) => void;
-  onChange: () => void;
   onRestart: () => void;
   headingRef: RefObject<HTMLHeadingElement | null>;
 }) {
   const { t, locale } = useI18n();
   const b = t.brain;
   const actions = (
-    <div className="flex flex-wrap items-center gap-4">
-      <button type="button" onClick={onChange} className="cursor-pointer rounded-full border border-ink/15 bg-white/70 px-5 py-3 font-extrabold hover:bg-white">
-        {b.changeAnswers}
-      </button>
-      <button type="button" onClick={onRestart} className="cursor-pointer font-bold text-sea underline">
-        {b.startAgain}
-      </button>
-    </div>
+    <button type="button" onClick={onRestart} className="cursor-pointer justify-self-start rounded-full border border-ink/15 bg-white/70 px-5 py-3 font-extrabold hover:bg-white">
+      {b.startAgain}
+    </button>
   );
 
   if (!preview || preview.status !== "ok") {
@@ -89,9 +76,7 @@ export function SurpriseResults({
         </p>
       </div>
 
-      <BudgetEditor value={input.budgetTND} refreshing={refreshing} onCommit={onBudget} />
-
-      <div className={`grid gap-5 transition-opacity duration-300 @min-[760px]:grid-cols-2 ${refreshing ? "pointer-events-none opacity-45" : ""}`}>
+      <div className="grid gap-5 @min-[760px]:grid-cols-2">
         {preview.options.map((o, i) => (
           <OptionCard
             key={o.country}
@@ -100,9 +85,7 @@ export function SurpriseResults({
             input={input}
             nights={preview.nights}
             travelers={preview.travelers}
-            totalBudget={preview.totalBudgetTND}
             planPriceDT={planPriceDT}
-            onBudget={onBudget}
           />
         ))}
       </div>
@@ -119,18 +102,14 @@ function OptionCard({
   input,
   nights,
   travelers,
-  totalBudget,
   planPriceDT,
-  onBudget,
 }: {
   option: SurpriseOption;
   index: number;
   input: BrainInput;
   nights: number;
   travelers: number;
-  totalBudget: number;
   planPriceDT: number;
-  onBudget: (budget: number) => void;
 }) {
   const { t, locale, href } = useI18n();
   const b = t.brain;
@@ -138,8 +117,6 @@ function OptionCard({
   const why = o.vibesMatched.length
     ? fmt(b.why, { matched: o.vibesMatched.map((v) => label(t.options.vibes, v)).join(b.and), group })
     : fmt(b.whyNoVibes, { group });
-  // The per-person budget that would cover what's missing (when the slider can reach it).
-  const needed = o.fits ? null : clampBudget(input.budgetTND + Math.ceil(o.missingTND / travelers / BUDGET_STEP) * BUDGET_STEP);
 
   const checkout = new URLSearchParams({
     mode: "direct",
@@ -186,35 +163,8 @@ function OptionCard({
             </span>
           </div>
           {o.fits ? <span className="text-sm font-bold">{fmt(b.pocket, { amount: formatDT(o.pocketPerPersonPerDay, locale) })}</span> : null}
-          {needed && needed > input.budgetTND ? (
-            <button type="button" onClick={() => onBudget(needed)} className="mt-1 cursor-pointer justify-self-start rounded-full bg-ink px-4 py-2 text-sm font-black text-cream hover:bg-orange hover:text-ink">
-              {fmt(b.tryBudget, { amount: formatDT(needed, locale) })}
-            </button>
-          ) : null}
         </div>
 
-        <details className="group rounded-2xl ring-1 ring-ink/10">
-          <summary className="flex cursor-pointer items-center justify-between px-4 py-3 text-sm font-extrabold">
-            {b.split}
-            <span aria-hidden className="transition-transform group-open:rotate-180">⌄</span>
-          </summary>
-          <ul className="m-0 grid list-none gap-2 px-4 pb-4">
-            {CATEGORIES.map((c) => (
-              <li key={c} className="grid gap-1">
-                <span className="flex justify-between gap-3 text-sm">
-                  <span className="opacity-80">{b.categories[c]}</span>
-                  <span className="font-black tabular-nums">{formatDT(Math.max(0, o.budget[c]), locale)}</span>
-                </span>
-                <span aria-hidden className="h-1.5 overflow-hidden rounded-full bg-ink/8">
-                  <span
-                    className={`block h-full rounded-full ${c === "pocket_money" ? "bg-sea" : "bg-orange"}`}
-                    style={{ width: `${Math.max(0, Math.min(100, (o.budget[c] / totalBudget) * 100))}%` }}
-                  />
-                </span>
-              </li>
-            ))}
-          </ul>
-        </details>
 
         <LockedProgram option={o} unlockHref={unlockHref} planPriceDT={planPriceDT} />
       </div>
@@ -223,8 +173,9 @@ function OptionCard({
 }
 
 /**
- * The program's shape — day numbers and places — over blurred placeholder text. The real plan is never sent
- * to the browser, so there is nothing to reveal by removing the blur.
+ * What the plan unlocks, stacked: where the money goes (category names, blurred amounts), then the
+ * day-by-day program (day numbers and places, blurred details). The amounts and texts under the blur are
+ * placeholders — the real split and plan are never sent to the browser, so removing the blur reveals nothing.
  */
 function LockedProgram({ option: o, unlockHref, planPriceDT }: { option: SurpriseOption; unlockHref: string; planPriceDT: number }) {
   const { t, locale } = useI18n();
@@ -233,8 +184,19 @@ function LockedProgram({ option: o, unlockHref, planPriceDT }: { option: Surpris
   const more = o.days.length - shown.length;
 
   return (
-    <section aria-label={b.program} className="relative mt-auto overflow-hidden rounded-2xl bg-cream/60 ring-1 ring-ink/10">
-      <h4 className="m-0 px-4 pt-3.5 pb-1 text-sm font-black">{b.program}</h4>
+    <section aria-label={`${b.split} · ${b.program}`} className="relative mt-auto overflow-hidden rounded-2xl bg-cream/60 ring-1 ring-ink/10">
+      <h4 className="m-0 px-4 pt-3.5 pb-2 text-sm font-black">{b.split}</h4>
+      <ul className="m-0 grid list-none gap-x-4 gap-y-1.5 px-4 pb-3.5 @min-[640px]:grid-cols-2">
+        {CATEGORIES.map((c, i) => (
+          <li key={c} className="flex items-baseline justify-between gap-2 text-[13px]">
+            <span className="truncate opacity-80">{b.categories[c]}</span>
+            <span aria-hidden className="font-black whitespace-nowrap tabular-nums blur-[5px] select-none">
+              {formatDT(placeholderAmount(i, o.country), locale)}
+            </span>
+          </li>
+        ))}
+      </ul>
+      <h4 className="m-0 border-t border-ink/8 px-4 pt-3.5 pb-1 text-sm font-black">{b.program}</h4>
       <ol className="m-0 grid list-none p-0">
         {shown.map((d, i) => (
           <li key={d.day} className="grid grid-cols-[64px_minmax(0,1fr)] gap-x-2 border-t border-ink/6 px-4 py-2.5">
@@ -266,35 +228,11 @@ function LockedProgram({ option: o, unlockHref, planPriceDT }: { option: Surpris
   );
 }
 
-/** The budget slider on the results: trips update a moment after the visitor lets go. */
-function BudgetEditor({ value, refreshing, onCommit }: { value: number; refreshing: boolean; onCommit: (budget: number) => void }) {
-  const { t, locale } = useI18n();
-  const [draft, setDraft] = useState(value);
-  const [synced, setSynced] = useState(value);
-  // A budget set from outside (the "Try … per person" button) moves the slider too.
-  if (value !== synced) {
-    setSynced(value);
-    setDraft(value);
-  }
-  useEffect(() => {
-    if (draft === value) return;
-    const timer = setTimeout(() => onCommit(draft), 450);
-    return () => clearTimeout(timer);
-  }, [draft, value, onCommit]);
-
-  return (
-    <div className="grid max-w-[640px] gap-3 rounded-[24px] bg-white/75 px-5 pt-4 pb-5 ring-1 ring-ink/8">
-      <div className="flex flex-wrap items-baseline justify-between gap-x-4 gap-y-1">
-        <span className="font-extrabold">{t.brain.editBudget}</span>
-        <span className="text-[28px] leading-none font-black tracking-[-0.02em] tabular-nums">{formatBudget(draft, locale)}</span>
-      </div>
-      <BudgetRange value={draft} onChange={setDraft} />
-      <p aria-live="polite" className={`m-0 h-4 text-sm font-bold text-sea transition-opacity ${refreshing ? "opacity-100" : "opacity-0"}`}>
-        {refreshing ? t.brain.updating : ""}
-      </p>
-    </div>
-  );
-}
+/** A believable amount to blur (never the real one), stable per category and country. */
+const placeholderAmount = (i: number, country: string) => {
+  const h = (i * 7919 + country.length * 131) % 2800;
+  return 150 + h - (h % 10);
+};
 
 export function LoadingStep({ headingRef }: { headingRef: RefObject<HTMLHeadingElement | null> }) {
   const { t } = useI18n();
