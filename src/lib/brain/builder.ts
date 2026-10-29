@@ -1,9 +1,9 @@
-// The trip builder (Mode B): the visitor shapes their own trip — places, nights, hotel level, activities —
-// and the brain prices it live and advises. The engine (engine.ts) only proposes the starting route.
-// Pure and client-safe: the same functions run in the browser and on the server when the order is stored.
+// A concrete trip (places, nights, hotel level, activities) and what it costs: used for the "Surprise me" picks
+// (surprise.ts) and again when the order is stored, plus the brain's notes on it for SAFRA (adviseTrip).
+// Pure: the same functions run for the preview and on the server when the visitor orders.
 
 import type { BrainBase, BrainCountry, BrainSettings, StayType } from "../../data/brain";
-import { seasonOf, suggestTrips, tripMonths, tripNights, type BrainInput } from "./engine.ts";
+import { seasonOf, tripMonths, tripNights, type BrainInput } from "./engine.ts";
 import { priceStops, type Costing } from "./pricing.ts";
 
 export interface BuilderData {
@@ -84,62 +84,6 @@ export function cleanTrip(input: BrainInput, trip: BuiltTrip, data: BuilderData)
         return { ...s, activities: s.activities.filter((a) => offered.has(a)) };
       }),
   };
-}
-
-/**
- * The starting route in a country: the engine's best plan for these answers with a good hotel, else with a
- * budget hotel, else its closest plan; with no vibe match, the best-season place for the whole stay.
- */
-export function suggestRoute(input: BrainInput, countryCode: string, data: BuilderData): BuiltTrip {
-  const country = data.countries.find((c) => c.code === countryCode);
-  const nights = tripNights(input) ?? 7;
-  if (!country) return { country: countryCode, stops: [] };
-  const run = (patch: Partial<BrainInput>) => suggestTrips({ ...input, ...patch }, [country], data.bases, data.settings);
-
-  for (const stay of ["good_hotel", "budget_hotel"] as const) {
-    const r = run({ stay });
-    if (r.status === "ok") {
-      const o = r.options[0];
-      return { country: countryCode, stops: o.bases.map((b) => ({ slug: b.slug, nights: b.nights, stay, activities: b.activities.map((a) => a.name) })) };
-    }
-  }
-  const closest = run({ stay: "budget_hotel" });
-  if (closest.status === "no_fit" && closest.closest) {
-    return { country: countryCode, stops: closest.closest.bases.map((b) => ({ slug: b.slug, nights: b.nights, stay: "budget_hotel", activities: [] })) };
-  }
-  const relaxed = run({ stay: "budget_hotel", vibes: [] });
-  const plan = relaxed.status === "ok" ? relaxed.options[0].bases : relaxed.status === "no_fit" ? relaxed.closest?.bases : undefined;
-  if (plan?.length) return { country: countryCode, stops: plan.map((b) => ({ slug: b.slug, nights: b.nights, stay: "budget_hotel", activities: [] })) };
-
-  // Every place is in its rainy season: still start somewhere, and let the tips say so.
-  const rank = { best: 0, ok: 1, bad: 2 };
-  const base = data.bases
-    .filter((b) => b.countryCode === countryCode)
-    .sort((a, b) => rank[stopSeason(a, input)] - rank[stopSeason(b, input)] || a.sortOrder - b.sortOrder)[0];
-  return { country: countryCode, stops: base ? [{ slug: base.slug, nights, stay: "budget_hotel", activities: [] }] : [] };
-}
-
-export interface CountryCard {
-  code: string;
-  season: StopSeason;
-  route: BuiltTrip;
-  priced: PricedTrip;
-}
-
-/** One card per country: its weather on the dates and what the suggested route costs. Best fits first. */
-export function countryCards(input: BrainInput, data: BuilderData): CountryCard[] {
-  const rank = { best: 0, ok: 1, bad: 2 };
-  return [...data.countries]
-    .sort((a, b) => a.sortOrder - b.sortOrder)
-    .flatMap((country) => {
-      const bases = data.bases.filter((b) => b.countryCode === country.code);
-      if (bases.length === 0) return [];
-      const season = bases.map((b) => stopSeason(b, input)).sort((a, b) => rank[a] - rank[b])[0];
-      const route = suggestRoute(input, country.code, data);
-      const priced = priceTrip(input, route, data);
-      return priced ? [{ code: country.code, season, route, priced }] : [];
-    })
-    .sort((a, b) => Number(b.priced.marginTND >= 0) - Number(a.priced.marginTND >= 0) || rank[a.season] - rank[b.season] || a.priced.tripCostTND - b.priced.tripCostTND);
 }
 
 // ---- Tips ------------------------------------------------------------------------------------
