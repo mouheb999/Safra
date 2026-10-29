@@ -167,7 +167,9 @@ const en = {
     valueShare: "Less than {pct}% of your trip cost",
     trust: "Pay cash on delivery or online",
     trustCod: "Pay cash on delivery",
-    unlock: "Unlock my program · {price}",
+    unlock: "Unlock my program",
+    showAll: "See the full outline · {n} days",
+    showLess: "Show less",
     teaser: [
       "Morning boat to the quiet side of the bay, swim stop and lunch on the sand",
       "Check in near the night market, sunset viewpoint and a first dinner by the water",

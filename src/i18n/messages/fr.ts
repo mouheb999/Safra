@@ -167,7 +167,9 @@ const fr: Messages = {
     valueShare: "Moins de {pct} % du coût de votre voyage",
     trust: "Paiement à la livraison ou en ligne",
     trustCod: "Paiement à la livraison",
-    unlock: "Débloquer mon programme · {price}",
+    unlock: "Débloquer mon programme",
+    showAll: "Voir tout le programme · {n} jours",
+    showLess: "Voir moins",
     teaser: [
       "Bateau du matin vers le côté calme de la baie, baignade et déjeuner sur le sable",
       "Arrivée près du marché de nuit, point de vue au coucher du soleil et dîner au bord de l’eau",

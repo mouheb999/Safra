@@ -17,8 +17,9 @@ import { whatsappUrl } from "@/lib/requests";
 const headingClass =
   "m-0 text-[38px] leading-[1.03] font-black tracking-[-0.03em] outline-none @min-[501px]:text-[44px] @min-[811px]:text-[56px] rtl:leading-[1.3] rtl:tracking-normal";
 
-/** How many program days show (blurred) before the lock. */
-const PREVIEW_DAYS = 4;
+/** Collapsed, the locked block shows these money categories and the first days; "See the full outline" opens the rest. */
+const PREVIEW_CATEGORIES = ["flights", "stays", "food", "activities"] as const;
+const PREVIEW_DAYS = 2;
 
 /**
  * "Surprise me" results: the 2 best trips for the budget given at the start, each with its total and a locked
@@ -200,8 +201,11 @@ function LockedProgram({
 }) {
   const { t, locale } = useI18n();
   const b = t.brain;
-  const shown = o.days.slice(0, PREVIEW_DAYS);
+  const [open, setOpen] = useState(false);
+  const categories = open ? CATEGORIES : CATEGORIES.filter((c) => (PREVIEW_CATEGORIES as readonly string[]).includes(c));
+  const shown = open ? o.days : o.days.slice(0, PREVIEW_DAYS);
   const more = o.days.length - shown.length;
+  const outlineId = `outline-${o.country}`;
   const daysToGo = depart ? Math.ceil((Date.parse(`${depart}T00:00:00`) - Date.now()) / 86_400_000) : null;
   const share = o.tripCostTND > 0 ? Math.ceil((planPriceDT / o.tripCostTND) * 100) : null;
   const includes = [
@@ -230,10 +234,10 @@ function LockedProgram({
         </span>
       </div>
 
-      <div className="relative bg-cream/50">
+      <div id={outlineId} className="relative bg-cream/50">
         <h4 className="m-0 px-4 pt-3.5 pb-2 text-[13px] font-black tracking-[.04em] uppercase opacity-70 rtl:tracking-normal">{b.split}</h4>
         <ul className="m-0 grid list-none gap-x-4 gap-y-1.5 px-4 pb-3.5 @min-[640px]:grid-cols-2">
-          {CATEGORIES.map((c, i) => (
+          {categories.map((c, i) => (
             <li key={c} className="flex items-baseline justify-between gap-2 text-[13px]">
               <span className="truncate opacity-80">{b.categories[c]}</span>
               <span aria-hidden className="font-black whitespace-nowrap tabular-nums blur-[5px] select-none">
@@ -261,6 +265,19 @@ function LockedProgram({
           <span className="absolute inset-0 animate-shimmer bg-linear-to-r from-transparent via-white/50 to-transparent" />
         </span>
         <span aria-hidden className="pointer-events-none absolute inset-x-0 bottom-0 h-24 bg-linear-to-b from-transparent to-white" />
+      </div>
+
+      <div className="relative -mt-8 flex justify-center px-4 pb-1">
+        <button
+          type="button"
+          aria-expanded={open}
+          aria-controls={outlineId}
+          onClick={() => setOpen((v) => !v)}
+          className="inline-flex min-h-11 cursor-pointer items-center gap-1.5 rounded-full bg-white px-4 text-[13px] font-black text-sea shadow-[0_4px_14px_-6px_rgba(32,61,53,.35)] ring-1 ring-ink/10 hover:ring-sea/40"
+        >
+          {open ? b.showLess : fmt(b.showAll, { n: o.days.length })}
+          <span aria-hidden className={`transition-transform duration-200 ${open ? "rotate-180" : ""}`}>⌄</span>
+        </button>
       </div>
 
       <div className="relative grid gap-3 px-4 pt-1 pb-4">
@@ -298,7 +315,7 @@ function LockedProgram({
           className="inline-flex min-h-[52px] w-full items-center justify-center gap-2 rounded-full bg-orange px-5 font-black text-ink shadow-[0_14px_28px_-14px_rgba(255,128,85,.95)] transition-[transform,filter] duration-200 hover:-translate-y-0.5 hover:brightness-105 active:translate-y-0 motion-reduce:transition-none"
         >
           <LockIcon size={16} strokeWidth={2.6} />
-          {fmt(b.unlock, { price: formatDT(planPriceDT, locale) })}
+          {b.unlock}
           <ArrowIcon size={14} />
         </Link>
 
