@@ -140,7 +140,9 @@ The visitor gives a budget per person (set once, on the first step) and answers 
 month, who's going, vibes). The brain answers with **exactly 2 trips** in 2 countries — places, nights, weather,
 total cost and pocket money — each with a **locked block**: where the money goes (category names, blurred amounts)
 on top of the day-by-day program (day numbers and places, blurred details). "Unlock my program" opens the checkout
-(the plan price from /admin/settings). Each step is a browser history entry, so Back returns to the previous question.
+(the plan price from /admin/settings). The plan includes **live WhatsApp assistance** before and during the trip,
+highlighted on the locked block and in the checkout summary. Each step is a browser history entry, so Back returns
+to the previous question.
 
 - `src/lib/brain/pricing.ts`: the cost formulas — 9 categories, card fee on foreign-currency items, rooms per hotel
   type, food per eater, moves between places.

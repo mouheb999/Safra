@@ -3,7 +3,7 @@
 import Image from "next/image";
 import Link from "next/link";
 import { useEffect, useState, type RefObject } from "react";
-import { ArrowIcon, CheckIcon, ClockIcon, LockIcon, PaperPlaneIcon } from "@/components/icons";
+import { ArrowIcon, CheckIcon, ClockIcon, LockIcon, PaperPlaneIcon, WhatsAppIcon } from "@/components/icons";
 import type { GroupType } from "@/data/brain";
 import { useI18n } from "@/i18n/client";
 import { fmt, label } from "@/i18n/fmt";
@@ -282,6 +282,16 @@ function LockedProgram({
             </li>
           ))}
         </ul>
+
+        <div className="flex items-start gap-3 rounded-2xl bg-[#ECFDF3] px-3.5 py-3 ring-1 ring-[#25D366]/30">
+          <span className="grid size-9 shrink-0 place-items-center rounded-full bg-[#25D366] text-white shadow-[0_6px_14px_-6px_rgba(37,211,102,.9)]">
+            <WhatsAppIcon size={19} />
+          </span>
+          <span className="grid gap-0.5">
+            <strong className="text-[14px] leading-tight text-[#14532D]">{t.checkout.assistTitle}</strong>
+            <span className="text-[13px] leading-snug font-semibold text-[#166534]">{t.checkout.assistBody}</span>
+          </span>
+        </div>
 
         <Link
           href={unlockHref}

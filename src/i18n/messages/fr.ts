@@ -284,6 +284,8 @@ const fr: Messages = {
     free: "Gratuite",
     total: "Total",
     includesTitle: "Ce qui est inclus",
+    assistTitle: "Assistance WhatsApp en direct",
+    assistBody: "Un planificateur SAFRA vous répond sur WhatsApp, avant et pendant votre voyage.",
     includes: [
       "Itinéraire personnalisé jour par jour",
       "Organisation des hébergements et des transports",

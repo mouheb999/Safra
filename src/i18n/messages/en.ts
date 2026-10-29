@@ -284,6 +284,8 @@ const en = {
     free: "Free",
     total: "Total",
     includesTitle: "What’s included",
+    assistTitle: "Live WhatsApp assistance",
+    assistBody: "A SAFRA planner answers you on WhatsApp, before and during your trip.",
     includes: [
       "Day-by-day personalized itinerary",
       "Accommodation and transport structure",
