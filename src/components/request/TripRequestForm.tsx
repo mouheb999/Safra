@@ -4,6 +4,7 @@ import Image from "next/image";
 import { useCallback, useEffect, useState, useTransition, type ReactNode } from "react";
 import { submitRequest } from "@/app/actions/submit-request";
 import { Field, FormError, HONEYPOT_FIELD, Honeypot, inputClass, str, useRequestForm } from "@/components/forms";
+import { WhatsAppIcon } from "@/components/icons";
 import { useI18n } from "@/i18n/client";
 import { fmt, label } from "@/i18n/fmt";
 import type { Messages } from "@/i18n/messages/en";
@@ -475,6 +476,16 @@ function OrderSummary({
               </li>
             ))}
           </ul>
+        </div>
+
+        <div className="flex items-start gap-3 rounded-2xl bg-[#25D366]/12 px-3.5 py-3 ring-1 ring-[#25D366]/35">
+          <span className="grid size-9 shrink-0 place-items-center rounded-full bg-[#25D366] text-white">
+            <WhatsAppIcon size={19} />
+          </span>
+          <span className="grid gap-0.5">
+            <strong className="text-[15px] leading-tight">{c.assistTitle}</strong>
+            <span className="text-sm leading-snug opacity-85">{c.assistBody}</span>
+          </span>
         </div>
       </div>
     </div>
