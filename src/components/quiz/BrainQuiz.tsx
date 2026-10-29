@@ -75,7 +75,18 @@ function toInput(a: Answers): BrainInput {
  * "Find my trip": four quick questions (budget, when, who, vibe), then the trip builder — the visitor picks a
  * country and shapes their own trip while the brain prices it live and advises (src/lib/brain/builder.ts).
  */
-export function BrainQuiz({ prefill, planPriceDT, whatsappNumber }: { prefill: QuizPrefill; planPriceDT: number; whatsappNumber: string }) {
+export function BrainQuiz({
+  prefill,
+  planPriceDT,
+  payOnline,
+  whatsappNumber,
+}: {
+  prefill: QuizPrefill;
+  planPriceDT: number;
+  /** An online payment account is set in /admin/settings (otherwise cash on delivery only). */
+  payOnline: boolean;
+  whatsappNumber: string;
+}) {
   const { t, locale } = useI18n();
   const today = useTodayISO();
   const [answers, setAnswers] = useState<Answers>(() => ({
@@ -94,9 +105,8 @@ export function BrainQuiz({ prefill, planPriceDT, whatsappNumber }: { prefill: Q
   }));
   const [step, setStep] = useState<Step>("Budget");
   const [preview, setPreview] = useState<SurprisePreview | null>(null);
-  const [refreshing, setRefreshing] = useState(false);
   const [, startTransition] = useTransition();
-  // Only the latest request may show its result (budget changes can overlap).
+  // Only the latest request may show its result (the visitor can go back while it loads).
   const requestId = useRef(0);
   const input = useMemo(() => toInput(answers), [answers]);
   const headingRef = useRef<HTMLHeadingElement>(null);
@@ -112,6 +122,25 @@ export function BrainQuiz({ prefill, planPriceDT, whatsappNumber }: { prefill: Q
       // sessionStorage unavailable
     }
   }, [prefill.budget]);
+
+  // Each step is a browser history entry, so Back (the browser's or ours) returns to the previous question
+  // instead of leaving the page. Next.js keeps its own fields in history.state; ours sits alongside them.
+  useEffect(() => {
+    window.history.replaceState({ ...window.history.state, safraStep: "Budget" }, "");
+    const onPop = (event: PopStateEvent) => {
+      const target = (event.state as { safraStep?: Step } | null)?.safraStep;
+      if (!target) return;
+      requestId.current++; // drop a result still loading
+      setStep(target === "Loading" ? "Vibe" : target);
+    };
+    window.addEventListener("popstate", onPop);
+    return () => window.removeEventListener("popstate", onPop);
+  }, []);
+
+  const go = (next: Step) => {
+    window.history.pushState({ ...window.history.state, safraStep: next }, "");
+    setStep(next);
+  };
 
   // Move focus to the new question for keyboard and screen-reader users (not on first load).
   useEffect(() => {
@@ -143,33 +172,27 @@ export function BrainQuiz({ prefill, planPriceDT, whatsappNumber }: { prefill: Q
   const index = STEPS.indexOf(step as QuestionStep);
   const isQuestion = index !== -1;
   const progress = isQuestion ? index + 1 : STEPS.length + 1;
-  const goBack = () => setStep(STEPS[Math.max(0, index - 1)]);
-  /** First run shows the loading step; later runs (budget changes on the results) update in place. */
-  const run = (next: Answers, inPlace: boolean) => {
+  const goBack = () => window.history.back();
+  /** The results get their own history entry; the loading screen shows under it. */
+  const run = () => {
     const id = ++requestId.current;
     const started = Date.now();
-    if (inPlace) setRefreshing(true);
-    else setStep("Loading");
+    window.history.pushState({ ...window.history.state, safraStep: "Results" }, "");
+    setStep("Loading");
     startTransition(async () => {
       let result: SurprisePreview | null = null;
       try {
-        result = await surpriseMe(toInput(next), locale);
+        result = await surpriseMe(toInput(answers), locale);
       } catch {
         // shown as the error state
       }
-      if (!inPlace) await new Promise((r) => setTimeout(r, Math.max(0, 1400 - (Date.now() - started))));
+      await new Promise((r) => setTimeout(r, Math.max(0, 1400 - (Date.now() - started))));
       if (id !== requestId.current) return;
-      if (result || !inPlace) setPreview(result);
-      setRefreshing(false);
+      setPreview(result);
       setStep("Results");
     });
   };
-  const changeBudget = (budget: number) => {
-    const next = { ...answers, budget };
-    setAnswers(next);
-    run(next, true);
-  };
-  const goNext = () => (index < STEPS.length - 1 ? setStep(STEPS[index + 1]) : run(answers, false));
+  const goNext = () => (index < STEPS.length - 1 ? go(STEPS[index + 1]) : run());
 
   const visualStep: QuestionStep = isQuestion ? (step as QuestionStep) : "Budget";
   const visual = { ...VISUALS[visualStep], ...t.brain.visuals[visualStep] };
@@ -187,7 +210,7 @@ export function BrainQuiz({ prefill, planPriceDT, whatsappNumber }: { prefill: Q
 
       <div className={`grid min-w-0 items-start gap-7 ${isQuestion ? "grid-cols-[minmax(0,1.6fr)_minmax(220px,.95fr)] @max-[810px]:grid-cols-1 @max-[810px]:gap-4" : ""}`}>
         <div className="min-w-0">
-          {isQuestion && step !== "Budget" ? (
+          {step !== "Budget" && step !== "Loading" ? (
             <button type="button" onClick={goBack} className="mb-2.5 cursor-pointer p-0 font-extrabold">
               {t.quiz.back}
             </button>
@@ -267,13 +290,11 @@ export function BrainQuiz({ prefill, planPriceDT, whatsappNumber }: { prefill: Q
               input={input}
               whenLabel={whenText(answers, locale)}
               planPriceDT={planPriceDT}
+              payOnline={payOnline}
               whatsappNumber={whatsappNumber}
-              refreshing={refreshing}
-              onBudget={changeBudget}
-              onChange={() => setStep("Budget")}
               onRestart={() => {
                 setAnswers((a) => ({ ...a, depart: "", ret: "", month: null, group: "", vibes: [], children: 0, childAges: [] }));
-                setStep("Budget");
+                go("Budget");
               }}
               headingRef={headingRef}
             />

@@ -23,6 +23,32 @@ function StrokeIcon({ size = 24, color = "currentColor", strokeWidth = 2, childr
   );
 }
 
+export function LockIcon(props: IconProps) {
+  return (
+    <StrokeIcon {...props}>
+      <rect x="4" y="11" width="16" height="10" rx="2.5" />
+      <path d="M8 11V7.5a4 4 0 0 1 8 0V11" />
+    </StrokeIcon>
+  );
+}
+
+export function CheckIcon(props: IconProps) {
+  return (
+    <StrokeIcon {...props}>
+      <path d="M5 12.5l4.5 4.5L19 7.5" />
+    </StrokeIcon>
+  );
+}
+
+export function ClockIcon(props: IconProps) {
+  return (
+    <StrokeIcon {...props}>
+      <circle cx="12" cy="12" r="9" />
+      <path d="M12 7v5l3 2" />
+    </StrokeIcon>
+  );
+}
+
 export function CompassIcon(props: IconProps) {
   return (
     <StrokeIcon {...props}>

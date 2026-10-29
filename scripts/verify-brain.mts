@@ -230,13 +230,14 @@ check("surprise: always 2 trips in 2 countries, the ones that fit first", () => 
   }
 });
 
-check("surprise: the preview's program has one row per day and no hotel or activity names", () => {
+check("surprise: the preview has one program row per day and no money split, hotel or activity names", () => {
   const preview = buildPreview({ ...couple, budgetTND: 8000 }, data, "en");
   assert(preview.status === "ok", preview.status);
   for (const o of preview.options) {
     assert(o.days.length === preview.nights + 1, `${o.country}: ${o.days.length} days for ${preview.nights} nights`);
     assert(o.days[0].kind === "arrive" && o.days.at(-1)!.kind === "depart", "arrive → depart");
     const json = JSON.stringify(o);
+    assert(!("budget" in o), "no money split in the preview");
     for (const b of localBrainBases) {
       for (const area of b.stayAreas) assert(!json.includes(area) || o.stops.some((s) => s.place.includes(area)), `area ${area} leaked`);
       for (const a of b.activities) assert(!json.includes(a.name), `activity ${a.name} leaked`);

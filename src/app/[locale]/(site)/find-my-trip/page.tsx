@@ -3,6 +3,7 @@ import { BrainQuiz } from "@/components/quiz/BrainQuiz";
 import { getMessages } from "@/i18n";
 import { routeLocale, type LocaleParams } from "@/i18n/server";
 import { getCheckoutConfig, getSiteSettings } from "@/lib/catalog";
+import { availableOnlineMethods } from "@/lib/payments";
 import { parseQuizParams, type SearchParams } from "@/lib/search-params";
 import { pageMetadata } from "@/lib/site";
 
@@ -18,7 +19,12 @@ export default async function FindMyTripPage({ params, searchParams }: Props) {
   const [sp, checkout, settings] = await Promise.all([searchParams, getCheckoutConfig(), getSiteSettings()]);
   return (
     <main className="px-4 py-10 sm:px-7">
-      <BrainQuiz prefill={parseQuizParams(sp)} planPriceDT={checkout.planPriceDT} whatsappNumber={settings.whatsappNumber} />
+      <BrainQuiz
+        prefill={parseQuizParams(sp)}
+        planPriceDT={checkout.planPriceDT}
+        payOnline={availableOnlineMethods(checkout.accounts).length > 0}
+        whatsappNumber={settings.whatsappNumber}
+      />
     </main>
   );
 }

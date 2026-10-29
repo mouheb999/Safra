@@ -136,10 +136,11 @@ mode), because the customer needs to see how to pay.
 
 ## Trip brain ("Find my trip" — surprise me)
 
-The visitor gives a budget per person and answers 3 quick questions (dates or a month, who's going, vibes). The
-brain answers with **exactly 2 trips** in 2 countries — places, nights, weather, cost, pocket money and where the
-money goes — each with its **day-by-day program locked**: day numbers and places show, the rest is blurred
-placeholder text, and "Unlock my program" opens the checkout (the plan price from /admin/settings).
+The visitor gives a budget per person (set once, on the first step) and answers 3 quick questions (dates or a
+month, who's going, vibes). The brain answers with **exactly 2 trips** in 2 countries — places, nights, weather,
+total cost and pocket money — each with a **locked block**: where the money goes (category names, blurred amounts)
+on top of the day-by-day program (day numbers and places, blurred details). "Unlock my program" opens the checkout
+(the plan price from /admin/settings). Each step is a browser history entry, so Back returns to the previous question.
 
 - `src/lib/brain/pricing.ts`: the cost formulas — 9 categories, card fee on foreign-currency items, rooms per hotel
   type, food per eater, moves between places.
@@ -147,10 +148,10 @@ placeholder text, and "Unlock my program" opens the checkout (the plan price fro
   or without a shared vibe, splits the nights, adds about one activity every 2 days, cuts activities or a place to
   fit, and scores (budget 30, vibe 25, season 20, group 15, ease 10).
 - `src/lib/brain/surprise.ts`: the 2 picks — a good hotel when it fits, else a budget hotel; trips that fit first,
-  then the closest with what they'd still need (and a "Try X per person" button on the results).
+  then the closest with what they'd still need.
 - `src/lib/brain/preview.ts` + `src/app/actions/surprise.ts`: computed on the server; the browser only receives what
-  it shows. Hotels, SAFRA's areas, activity names and the plan never leave the server, so removing the blur
-  reveals nothing.
+  it shows. The money split, hotels, SAFRA's areas, activity names and the plan never leave the server, so removing
+  the blur reveals nothing.
 - Ordering sends the answers + the chosen country (`?pick=&country=`); the server rebuilds the same trip and stores
   the exact result in `requests.quiz_answers` (`snapshot.ts`), shown as a **Find my trip** card on the admin request
   page with places, hotel level, activities, stay areas and the exact budget — what SAFRA turns into the paid plan.
