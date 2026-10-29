@@ -32,30 +32,11 @@ export const parseBrainInput = (value: unknown): BrainInput | null => {
   return parsed.success ? parsed.data : null;
 };
 
-const slug = z.string().regex(/^[a-z0-9-]{2,40}$/);
-
-export const builtTripSchema = z.object({
-  country: slug,
-  stops: z
-    .array(
-      z.object({
-        slug,
-        nights: z.number().int().min(1).max(30),
-        stay: z.enum(STAY_TYPES),
-        activities: z.array(z.string().max(120)).max(12),
-      }),
-    )
-    .min(1)
-    .max(5)
-    .refine((stops) => stops.reduce((n, s) => n + s.nights, 0) <= 60, "At most 60 nights."),
-});
-
+/** The answers + the trip they lead to (what an order stores). */
 export interface EncodedBuild {
   input: BrainInput;
   trip: BuiltTrip;
 }
-
-const buildSchema = z.object({ input: brainInputSchema, trip: builtTripSchema });
 
 function encode(value: unknown): string {
   const bytes = new TextEncoder().encode(JSON.stringify(value));
@@ -74,10 +55,7 @@ function decode(value: string | undefined, max: number): unknown {
   }
 }
 
-/** URL-safe encoding of the answers + the trip the visitor built, carried to the checkout and recomputed there. */
-export const encodeBuild = (build: EncodedBuild) => encode(build);
+/** URL-safe encoding of the answers, carried to the checkout so the server can rebuild the chosen trip. */
+export const encodeInput = (input: BrainInput) => encode(input);
 
-export function decodeBuild(value: string | undefined): EncodedBuild | null {
-  const parsed = buildSchema.safeParse(decode(value, 6000));
-  return parsed.success ? parsed.data : null;
-}
+export const decodeInput = (value: string | undefined): BrainInput | null => parseBrainInput(decode(value, 2000));

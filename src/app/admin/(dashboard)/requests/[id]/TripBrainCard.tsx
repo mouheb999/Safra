@@ -39,7 +39,7 @@ function tipText(tip: Tip, place: (slug: string) => string): string | null {
   }
 }
 
-/** The trip the customer built on "Find my trip", as the server priced it when the order was placed. */
+/** The trip picked for the customer on "Find my trip" (the program they paid to unlock), as priced when they ordered. */
 export function TripBrainCard({ snapshot: s }: { snapshot: TripBrainSnapshot }) {
   const i = s.input;
   const when = i.depart
@@ -52,7 +52,7 @@ export function TripBrainCard({ snapshot: s }: { snapshot: TripBrainSnapshot }) 
   const flags = s.tips.map((t) => tipText(t, place)).filter((t): t is string => t !== null);
 
   return (
-    <Card title={`Trip built by the customer · ${s.countryName}`}>
+    <Card title={`Find my trip · ${s.countryName}`}>
       <div className="grid gap-4">
         {s.estimated ? (
           <p className="m-0 rounded-xl bg-orange/15 px-3 py-2 text-sm font-bold">

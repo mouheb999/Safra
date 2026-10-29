@@ -31,10 +31,11 @@ export interface CheckoutDestination {
   image: string;
 }
 
-/** The trip the visitor built on "Find my trip", as re-priced by the checkout page. */
+/** The trip chosen on "Find my trip", as rebuilt by the checkout page. */
 export interface BrainCheckoutTrip {
-  /** The encoded answers + trip (src/lib/brain/input.ts); the server re-prices it when the order is stored. */
-  build: string;
+  /** The encoded answers (src/lib/brain/input.ts) + the chosen country; the server rebuilds the trip from them. */
+  pick: string;
+  country: string;
   countryName: string;
   image: string;
   /** "Bangkok · 4 nights + Krabi · 6 nights" */
@@ -107,7 +108,7 @@ export function TripRequestForm({
       paymentMethod: method,
       governorate: method === "cod" ? str(data, "governorate") : "",
       address: method === "cod" ? str(data, "address") : "",
-      ...(brainTrip ? { brain: { build: brainTrip.build }, itinerary: brainTrip.itinerary } : {}),
+      ...(brainTrip ? { brain: { pick: brainTrip.pick, country: brainTrip.country }, itinerary: brainTrip.itinerary } : {}),
     };
     setError(null);
     startTransition(async () => {

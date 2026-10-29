@@ -1,7 +1,8 @@
 "use client";
 
 import Image from "next/image";
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState, useTransition } from "react";
+import { surpriseMe } from "@/app/actions/surprise";
 import { BudgetRange } from "@/components/budget/BudgetRange";
 import { useTodayISO } from "@/components/forms";
 import { ArrowIcon, OptionIcon, TravelerIcon } from "@/components/icons";
@@ -10,16 +11,16 @@ import { useI18n } from "@/i18n/client";
 import { fmt, label } from "@/i18n/fmt";
 import type { Locale } from "@/i18n/config";
 import { DEFAULT_BUDGET, DISCOVERY_BUDGET_KEY, clampBudget, formatBudget } from "@/lib/budget";
-import type { BuilderData } from "@/lib/brain/builder";
 import type { BrainInput } from "@/lib/brain/engine";
+import type { SurprisePreview } from "@/lib/brain/preview";
 import { MAX_VIBES, VIBE_OPTIONS, vibesForCategory } from "@/lib/quiz";
 import type { QuizPrefill } from "@/lib/search-params";
 import { Choice, DateField, Pill, Stepper, choiceBase } from "./controls";
-import { TripBuilder, type BuildState } from "./TripBuilder";
+import { LoadingStep, SurpriseResults } from "./SurpriseResults";
 
 const STEPS = ["Budget", "When", "Who", "Vibe"] as const;
 type QuestionStep = (typeof STEPS)[number];
-type Step = QuestionStep | "Build";
+type Step = QuestionStep | "Loading" | "Results";
 
 const unsplash = (id: string) => `https://images.unsplash.com/${id}?auto=format&fit=crop&w=1000&q=85`;
 const VISUALS: Record<QuestionStep, { image: string; position?: string }> = {
@@ -65,7 +66,7 @@ function toInput(a: Answers): BrainInput {
     month: a.whenMode === "month" ? a.month : null,
     nights: a.whenMode === "month" ? a.nights : null,
     vibes: a.vibes,
-    // The hotel level is chosen per place in the builder; this only seeds the suggested route.
+    // Not asked: the brain picks a good hotel when it fits, else a budget hotel (src/lib/brain/surprise.ts).
     stay: "good_hotel",
   };
 }
@@ -74,7 +75,7 @@ function toInput(a: Answers): BrainInput {
  * "Find my trip": four quick questions (budget, when, who, vibe), then the trip builder — the visitor picks a
  * country and shapes their own trip while the brain prices it live and advises (src/lib/brain/builder.ts).
  */
-export function BrainQuiz({ prefill, data }: { prefill: QuizPrefill; data: BuilderData }) {
+export function BrainQuiz({ prefill, planPriceDT, whatsappNumber }: { prefill: QuizPrefill; planPriceDT: number; whatsappNumber: string }) {
   const { t, locale } = useI18n();
   const today = useTodayISO();
   const [answers, setAnswers] = useState<Answers>(() => ({
@@ -92,7 +93,11 @@ export function BrainQuiz({ prefill, data }: { prefill: QuizPrefill; data: Build
     vibes: vibesForCategory(prefill.category),
   }));
   const [step, setStep] = useState<Step>("Budget");
-  const [build, setBuild] = useState<BuildState>({ country: null, trip: null });
+  const [preview, setPreview] = useState<SurprisePreview | null>(null);
+  const [refreshing, setRefreshing] = useState(false);
+  const [, startTransition] = useTransition();
+  // Only the latest request may show its result (budget changes can overlap).
+  const requestId = useRef(0);
   const input = useMemo(() => toInput(answers), [answers]);
   const headingRef = useRef<HTMLHeadingElement>(null);
   const firstRender = useRef(true);
@@ -115,7 +120,7 @@ export function BrainQuiz({ prefill, data }: { prefill: QuizPrefill; data: Build
       return;
     }
     headingRef.current?.focus();
-  }, [step, build.country]);
+  }, [step]);
 
   const set = <K extends keyof Answers>(key: K, value: Answers[K]) => setAnswers((a) => ({ ...a, [key]: value }));
 
@@ -139,7 +144,32 @@ export function BrainQuiz({ prefill, data }: { prefill: QuizPrefill; data: Build
   const isQuestion = index !== -1;
   const progress = isQuestion ? index + 1 : STEPS.length + 1;
   const goBack = () => setStep(STEPS[Math.max(0, index - 1)]);
-  const goNext = () => setStep(index < STEPS.length - 1 ? STEPS[index + 1] : "Build");
+  /** First run shows the loading step; later runs (budget changes on the results) update in place. */
+  const run = (next: Answers, inPlace: boolean) => {
+    const id = ++requestId.current;
+    const started = Date.now();
+    if (inPlace) setRefreshing(true);
+    else setStep("Loading");
+    startTransition(async () => {
+      let result: SurprisePreview | null = null;
+      try {
+        result = await surpriseMe(toInput(next), locale);
+      } catch {
+        // shown as the error state
+      }
+      if (!inPlace) await new Promise((r) => setTimeout(r, Math.max(0, 1400 - (Date.now() - started))));
+      if (id !== requestId.current) return;
+      if (result || !inPlace) setPreview(result);
+      setRefreshing(false);
+      setStep("Results");
+    });
+  };
+  const changeBudget = (budget: number) => {
+    const next = { ...answers, budget };
+    setAnswers(next);
+    run(next, true);
+  };
+  const goNext = () => (index < STEPS.length - 1 ? setStep(STEPS[index + 1]) : run(answers, false));
 
   const visualStep: QuestionStep = isQuestion ? (step as QuestionStep) : "Budget";
   const visual = { ...VISUALS[visualStep], ...t.brain.visuals[visualStep] };
@@ -149,7 +179,7 @@ export function BrainQuiz({ prefill, data }: { prefill: QuizPrefill; data: Build
       <div className="mb-3.5 flex items-center justify-between">
         <div className="text-[15px] font-extrabold tabular-nums">{String(progress).padStart(2, "0")}/05</div>
         <div className="flex w-[120px] gap-1.5" aria-hidden>
-          {[...STEPS, "Build"].map((s, i) => (
+          {[...STEPS, "Results"].map((s, i) => (
             <span key={s} className={`h-1 flex-1 rounded-full transition-colors ${i < progress ? "bg-orange" : "bg-[#D2D8CF]"}`} />
           ))}
         </div>
@@ -229,15 +259,22 @@ export function BrainQuiz({ prefill, data }: { prefill: QuizPrefill; data: Build
             </div>
           ) : null}
 
-          {step === "Build" ? (
-            <TripBuilder
+          {step === "Loading" ? <LoadingStep headingRef={headingRef} /> : null}
+
+          {step === "Results" ? (
+            <SurpriseResults
+              preview={preview}
               input={input}
-              data={data}
-              state={build}
-              setState={setBuild}
-              onBudget={(v) => set("budget", v)}
-              onEditAnswers={() => setStep("Budget")}
               whenLabel={whenText(answers, locale)}
+              planPriceDT={planPriceDT}
+              whatsappNumber={whatsappNumber}
+              refreshing={refreshing}
+              onBudget={changeBudget}
+              onChange={() => setStep("Budget")}
+              onRestart={() => {
+                setAnswers((a) => ({ ...a, depart: "", ret: "", month: null, group: "", vibes: [], children: 0, childAges: [] }));
+                setStep("Budget");
+              }}
               headingRef={headingRef}
             />
           ) : null}

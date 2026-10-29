@@ -3,7 +3,9 @@
 
 import { DEFAULT_BRAIN_SETTINGS, localBrainBases, localBrainCountries } from "../src/data/brain.ts";
 import { CATEGORIES, seasonOf, suggestTrips, type BrainInput, type BrainResult } from "../src/lib/brain/engine.ts";
-import { adviseTrip, cleanTrip, countryCards, priceTrip, stopSeason, suggestRoute } from "../src/lib/brain/builder.ts";
+import { adviseTrip, cleanTrip, priceTrip, stopSeason } from "../src/lib/brain/builder.ts";
+import { buildPreview } from "../src/lib/brain/preview.ts";
+import { pickTwo } from "../src/lib/brain/surprise.ts";
 import { buildSnapshot } from "../src/lib/brain/snapshot.ts";
 
 let passed = 0;
@@ -160,18 +162,6 @@ check("solo traveler, apartment, culture + food in October", () => {
 const data = { countries: localBrainCountries, bases: localBrainBases, settings: DEFAULT_BRAIN_SETTINGS };
 const couple: BrainInput = { ...base, budgetTND: 5000, budgetScope: "per_person", stay: "budget_hotel" };
 
-check("builder: the suggested route covers the dates and avoids the rainy season", () => {
-  for (const c of localBrainCountries) {
-    const route = suggestRoute(couple, c.code, data);
-    const priced = priceTrip(couple, route, data)!;
-    assert(route.stops.length > 0, `${c.code}: has a route`);
-    assert(priced.nights === priced.targetNights, `${c.code}: ${priced.nights} of ${priced.targetNights} nights`);
-    const rainy = route.stops.filter((s) => stopSeason(baseBySlug.get(s.slug)!, couple) === "bad");
-    const anyDry = localBrainBases.some((b) => b.countryCode === c.code && stopSeason(b, couple) !== "bad");
-    assert(!anyDry || rainy.length === 0, `${c.code}: rainy stop although a dry one exists`);
-  }
-});
-
 check("builder: prices match the engine's for the same trip", () => {
   const r = run({ budgetTND: 14000, stay: "good_hotel" });
   assert(r.status === "ok", r.status);
@@ -223,12 +213,48 @@ check("builder: room to spare suggests another place or a better hotel that fits
   assert(add && "costTND" in add && add.costTND <= margin, JSON.stringify(tips));
 });
 
-check("builder: country cards put trips that fit first", () => {
-  const cards = countryCards(couple, data);
-  assert(cards.length === 5, `${cards.length} cards`);
-  const fits = cards.map((c) => c.priced.marginTND >= 0);
-  assert(fits.every((f, i) => i === 0 || !f || fits[i - 1]), `order ${fits}`);
-  console.log(`      ${cards.map((c) => `${c.code} ${c.season} ≈${c.priced.tripCostTND} ${c.priced.marginTND >= 0 ? "fits" : `short ${-c.priced.marginTND}`}`).join(" · ")}`);
+check("surprise: always 2 trips in 2 countries, the ones that fit first", () => {
+  for (const budgetTND of [2500, 4000, 5500, 8000]) {
+    const r = pickTwo({ ...couple, budgetTND }, data);
+    assert(r.status === "ok" && r.picks.length === 2, `${budgetTND}: ${r.status}`);
+    assert(r.picks[0].country !== r.picks[1].country, "two countries");
+    assert(!(!r.picks[0].fits && r.picks[1].fits), "fitting trips come first");
+    for (const p of r.picks) {
+      assert(p.fits === (p.priced.marginTND >= 0), `${p.country}: fits matches the price`);
+      assert(p.fits ? p.missingTND === 0 : p.missingTND >= -p.priced.marginTND && p.missingTND % 50 === 0, `${p.country}: missing amount`);
+      assert(p.fits ? p.label !== "stretch" : p.label === "stretch", `${p.country}: label ${p.label}`);
+      assert(p.priced.nights === p.priced.targetNights, `${p.country}: covers the dates`);
+      for (const s of p.trip.stops) assert(stopSeason(baseBySlug.get(s.slug)!, couple) !== "bad", `${s.slug}: not in the rainy season`);
+    }
+    console.log(`      ${budgetTND}/pp: ${r.picks.map((p) => `${p.label} ${p.country} ≈${p.priced.tripCostTND}${p.fits ? "" : ` (+${p.missingTND})`}`).join(" · ")}`);
+  }
+});
+
+check("surprise: the preview's program has one row per day and no hotel or activity names", () => {
+  const preview = buildPreview({ ...couple, budgetTND: 8000 }, data, "en");
+  assert(preview.status === "ok", preview.status);
+  for (const o of preview.options) {
+    assert(o.days.length === preview.nights + 1, `${o.country}: ${o.days.length} days for ${preview.nights} nights`);
+    assert(o.days[0].kind === "arrive" && o.days.at(-1)!.kind === "depart", "arrive → depart");
+    const json = JSON.stringify(o);
+    for (const b of localBrainBases) {
+      for (const area of b.stayAreas) assert(!json.includes(area) || o.stops.some((s) => s.place.includes(area)), `area ${area} leaked`);
+      for (const a of b.activities) assert(!json.includes(a.name), `activity ${a.name} leaked`);
+    }
+  }
+});
+
+check("surprise: ordering rebuilds the same trip and price from the answers", () => {
+  const input = { ...couple, budgetTND: 5500 };
+  const shown = buildPreview(input, data, "en");
+  assert(shown.status === "ok", shown.status);
+  for (const o of shown.options) {
+    const again = pickTwo(input, data);
+    const p = again.status === "ok" ? again.picks.find((x) => x.country === o.country) : undefined;
+    assert(p, `${o.country} found again`);
+    const snap = buildSnapshot({ input, trip: p.trip }, data)!;
+    assert(Math.round(snap.tripCostTND / 50) * 50 === o.tripCostTND, `${o.country}: ${snap.tripCostTND} vs shown ${o.tripCostTND}`);
+  }
 });
 
 check("builder: an order is re-priced on the server and ignores unknown places or activities", () => {
