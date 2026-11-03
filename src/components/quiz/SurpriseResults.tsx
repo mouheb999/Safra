@@ -94,7 +94,7 @@ export function SurpriseResults({
         ))}
       </div>
 
-      <p className="m-0 text-sm opacity-70">{preview.options.some((o) => o.live.flights) ? b.estimatedLive : b.estimated}</p>
+      <p className="m-0 text-sm opacity-70">{preview.options.some((o) => o.live.flights || o.live.hotels) ? b.estimatedLive : b.estimated}</p>
       {actions}
     </div>
   );
@@ -169,10 +169,10 @@ function OptionCard({
             </span>
           </div>
           {o.fits ? <span className="text-sm font-bold">{fmt(b.pocket, { amount: formatDT(o.pocketPerPersonPerDay, locale) })}</span> : null}
-          {o.live.flights ? (
+          {o.live.flights || o.live.hotels ? (
             <span className="mt-1 inline-flex items-center gap-1.5 justify-self-start rounded-full bg-[#DCFCE7] px-2.5 py-1 text-xs font-black text-[#166534]">
               <span aria-hidden className="size-1.5 rounded-full bg-[#16A34A]" />
-              {o.live.hotels ? b.liveAll : b.liveFlights}
+              {o.live.flights && o.live.hotels ? b.liveAll : o.live.flights ? b.liveFlights : b.liveHotels}
             </span>
           ) : null}
         </div>

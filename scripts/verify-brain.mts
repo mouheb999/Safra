@@ -6,7 +6,7 @@ import { CATEGORIES, seasonOf, suggestTrips, type BrainInput, type BrainResult }
 import { adviseTrip, cleanTrip, priceTrip, stopSeason } from "../src/lib/brain/builder.ts";
 import { buildPreview } from "../src/lib/brain/preview.ts";
 import { pickTwo } from "../src/lib/brain/surprise.ts";
-import { parseEurTnd, parseFlightPrice, parseHotelRates, pickTwoLive, searchDates, type LiveDeps } from "../src/lib/live/prices.ts";
+import { liveFlightTND, parseEurTnd, parseFlightPrice, parseHotelRates, pickTwoLive, searchDates, type LiveDeps } from "../src/lib/live/prices.ts";
 import { buildSnapshot } from "../src/lib/brain/snapshot.ts";
 
 let passed = 0;
@@ -359,6 +359,24 @@ check("live: the monthly limit stops searches (then a recent cached price or the
   const zero = fakeDeps({ budget: 0 });
   const z = await pickTwoLive(couple, data, liveSettings, zero.deps);
   assert(zero.serpCalls().length === 0 && z.live.flights.length === 0 && JSON.stringify(z.result) === JSON.stringify(pickTwo(couple, data)), "no budget → estimates");
+});
+
+check("live: departures less than 2 days away use the estimates and cost no search", async () => {
+  const f = fakeDeps({ now: new Date("2026-12-09T09:00:00Z") });
+  const r = await pickTwoLive(couple, data, liveSettings, f.deps);
+  assert(f.serpCalls().length === 0 && r.live.flights.length === 0, `${f.serpCalls().length} searches`);
+});
+
+check("live: a \"no results\" answer is kept for the day (no second charge), an account error is not", async () => {
+  const country = data.countries[0];
+  const dates = { depart: "2026-12-10", ret: "2026-12-20" };
+  for (const [error, cached] of [["Google Flights hasn't returned any results for this query.", true], ["Invalid API key.", false]] as const) {
+    const f = fakeDeps();
+    f.deps.fetchJson = async (url) => { f.calls.push(url); return { error }; };
+    assert((await liveFlightTND(country, dates, 3.3, liveSettings, f.deps)) === null, "no price");
+    await liveFlightTND(country, dates, 3.3, liveSettings, f.deps);
+    assert(f.serpCalls().length === (cached ? 1 : 2), `${error}: ${f.serpCalls().length} searches for 2 visitors`);
+  }
 });
 
 check("live: a failing service never breaks the picks", async () => {

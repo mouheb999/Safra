@@ -33,8 +33,10 @@ function deps(): LiveDeps {
     apiKey: process.env.SERPAPI_API_KEY || null,
     async fetchJson(url) {
       const res = await fetch(url, { cache: "no-store", signal: AbortSignal.timeout(TIMEOUT_MS) });
-      if (!res.ok) throw new Error(`HTTP ${res.status}`);
-      return res.json();
+      // SerpApi explains failures in JSON ({ error: "…" }), whatever the status: pass that on.
+      const json = await res.json().catch(() => null);
+      if (json && typeof json === "object") return json;
+      throw new Error(`HTTP ${res.status}`);
     },
     async cacheGet(key) {
       if (!db) return null;

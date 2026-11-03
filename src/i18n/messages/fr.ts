@@ -161,6 +161,7 @@ const fr: Messages = {
     urgencyGenericEst: "Les vols augmentent souvent à l’approche de vos dates.",
     liveAll: "Prix des vols et hôtels vérifiés aujourd’hui",
     liveFlights: "Prix des vols vérifiés aujourd’hui",
+    liveHotels: "Prix des hôtels vérifiés aujourd’hui",
     urgencyGeneric: "Ces prix ont été vérifiés aujourd’hui, et les vols augmentent souvent à l’approche de vos dates.",
     includes: {
       days: "{n} jours planifiés, heure par heure",
