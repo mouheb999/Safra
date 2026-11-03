@@ -7,6 +7,9 @@ import { availableOnlineMethods } from "@/lib/payments";
 import { parseQuizParams, type SearchParams } from "@/lib/search-params";
 import { pageMetadata } from "@/lib/site";
 
+// Live prices (SerpApi) can take 10–20 s on a new search; give the server action and page room to wait.
+export const maxDuration = 60;
+
 type Props = LocaleParams & { searchParams: Promise<SearchParams> };
 
 export async function generateMetadata({ params }: LocaleParams): Promise<Metadata> {
