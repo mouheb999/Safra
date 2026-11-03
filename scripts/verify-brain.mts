@@ -5,7 +5,7 @@ import { DEFAULT_BRAIN_SETTINGS, localBrainBases, localBrainCountries } from "..
 import { CATEGORIES, seasonOf, suggestTrips, type BrainInput, type BrainResult } from "../src/lib/brain/engine.ts";
 import { adviseTrip, cleanTrip, priceTrip, stopSeason } from "../src/lib/brain/builder.ts";
 import { buildPreview } from "../src/lib/brain/preview.ts";
-import { pickTwo } from "../src/lib/brain/surprise.ts";
+import { pickTwo, rankCountries } from "../src/lib/brain/surprise.ts";
 import { liveFlightTND, parseEurTnd, parseFlightPrice, parseHotelRates, pickTwoLive, searchDates, type LiveDeps } from "../src/lib/live/prices.ts";
 import { buildSnapshot } from "../src/lib/brain/snapshot.ts";
 
@@ -330,7 +330,9 @@ check("live: the day's flights decide the picks, hotels re-price them, and both 
   const f = fakeDeps();
   const r = await pickTwoLive(couple, data, liveSettings, f.deps);
   assert(r.result.status === "ok", r.result.status);
-  assert(r.live.flights.length === 5 && r.live.eurTnd === 3.3, JSON.stringify(r.live));
+  assert(r.live.flights.length === Math.min(5, data.countries.length) && r.live.eurTnd === 3.3, JSON.stringify(r.live));
+  const shortlist = rankCountries(couple, data).slice(0, 5);
+  assert(r.live.flights.every((c) => shortlist.includes(c)), "live flights only for the 5 best countries on the estimates");
   const kul = r.data.countries.find((c) => c.code === "malaysia")!;
   assert(kul.flightTND === Math.round(500 * 3.3), `Malaysia flight ${kul.flightTND}`);
   for (const p of r.result.picks) {

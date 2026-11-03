@@ -146,6 +146,8 @@ to the previous question.
 
 - `src/lib/brain/pricing.ts`: the cost formulas — 9 categories, card fee on foreign-currency items, rooms per hotel
   type, food per eater, moves between places.
+- Destinations: 10 countries, 36 places — Southeast Asia (Thailand, Bali, Malaysia, Vietnam, Philippines) for bigger
+  budgets, and closer to Tunis (Turkey, Egypt, Morocco, Jordan, Georgia) so smaller budgets get real trips too.
 - `src/lib/brain/engine.ts` (Safra Trip Brain v0.5): the best plan per country — skips places in their rainy season
   or without a shared vibe, splits the nights, adds about one activity every 2 days, cuts activities or a place to
   fit, and scores (budget 30, vibe 25, season 20, group 15, ease 10).
@@ -158,7 +160,7 @@ to the previous question.
   the exact result in `requests.quiz_answers` (`snapshot.ts`), shown as a **Find my trip** card on the admin request
   page with places, hotel level, activities, stay areas and the exact budget — what SAFRA turns into the paid plan.
 - **Live prices of the day** (`src/lib/live`): with `SERPAPI_API_KEY` set, the server gets the day's round-trip
-  flights from Tunis for the visitor's dates (Google Flights, all 5 countries) — these decide the picks — then
+  flights from Tunis for the visitor's dates (Google Flights, for the 5 countries most likely to be picked on the estimates) — these decide the picks — then
   hotel rates for the places in the 2 picks (Google Hotels: budget hotel = lower third of 1–3★, good hotel =
   middle of 4–5★), converted from EUR with the day's rate (open.er-api.com, admin fallback rate). Every search
   is cached for a day in `public.live_prices` (a new visitor costs ~7 searches, the next with the same dates 0)

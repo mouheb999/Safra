@@ -8,7 +8,7 @@
 import type { BrainBase, BrainCountry, StayType } from "../../data/brain";
 import { priceTrip, type BuilderData } from "../brain/builder.ts";
 import { tripNights, type BrainInput } from "../brain/engine.ts";
-import { labelPicks, pickTwo, type PickResult } from "../brain/surprise.ts";
+import { labelPicks, pickTwo, rankCountries, type PickResult } from "../brain/surprise.ts";
 
 export const SERPAPI_URL = "https://serpapi.com/search.json";
 export const FX_URL = "https://open.er-api.com/v6/latest/EUR";
@@ -17,6 +17,11 @@ export const ORIGIN_AIRPORT = "TUN";
 const DAY_MS = 86_400_000;
 /** A cached price is "today's" for this long… */
 const FRESH_MS = DAY_MS;
+/**
+ * Live flights are fetched for this many countries per new search: the best ones on the estimates. The rest
+ * can hardly be picked, so searching them would only spend the monthly budget.
+ */
+export const LIVE_FLIGHT_COUNTRIES = 5;
 /** Google Flights has almost nothing for departures this close, so they use the estimates (and cost nothing). */
 export const MIN_LEAD_DAYS = 2;
 /** …and still better than an estimate for this long, once the monthly budget is spent. */
@@ -250,7 +255,10 @@ export async function pickTwoLive(input: BrainInput, data: BuilderData, settings
   if (Date.parse(`${dates.depart}T00:00:00Z`) - deps.now().getTime() < MIN_LEAD_DAYS * DAY_MS) return offline;
 
   const fx = await eurToTnd(settings, deps);
-  const flights = await Promise.all(data.countries.map((c) => liveFlightTND(c, dates, fx, settings, deps).catch(() => null)));
+  const shortlist = new Set(rankCountries(input, data).slice(0, LIVE_FLIGHT_COUNTRIES));
+  const flights = await Promise.all(
+    data.countries.map((c) => (shortlist.has(c.code) ? liveFlightTND(c, dates, fx, settings, deps).catch(() => null) : Promise.resolve(null))),
+  );
   const withFlights: BuilderData = {
     ...data,
     countries: data.countries.map((c, i) => (flights[i] ? { ...c, flightTND: flights[i]! } : c)),
