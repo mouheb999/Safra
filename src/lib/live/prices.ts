@@ -17,6 +17,8 @@ export const ORIGIN_AIRPORT = "TUN";
 const DAY_MS = 86_400_000;
 /** A cached price is "today's" for this long… */
 const FRESH_MS = DAY_MS;
+/** Google Flights has almost nothing for departures this close, so they use the estimates (and cost nothing). */
+export const MIN_LEAD_DAYS = 2;
 /** …and still better than an estimate for this long, once the monthly budget is spent. */
 const STALE_OK_MS = 7 * DAY_MS;
 
@@ -133,9 +135,17 @@ async function cachedSearch(key: string, kind: "flight" | "hotel", url: string, 
   if (deps.apiKey && (await deps.claimSearch(settings.monthlyLimit).catch(() => false))) {
     try {
       const value = await deps.fetchJson(url);
-      if (value && typeof value === "object" && !(value as { error?: unknown }).error) {
-        await deps.cacheSet(key, kind, value).catch(() => undefined);
-        return { value, fetchedAt: deps.now() };
+      if (value && typeof value === "object") {
+        const error = (value as { error?: unknown }).error;
+        if (!error) {
+          await deps.cacheSet(key, kind, value).catch(() => undefined);
+          return { value, fetchedAt: deps.now() };
+        }
+        // "No results" for these dates is the day's answer too: keep it, so the next visitor doesn't pay again.
+        // Account problems (key, plan, credits) aren't, so they recover as soon as they're fixed.
+        if (!hit && typeof error === "string" && !/api key|account|plan|credit|searches/i.test(error)) {
+          await deps.cacheSet(key, kind, value).catch(() => undefined);
+        }
       }
     } catch {
       // fall through to the cache or the estimate
@@ -237,6 +247,7 @@ export async function pickTwoLive(input: BrainInput, data: BuilderData, settings
   const offline: LivePick = { result: pickTwo(input, data), data, live: NO_LIVE };
   const dates = searchDates(input, deps.now());
   if (!settings.enabled || !deps.apiKey || !dates || offline.result.status !== "ok") return offline;
+  if (Date.parse(`${dates.depart}T00:00:00Z`) - deps.now().getTime() < MIN_LEAD_DAYS * DAY_MS) return offline;
 
   const fx = await eurToTnd(settings, deps);
   const flights = await Promise.all(data.countries.map((c) => liveFlightTND(c, dates, fx, settings, deps).catch(() => null)));

@@ -161,6 +161,7 @@ const en = {
     urgencyGenericEst: "Flight fares usually climb as your dates get closer.",
     liveAll: "Flight and hotel prices checked today",
     liveFlights: "Flight prices checked today",
+    liveHotels: "Hotel prices checked today",
     urgencyGeneric: "These prices were checked today, and flight fares usually climb as your dates get closer.",
     includes: {
       days: "{n} days planned, hour by hour",
