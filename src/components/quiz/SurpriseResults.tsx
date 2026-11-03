@@ -94,7 +94,7 @@ export function SurpriseResults({
         ))}
       </div>
 
-      <p className="m-0 text-sm opacity-70">{b.estimated}</p>
+      <p className="m-0 text-sm opacity-70">{preview.options.some((o) => o.live.flights) ? b.estimatedLive : b.estimated}</p>
       {actions}
     </div>
   );
@@ -169,6 +169,12 @@ function OptionCard({
             </span>
           </div>
           {o.fits ? <span className="text-sm font-bold">{fmt(b.pocket, { amount: formatDT(o.pocketPerPersonPerDay, locale) })}</span> : null}
+          {o.live.flights ? (
+            <span className="mt-1 inline-flex items-center gap-1.5 justify-self-start rounded-full bg-[#DCFCE7] px-2.5 py-1 text-xs font-black text-[#166534]">
+              <span aria-hidden className="size-1.5 rounded-full bg-[#16A34A]" />
+              {o.live.hotels ? b.liveAll : b.liveFlights}
+            </span>
+          ) : null}
         </div>
 
 
@@ -288,7 +294,12 @@ function LockedProgram({
 
         <p className="m-0 flex items-start gap-2 rounded-xl bg-[#FFF4ED] px-3 py-2.5 text-[13px] leading-snug font-bold text-[#9A3412]">
           <ClockIcon size={16} strokeWidth={2.4} className="mt-px shrink-0" />
-          {daysToGo !== null && daysToGo > 0 && daysToGo <= 365 ? fmt(b.urgencyDays, { n: daysToGo }) : b.urgencyGeneric}
+          {/* "Checked today" only when this trip's prices are the day's live prices. */}
+          {daysToGo !== null && daysToGo > 0 && daysToGo <= 365
+            ? fmt(o.live.flights ? b.urgencyDays : b.urgencyDaysEst, { n: daysToGo })
+            : o.live.flights
+              ? b.urgencyGeneric
+              : b.urgencyGenericEst}
         </p>
 
         <ul className="m-0 grid list-none gap-1.5 p-0 text-[13.5px] font-semibold">

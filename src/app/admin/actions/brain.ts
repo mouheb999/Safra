@@ -1,6 +1,6 @@
 "use server";
 
-// Trip brain edits from /admin/brain: countries, places (bases) and the thresholds. Writes go through
+// Trip brain edits from /admin/brain: countries, places (bases), the thresholds and live prices. Writes go through
 // the admin's own session, so RLS is the final gate; zod gives readable errors first.
 
 import { revalidatePath } from "next/cache";
@@ -11,6 +11,7 @@ import { BRAIN_BASE_FIELDS, BRAIN_COUNTRY_FIELDS, readTranslations } from "@/lib
 import { requireAdmin } from "@/lib/admin/session";
 import { IMAGE_HOSTS, isAllowedImageUrl } from "@/lib/images";
 import { VIBE_OPTIONS } from "@/lib/quiz";
+import { testLivePrices, type LiveTestResult } from "@/lib/live/server";
 import type { Json } from "@/lib/supabase/database.types";
 
 export type FormState = { error: string | null };
@@ -65,6 +66,43 @@ export async function saveBrainSettings(_prev: FormState, fd: FormData): Promise
   if (!data?.length) return { error: "Your account isn’t allowed to change settings." };
   refresh();
   redirect("/admin/brain?saved=Thresholds");
+}
+
+// ---- Live prices (SerpApi) -------------------------------------------------------------------
+
+const liveSchema = z.object({
+  live_prices_enabled: z.boolean(),
+  live_prices_monthly_limit: z.coerce
+    .number()
+    .int("Monthly searches: a whole number.")
+    .min(0, "Monthly searches: 0 or more.")
+    .max(100000, "Monthly searches: at most 100,000."),
+  live_eur_tnd: z.coerce.number().gt(1, "EUR → DT rate: between 1 and 10.").lt(10, "EUR → DT rate: between 1 and 10."),
+});
+
+export async function saveLiveSettings(_prev: FormState, fd: FormData): Promise<FormState> {
+  const { supabase } = await requireAdmin();
+  const parsed = liveSchema.safeParse({
+    live_prices_enabled: fd.get("live_prices_enabled") === "on",
+    live_prices_monthly_limit: get(fd, "live_prices_monthly_limit"),
+    live_eur_tnd: get(fd, "live_eur_tnd").replace(",", "."),
+  });
+  if (!parsed.success) return { error: firstIssue(parsed.error) };
+  const { data, error } = await supabase.from("site_settings").update(parsed.data).eq("id", 1).select("id");
+  if (error) return { error: dbMessage(error) };
+  if (!data?.length) return { error: "Your account isn’t allowed to change settings." };
+  refresh();
+  redirect("/admin/brain?saved=Live prices");
+}
+
+export type LiveTestState = { result: LiveTestResult | null };
+
+/** One real search to check the key and the connection (cached for the day, so repeats are free). */
+export async function runLivePriceTest(_prev: LiveTestState): Promise<LiveTestState> {
+  await requireAdmin();
+  const result = await testLivePrices();
+  revalidatePath("/admin/brain");
+  return { result };
 }
 
 // ---- Countries ---------------------------------------------------------------------------

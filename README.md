@@ -157,8 +157,16 @@ to the previous question.
 - Ordering sends the answers + the chosen country (`?pick=&country=`); the server rebuilds the same trip and stores
   the exact result in `requests.quiz_answers` (`snapshot.ts`), shown as a **Find my trip** card on the admin request
   page with places, hotel level, activities, stay areas and the exact budget — what SAFRA turns into the paid plan.
-- Prices are starter estimates (marked as such everywhere) until SAFRA corrects them in **/admin/brain**. Live
-  flight/hotel prices and an AI pick can plug in later without changing the flow.
+- **Live prices of the day** (`src/lib/live`): with `SERPAPI_API_KEY` set, the server gets the day's round-trip
+  flights from Tunis for the visitor's dates (Google Flights, all 5 countries) — these decide the picks — then
+  hotel rates for the places in the 2 picks (Google Hotels: budget hotel = lower third of 1–3★, good hotel =
+  middle of 4–5★), converted from EUR with the day's rate (open.er-api.com, admin fallback rate). Every search
+  is cached for a day in `public.live_prices` (a new visitor costs ~7 searches, the next with the same dates 0)
+  and counted in `public.live_price_usage` against the monthly limit set in **/admin/brain**
+  (`claim_live_price_search()`, atomic). Missing, failing or over-budget prices fall back to a recent cached
+  price or SAFRA's estimates; food, transport and activities are always estimates. Cards say "prices checked
+  today" only when they are, and orders record what was live. **/admin/brain → Live prices** shows usage and
+  has a "Test live prices" button.
 
 ```bash
 npm run brain:verify         # engine scenarios, the 2 picks, the locked preview, server re-pricing

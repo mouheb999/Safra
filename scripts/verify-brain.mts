@@ -6,19 +6,15 @@ import { CATEGORIES, seasonOf, suggestTrips, type BrainInput, type BrainResult }
 import { adviseTrip, cleanTrip, priceTrip, stopSeason } from "../src/lib/brain/builder.ts";
 import { buildPreview } from "../src/lib/brain/preview.ts";
 import { pickTwo } from "../src/lib/brain/surprise.ts";
+import { parseEurTnd, parseFlightPrice, parseHotelRates, pickTwoLive, searchDates, type LiveDeps } from "../src/lib/live/prices.ts";
 import { buildSnapshot } from "../src/lib/brain/snapshot.ts";
 
 let passed = 0;
 const failures: string[] = [];
-function check(name: string, fn: () => void) {
-  try {
-    fn();
-    passed++;
-    console.log(`  ✓ ${name}`);
-  } catch (error) {
-    failures.push(name);
-    console.log(`  ✗ ${name}\n      ${(error as Error).message}`);
-  }
+// Checks are queued and run in order at the end, so async ones (live prices) read like the rest.
+const queue: [string, () => void | Promise<void>][] = [];
+function check(name: string, fn: () => void | Promise<void>) {
+  queue.push([name, fn]);
 }
 function assert(condition: unknown, message: string): asserts condition {
   if (!condition) throw new Error(message);
@@ -270,6 +266,118 @@ check("builder: an order is re-priced on the server and ignores unknown places o
   assert(snap.stops[0].stayArea !== "", "stay area kept for SAFRA");
   assert(buildSnapshot({ input: couple, trip: { country: "atlantis", stops: trip.stops } }, data) === null, "unknown country → null");
 });
+
+// ---- Live prices (SerpApi), with fake responses ------------------------------------------------------
+const liveSettings = { enabled: true, monthlyLimit: 100, fallbackEurTnd: 3.4 };
+const flightJson = (eur: number) => ({ best_flights: [{ price: eur + 40 }], other_flights: [{ price: eur }, { price: eur + 90 }], price_insights: { lowest_price: eur + 10 } });
+const hotelJson = {
+  properties: [
+    ...[30, 34, 38, 45, 60].map((r) => ({ type: "hotel", extracted_hotel_class: 3, rate_per_night: { extracted_lowest: r } })),
+    ...[80, 95, 110].map((r) => ({ type: "hotel", extracted_hotel_class: 4, rate_per_night: { lowest: `€${r}` } })),
+    { type: "vacation rental", rate_per_night: { extracted_lowest: 5 } },
+  ],
+};
+function fakeDeps(opts: { key?: string | null; fail?: boolean; budget?: number; now?: Date } = {}) {
+  const cache = new Map<string, { value: unknown; fetchedAt: Date }>();
+  const calls: string[] = [];
+  let budget = opts.budget ?? 1000;
+  const now = opts.now ?? new Date("2026-11-03T10:00:00Z");
+  const deps: LiveDeps = {
+    apiKey: opts.key === undefined ? "test-key" : opts.key,
+    async fetchJson(url) {
+      calls.push(url);
+      if (opts.fail) throw new Error("network down");
+      if (url.startsWith("https://open.er-api.com")) return { result: "success", rates: { TND: 3.3 } };
+      const u = new URL(url);
+      if (u.searchParams.get("engine") === "google_flights") return flightJson(u.searchParams.get("arrival_id") === "KUL" ? 500 : 900);
+      return hotelJson;
+    },
+    async cacheGet(k) { return cache.get(k) ?? null; },
+    async cacheSet(k, _kind, v) { cache.set(k, { value: v, fetchedAt: now }); },
+    async claimSearch(limit) { if (budget <= 0 || limit <= 0) return false; budget--; return true; },
+    now: () => now,
+  };
+  return { deps, cache, calls, serpCalls: () => calls.filter((c) => c.startsWith("https://serpapi.com")) };
+}
+
+check("live: parses Google Flights / Hotels / FX responses and ignores what isn't a hotel", () => {
+  assert(parseFlightPrice(flightJson(500)) === 500, "cheapest flight");
+  assert(parseFlightPrice({}) === null, "no flights → null");
+  const rates = parseHotelRates(hotelJson);
+  assert(rates.budget_hotel === 34 && rates.good_hotel === 95, JSON.stringify(rates));
+  assert(parseHotelRates({ properties: [{ extracted_hotel_class: 4, rate_per_night: { extracted_lowest: 90 } }] }).good_hotel === undefined, "needs 3 hotels per level");
+  assert(parseEurTnd({ rates: { TND: 3.31 } }) === 3.31 && parseEurTnd({ rates: { TND: 0 } }) === null, "fx");
+});
+
+check("live: month-only answers search the 15th of the next such month", () => {
+  const today = new Date("2026-11-03T00:00:00Z");
+  const d1 = searchDates({ ...couple, depart: null, ret: null, month: 2, nights: 9 }, today)!;
+  const d2 = searchDates({ ...couple, depart: null, ret: null, month: 11, nights: 7 }, today)!;
+  assert(d1.depart === "2027-02-15" && d1.ret === "2027-02-24", JSON.stringify(d1));
+  assert(d2.depart === "2026-11-15", JSON.stringify(d2));
+});
+
+check("live: without a key (or switched off) nothing is fetched and the picks are exactly the estimates", async () => {
+  const offline = pickTwo(couple, data);
+  for (const [deps, settings] of [[fakeDeps({ key: null }), liveSettings], [fakeDeps(), { ...liveSettings, enabled: false }]] as const) {
+    const r = await pickTwoLive(couple, data, settings, deps.deps);
+    assert(deps.calls.length === 0, "no calls");
+    assert(JSON.stringify(r.result) === JSON.stringify(offline) && r.live.flights.length === 0, "same as estimates");
+  }
+});
+
+check("live: the day's flights decide the picks, hotels re-price them, and both are cached", async () => {
+  const f = fakeDeps();
+  const r = await pickTwoLive(couple, data, liveSettings, f.deps);
+  assert(r.result.status === "ok", r.result.status);
+  assert(r.live.flights.length === 5 && r.live.eurTnd === 3.3, JSON.stringify(r.live));
+  const kul = r.data.countries.find((c) => c.code === "malaysia")!;
+  assert(kul.flightTND === Math.round(500 * 3.3), `Malaysia flight ${kul.flightTND}`);
+  for (const p of r.result.picks) {
+    for (const s of p.trip.stops) {
+      assert(r.live.hotels.includes(s.slug), `${s.slug} hotel live`);
+      const b = r.data.bases.find((x) => x.slug === s.slug)!;
+      assert(b.stayTND.budget_hotel === Math.round(34 * 3.3) && b.stayTND.good_hotel === Math.round(95 * 3.3), `${s.slug} rates`);
+    }
+    const again = priceTrip(couple, p.trip, r.data)!;
+    assert(again.tripCostTND === p.priced.tripCostTND, "picks priced with the returned data");
+  }
+  const searches = f.serpCalls().length;
+  const second = await pickTwoLive(couple, data, liveSettings, f.deps);
+  assert(f.serpCalls().length === searches, `second visitor costs no searches (${f.serpCalls().length - searches} more)`);
+  assert(JSON.stringify(second.result) === JSON.stringify(r.result), "same picks from the cache");
+  const snap = buildSnapshot({ input: couple, trip: r.result.picks[0].trip }, r.data, new Date(), r.live)!;
+  assert(snap.live?.flights === true && !snap.estimated, "order records live prices");
+  console.log(`      ${searches} searches for a new visitor, 0 for the next one · ${r.result.picks.map((p) => `${p.country} ≈${p.priced.tripCostTND}`).join(" · ")}`);
+});
+
+check("live: the monthly limit stops searches (then a recent cached price or the estimate is used)", async () => {
+  const f = fakeDeps({ budget: 2 });
+  const r = await pickTwoLive(couple, data, liveSettings, f.deps);
+  assert(f.serpCalls().length === 2, `only 2 searches (${f.serpCalls().length})`);
+  assert(r.live.flights.length === 2, `2 live flights, the rest estimates (${r.live.flights.length})`);
+  const zero = fakeDeps({ budget: 0 });
+  const z = await pickTwoLive(couple, data, liveSettings, zero.deps);
+  assert(zero.serpCalls().length === 0 && z.live.flights.length === 0 && JSON.stringify(z.result) === JSON.stringify(pickTwo(couple, data)), "no budget → estimates");
+});
+
+check("live: a failing service never breaks the picks", async () => {
+  const f = fakeDeps({ fail: true });
+  const r = await pickTwoLive(couple, data, liveSettings, f.deps);
+  assert(r.result.status === "ok" && r.live.flights.length === 0 && r.live.hotels.length === 0, JSON.stringify(r.live));
+  assert(JSON.stringify(r.result) === JSON.stringify(pickTwo(couple, data)), "same as estimates");
+});
+
+for (const [name, fn] of queue) {
+  try {
+    await fn();
+    passed++;
+    console.log(`  ✓ ${name}`);
+  } catch (error) {
+    failures.push(name);
+    console.log(`  ✗ ${name}\n      ${(error as Error).message}`);
+  }
+}
 
 console.log(`\n${passed} passed, ${failures.length} failed`);
 process.exit(failures.length ? 1 : 0);

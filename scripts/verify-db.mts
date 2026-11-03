@@ -531,6 +531,28 @@ await check("a month can't be both best and ok, and months stay within 1–12", 
   await expectError(rows(`update brain_bases set best_months = array[13]::smallint[] where slug = 'bangkok'`), /check constraint/);
 });
 
+await check("live prices: visitors can't read or write the cache, the counter or the search claim", async () => {
+  await expectError(as("anon", () => rows(`select * from live_prices`)), /permission denied/);
+  await expectError(as("anon", () => rows(`insert into live_prices (cache_key, kind, value) values ('x', 'fx', '{}')`)), /permission denied/);
+  await expectError(as("anon", () => rows(`select public.claim_live_price_search(10)`)), /permission denied/);
+  await expectError(as("authenticated", () => rows(`select public.claim_live_price_search(10)`)), /permission denied/);
+});
+
+await check("live prices: the server claims searches up to the monthly limit, then stops", async () => {
+  const claim = () => as("service_role", () => rows<{ ok: boolean }>(`select public.claim_live_price_search(3) as ok`));
+  const results = [];
+  for (let i = 0; i < 5; i++) results.push((await claim())[0].ok);
+  assertEqual(results, [true, true, true, false, false]);
+  const [usage] = await rows<{ searches: number }>(`select searches from live_price_usage`);
+  assertEqual(usage.searches, 3);
+  await as("service_role", () => rows(`insert into live_prices (cache_key, kind, value) values ('flight:TUN-BKK:2026-12-10:2026-12-20', 'flight', '{"best_flights":[]}')`));
+});
+
+await check("live prices: settings default to on, 240 searches a month, 3.4 TND per EUR", async () => {
+  const [r] = await rows(`select live_prices_enabled, live_prices_monthly_limit, live_eur_tnd::float as fx from site_settings`);
+  assertEqual(r, { live_prices_enabled: true, live_prices_monthly_limit: 240, fx: 3.4 });
+});
+
 await check("brain thresholds default to 25 TND / 3% / 45% / one activity every 2 days", async () => {
   const [r] = await rows(`select brain_min_pocket_tnd, brain_card_fee_pct::float as fee, brain_max_flight_share, brain_activity_every from site_settings`);
   assertEqual(r, { brain_min_pocket_tnd: 25, fee: 3, brain_max_flight_share: 45, brain_activity_every: 2 });

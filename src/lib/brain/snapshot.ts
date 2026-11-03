@@ -7,6 +7,7 @@ import { activitiesFor, adviseTrip, cleanTrip, priceTrip, stopSeason, type Build
 import type { BrainInput } from "./engine.ts";
 import type { EncodedBuild } from "./input.ts";
 import type { Budget } from "./pricing.ts";
+import { NO_LIVE, type LiveInfo } from "../live/prices.ts";
 
 export const BRAIN_SNAPSHOT_KIND = "trip_brain";
 
@@ -36,12 +37,14 @@ export interface TripBrainSnapshot {
   /** Left after the minimum pocket money; negative = the visitor is short by that much. */
   marginTND: number;
   tips: Tip[];
-  /** The reference prices are starter estimates until SAFRA confirms them. */
+  /** True unless the flights and every stay's hotel prices were the day's live prices. */
   estimated: boolean;
+  /** Which prices were live (SerpApi) when the customer ordered. Missing on orders placed before live prices. */
+  live?: { flights: boolean; hotels: string[]; eurTnd: number | null; checkedAt: string | null };
   computedAt: string;
 }
 
-export function buildSnapshot(build: EncodedBuild, data: BuilderData, now = new Date()): TripBrainSnapshot | null {
+export function buildSnapshot(build: EncodedBuild, data: BuilderData, now = new Date(), liveInfo: LiveInfo = NO_LIVE): TripBrainSnapshot | null {
   const trip = cleanTrip(build.input, build.trip, data);
   const priced = priceTrip(build.input, trip, data);
   const country = data.countries.find((c) => c.code === trip.country);
@@ -75,7 +78,13 @@ export function buildSnapshot(build: EncodedBuild, data: BuilderData, now = new 
     pocketPerPersonPerDay: priced.pocketPerPersonPerDay,
     marginTND: priced.marginTND,
     tips: adviseTrip(build.input, trip, data),
-    estimated: true,
+    estimated: !(liveInfo.flights.includes(trip.country) && trip.stops.every((s) => liveInfo.hotels.includes(s.slug))),
+    live: {
+      flights: liveInfo.flights.includes(trip.country),
+      hotels: trip.stops.map((s) => s.slug).filter((slug) => liveInfo.hotels.includes(slug)),
+      eurTnd: liveInfo.eurTnd,
+      checkedAt: liveInfo.checkedAt,
+    },
     computedAt: now.toISOString(),
   };
 }
