@@ -516,7 +516,7 @@ await check("seeded brain countries and bases map back to exactly the app's loca
 
 await check("visitors read the brain; only admins change it", async () => {
   const r = await as("anon", () => rows(`select code from brain_countries`));
-  assertEqual(r.length, 5);
+  assertEqual(r.length, localBrainCountries.length);
   await expectError(as("anon", () => rows(`update brain_bases set min_nights = 9`)), /permission denied/);
   await as("authenticated", () => rows(`update brain_bases set min_nights = 9`), USER);
   const [x] = await rows<{ min_nights: number }>(`select min_nights from brain_bases where slug = 'bangkok'`);

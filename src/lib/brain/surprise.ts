@@ -61,16 +61,23 @@ function candidate(input: BrainInput, countryCode: string, data: BuilderData): C
   };
 }
 
+/** Every country's best trip for these answers, best first: the ones that fit, by score, then the closest. */
+function rankCandidates(input: BrainInput, data: BuilderData): Candidate[] {
+  return [...data.countries]
+    .sort((a, b) => a.sortOrder - b.sortOrder)
+    .map((c) => candidate(input, c.code, data))
+    .filter((c): c is Candidate => c !== null)
+    .sort((a, b) => Number(b.fits) - Number(a.fits) || b.score - a.score);
+}
+
+/** Country codes in pick order (used to spend live searches on the countries that can actually be picked). */
+export const rankCountries = (input: BrainInput, data: BuilderData): string[] => rankCandidates(input, data).map((c) => c.country);
+
 export function pickTwo(input: BrainInput, data: BuilderData): PickResult {
   const probe = suggestTrips(input, [], data.bases, data.settings);
   if (probe.status === "need_info") return probe;
 
-  const ranked = [...data.countries]
-    .sort((a, b) => a.sortOrder - b.sortOrder)
-    .map((c) => candidate(input, c.code, data))
-    .filter((c): c is Candidate => c !== null)
-    .sort((a, b) => Number(b.fits) - Number(a.fits) || b.score - a.score)
-    .slice(0, 2);
+  const ranked = rankCandidates(input, data).slice(0, 2);
 
   const picks = ranked.flatMap((c) => {
     const priced = priceTrip(input, c.trip, data);
