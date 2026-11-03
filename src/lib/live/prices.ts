@@ -166,20 +166,32 @@ export async function eurToTnd(settings: LiveSettings, deps: LiveDeps): Promise<
   return cached ?? settings.fallbackEurTnd;
 }
 
+/** The Google Flights search for one country: its cache key and URL (null without an airport or a key). */
+export function flightSearch(country: BrainCountry, dates: { depart: string; ret: string }, apiKey: string | null) {
+  const airport = country.airport.match(/[A-Z]{3}/)?.[0];
+  if (!airport || !apiKey) return null;
+  return {
+    airport,
+    key: `flight:${ORIGIN_AIRPORT}-${airport}:${dates.depart}:${dates.ret}`,
+    url: serpUrl(
+      { engine: "google_flights", departure_id: ORIGIN_AIRPORT, arrival_id: airport, outbound_date: dates.depart, return_date: dates.ret, type: "1", adults: "1" },
+      apiKey,
+    ),
+  };
+}
+
+/** A parsed flight price (EUR) in TND, if it looks like a real round trip (never 300 or 30,000 DT). */
+export const saneFlightTND = (eur: number | null, fx: number) => {
+  const tnd = eur === null ? null : Math.round(eur * fx);
+  return tnd !== null && tnd >= 400 && tnd <= 20_000 ? tnd : null;
+};
+
 /** Round-trip flight from Tunis per person, TND (before the card fee, like SAFRA's table). */
 export async function liveFlightTND(country: BrainCountry, dates: { depart: string; ret: string }, fx: number, settings: LiveSettings, deps: LiveDeps) {
-  const airport = country.airport.match(/[A-Z]{3}/)?.[0];
-  if (!airport || !deps.apiKey) return null;
-  const key = `flight:${ORIGIN_AIRPORT}-${airport}:${dates.depart}:${dates.ret}`;
-  const url = serpUrl(
-    { engine: "google_flights", departure_id: ORIGIN_AIRPORT, arrival_id: airport, outbound_date: dates.depart, return_date: dates.ret, type: "1", adults: "1" },
-    deps.apiKey,
-  );
-  const hit = await cachedSearch(key, "flight", url, settings, deps);
-  const eur = hit ? parseFlightPrice(hit.value) : null;
-  const tnd = eur === null ? null : Math.round(eur * fx);
-  // Sanity: a round trip to Southeast Asia from Tunis is never 300 or 30,000 DT.
-  return tnd !== null && tnd >= 400 && tnd <= 20_000 ? tnd : null;
+  const search = flightSearch(country, dates, deps.apiKey);
+  if (!search) return null;
+  const hit = await cachedSearch(search.key, "flight", search.url, settings, deps);
+  return saneFlightTND(hit ? parseFlightPrice(hit.value) : null, fx);
 }
 
 /** Nightly room rates for one place, TND, by hotel level (only the levels that could be measured). */

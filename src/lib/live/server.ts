@@ -9,16 +9,21 @@ import { getAdminClient } from "@/lib/supabase/admin";
 import type { Json } from "@/lib/supabase/database.types";
 import {
   ORIGIN_AIRPORT,
-  liveFlightTND,
   eurToTnd,
+  flightSearch,
+  parseFlightPrice,
   pickTwoLive,
+  saneFlightTND,
   searchDates,
   type LiveDeps,
   type LivePick,
 } from "./prices";
 
-/** Each outside call gets this long; slower ones count as failed (the estimate is used). */
-const TIMEOUT_MS = 12_000;
+/**
+ * Each outside call gets this long; slower ones count as failed (the estimate is used). Google Flights through
+ * SerpApi often takes 10–20 s on a new search (cached ones are instant), so pages that call it allow 60 s.
+ */
+const TIMEOUT_MS = 30_000;
 
 export const liveKeyConfigured = () => Boolean(process.env.SERPAPI_API_KEY);
 
@@ -57,7 +62,7 @@ export async function pickTwoWithLivePrices(input: BrainInput): Promise<LivePick
 }
 
 export type LiveTestResult =
-  | { ok: true; route: string; dates: string; priceTND: number; eurTnd: number }
+  | { ok: true; route: string; dates: string; priceTND: number; eurTnd: number; seconds: number }
   | { ok: false; reason: string };
 
 /**
@@ -75,8 +80,51 @@ export async function testLivePrices(): Promise<LiveTestResult> {
   const month = ((today.getUTCMonth() + 1) % 12) + 1;
   const dates = searchDates({ ...({} as BrainInput), depart: null, ret: null, month, nights: 10 }, today)!;
   const fx = await eurToTnd(settings.live, d);
-  const price = await liveFlightTND(country, dates, fx, { ...settings.live, enabled: true }, d).catch(() => null);
-  return price
-    ? { ok: true, route: `${ORIGIN_AIRPORT} → ${country.airport}`, dates: `${dates.depart} → ${dates.ret}`, priceTND: price, eurTnd: fx }
-    : { ok: false, reason: "SerpApi didn’t return a usable price. Check the key, the monthly limit and the SerpApi dashboard." };
+  const search = flightSearch(country, dates, d.apiKey);
+  if (!search) return { ok: false, reason: `${country.name} has no airport code (e.g. BKK) in Trip brain → Countries.` };
+  const route = `${ORIGIN_AIRPORT} → ${search.airport}`;
+  const when = `${dates.depart} → ${dates.ret}`;
+
+  // Already searched today: no new search needed.
+  const hit = await d.cacheGet(search.key).catch(() => null);
+  const cachedPrice = hit ? saneFlightTND(parseFlightPrice(hit.value), fx) : null;
+  if (cachedPrice) return { ok: true, route, dates: when, priceTND: cachedPrice, eurTnd: fx, seconds: 0 };
+
+  if (!(await d.claimSearch(settings.live.monthlyLimit))) {
+    return { ok: false, reason: `This month’s limit (${settings.live.monthlyLimit} searches) is used up, or searches can’t be counted.` };
+  }
+  // The same request visitors make, but every failure is reported as it is.
+  const started = Date.now();
+  const seconds = () => Math.round((Date.now() - started) / 100) / 10;
+  let res: Response;
+  try {
+    res = await fetch(search.url, { cache: "no-store", signal: AbortSignal.timeout(TIMEOUT_MS) });
+  } catch (error) {
+    const timedOut = error instanceof Error && (error.name === "TimeoutError" || error.name === "AbortError");
+    return {
+      ok: false,
+      reason: timedOut
+        ? `SerpApi didn’t answer within ${TIMEOUT_MS / 1000} s (${route}, ${when}).`
+        : `Couldn’t reach SerpApi: ${error instanceof Error ? error.message : String(error)}.`,
+    };
+  }
+  let json: Record<string, unknown> = {};
+  try {
+    json = (await res.json()) as Record<string, unknown>;
+  } catch {
+    // reported below
+  }
+  if (typeof json.error === "string") return { ok: false, reason: `SerpApi says: “${json.error}” (HTTP ${res.status}, ${seconds()} s).` };
+  if (!res.ok) return { ok: false, reason: `SerpApi answered HTTP ${res.status} after ${seconds()} s.` };
+  const eur = parseFlightPrice(json);
+  const flights = (Array.isArray(json.best_flights) ? json.best_flights.length : 0) + (Array.isArray(json.other_flights) ? json.other_flights.length : 0);
+  const price = saneFlightTND(eur, fx);
+  if (!price) {
+    return {
+      ok: false,
+      reason: eur === null ? `SerpApi found ${flights} flights for ${route}, ${when}, but none had a price.` : `SerpApi’s cheapest price (${eur} EUR) doesn’t look like a real round trip.`,
+    };
+  }
+  await d.cacheSet(search.key, "flight", json).catch(() => undefined);
+  return { ok: true, route, dates: when, priceTND: price, eurTnd: fx, seconds: seconds() };
 }

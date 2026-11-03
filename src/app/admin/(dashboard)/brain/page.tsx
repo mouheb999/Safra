@@ -9,6 +9,9 @@ import { liveKeyConfigured } from "@/lib/live/server";
 import { BrainSettingsForm } from "./BrainSettingsForm";
 import { LivePricesForm } from "./LivePricesForm";
 
+// Live prices (SerpApi) can take 10–20 s on a new search; give the server action and page room to wait.
+export const maxDuration = 60;
+
 export const metadata: Metadata = { title: "Trip brain" };
 
 const MONTHS = ["J", "F", "M", "A", "M", "J", "J", "A", "S", "O", "N", "D"];

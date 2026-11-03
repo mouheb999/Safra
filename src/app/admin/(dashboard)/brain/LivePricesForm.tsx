@@ -47,7 +47,7 @@ export function LivePricesForm({ values: v, canTest }: { values: LivePricesValue
           test.result.ok ? (
             <Notice>
               Working: {test.result.route}, {test.result.dates} — {test.result.priceTND.toLocaleString("en-US")} DT per person (1 EUR ={" "}
-              {test.result.eurTnd.toFixed(3)} DT).
+              {test.result.eurTnd.toFixed(3)} DT){test.result.seconds ? `, found in ${test.result.seconds} s` : ", already checked today"}.
             </Notice>
           ) : (
             <Notice tone="error">Not working: {test.result.reason}</Notice>
