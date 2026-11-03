@@ -157,6 +157,10 @@ const en = {
     lockedHeader: "Your full program",
     lockedReady: "Ready",
     urgencyDays: "Your trip is in {n} days. These prices were checked today, and flight fares usually climb as the date gets closer.",
+    urgencyDaysEst: "Your trip is in {n} days, and flight fares usually climb as the date gets closer.",
+    urgencyGenericEst: "Flight fares usually climb as your dates get closer.",
+    liveAll: "Flight and hotel prices checked today",
+    liveFlights: "Flight prices checked today",
     urgencyGeneric: "These prices were checked today, and flight fares usually climb as your dates get closer.",
     includes: {
       days: "{n} days planned, hour by hour",
@@ -184,6 +188,7 @@ const en = {
     error: "Something went wrong. Please try again.",
     startAgain: "Start again",
     estimated: "Estimated prices from SAFRA’s tables, rounded to 50 DT. They can change until your booking is confirmed.",
+    estimatedLive: "Flight and hotel prices checked today where marked; food, transport and activities are SAFRA’s estimates. Rounded to 50 DT, and they can change until your booking is confirmed.",
     chip: "Picked for you on Find my trip",
     summaryCost: "Trip estimate",
   },

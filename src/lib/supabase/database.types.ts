@@ -169,6 +169,45 @@ export type Database = {
         }
         Relationships: []
       }
+      live_price_usage: {
+        Row: {
+          month: string
+          searches: number
+          updated_at: string
+        }
+        Insert: {
+          month: string
+          searches?: number
+          updated_at?: string
+        }
+        Update: {
+          month?: string
+          searches?: number
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      live_prices: {
+        Row: {
+          cache_key: string
+          fetched_at: string
+          kind: string
+          value: Json
+        }
+        Insert: {
+          cache_key: string
+          fetched_at?: string
+          kind: string
+          value: Json
+        }
+        Update: {
+          cache_key?: string
+          fetched_at?: string
+          kind?: string
+          value?: Json
+        }
+        Relationships: []
+      }
       destinations: {
         Row: {
           card_image_alt: string
@@ -574,6 +613,9 @@ export type Database = {
           delivery_fee_dt: number
           flouci_number: string
           id: number
+          live_eur_tnd: number
+          live_prices_enabled: boolean
+          live_prices_monthly_limit: number
           plan_price_dt: number
           updated_at: string
           wafacash_name: string
@@ -593,6 +635,9 @@ export type Database = {
           delivery_fee_dt?: number
           flouci_number?: string
           id?: number
+          live_eur_tnd?: number
+          live_prices_enabled?: boolean
+          live_prices_monthly_limit?: number
           plan_price_dt?: number
           updated_at?: string
           wafacash_name?: string
@@ -612,6 +657,9 @@ export type Database = {
           delivery_fee_dt?: number
           flouci_number?: string
           id?: number
+          live_eur_tnd?: number
+          live_prices_enabled?: boolean
+          live_prices_monthly_limit?: number
           plan_price_dt?: number
           updated_at?: string
           wafacash_name?: string
@@ -697,6 +745,10 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      claim_live_price_search: {
+        Args: { p_limit: number }
+        Returns: boolean
+      }
       submit_request: {
         Args: { payload: Json }
         Returns: {

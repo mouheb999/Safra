@@ -157,6 +157,10 @@ const fr: Messages = {
     lockedHeader: "Votre programme complet",
     lockedReady: "Prêt",
     urgencyDays: "Votre voyage est dans {n} jours. Ces prix ont été vérifiés aujourd’hui, et les vols augmentent souvent à l’approche du départ.",
+    urgencyDaysEst: "Votre voyage est dans {n} jours, et les vols augmentent souvent à l’approche du départ.",
+    urgencyGenericEst: "Les vols augmentent souvent à l’approche de vos dates.",
+    liveAll: "Prix des vols et hôtels vérifiés aujourd’hui",
+    liveFlights: "Prix des vols vérifiés aujourd’hui",
     urgencyGeneric: "Ces prix ont été vérifiés aujourd’hui, et les vols augmentent souvent à l’approche de vos dates.",
     includes: {
       days: "{n} jours planifiés, heure par heure",
@@ -184,6 +188,7 @@ const fr: Messages = {
     error: "Une erreur s’est produite. Veuillez réessayer.",
     startAgain: "Recommencer",
     estimated: "Prix estimés d’après les tables de SAFRA, arrondis à 50 DT. Ils peuvent changer jusqu’à la confirmation de votre réservation.",
+    estimatedLive: "Prix des vols et hôtels vérifiés aujourd’hui quand c’est indiqué ; repas, transports et activités sont des estimations de SAFRA. Arrondis à 50 DT, ils peuvent changer jusqu’à la confirmation de votre réservation.",
     chip: "Choisi pour vous sur Trouver mon voyage",
     summaryCost: "Estimation du voyage",
   },

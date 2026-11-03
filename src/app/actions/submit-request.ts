@@ -9,8 +9,8 @@ import { getMessages, type Messages } from "@/i18n";
 import { isLocale, type Locale } from "@/i18n/config";
 import { decodeInput } from "@/lib/brain/input";
 import { buildSnapshot } from "@/lib/brain/snapshot";
-import { pickTwo } from "@/lib/brain/surprise";
-import { getBrainData, getSiteSettings } from "@/lib/catalog";
+import { getSiteSettings } from "@/lib/catalog";
+import { pickTwoWithLivePrices } from "@/lib/live/server";
 import { GOVERNORATES, PAYMENT_METHODS } from "@/lib/payments";
 import type { BookingConfig, ConciergeRequest } from "@/lib/requests";
 import { getAdminClient } from "@/lib/supabase/admin";
@@ -116,11 +116,10 @@ async function brainAnswers(brain: { pick: string; country: string } | undefined
   const input = brain && decodeInput(brain.pick);
   if (!brain || !input) return undefined;
   try {
-    const data = await getBrainData();
-    const result = pickTwo(input, data);
+    const { result, data, live } = await pickTwoWithLivePrices(input);
     const chosen = result.status === "ok" ? result.picks.find((p) => p.country === brain.country) : undefined;
     if (!chosen) return undefined;
-    return (buildSnapshot({ input, trip: chosen.trip }, data) ?? undefined) as unknown as Json | undefined;
+    return (buildSnapshot({ input, trip: chosen.trip }, data, new Date(), live) ?? undefined) as unknown as Json | undefined;
   } catch (error) {
     console.error("[submit_request] trip builder snapshot failed", error);
     return undefined;

@@ -54,7 +54,13 @@ export function TripBrainCard({ snapshot: s }: { snapshot: TripBrainSnapshot }) 
   return (
     <Card title={`Find my trip · ${s.countryName}`}>
       <div className="grid gap-4">
-        {s.estimated ? (
+        {s.live?.flights || s.live?.hotels.length ? (
+          <p className="m-0 rounded-xl bg-[#DCFCE7] px-3 py-2 text-sm font-bold text-[#166534]">
+            Live prices when ordered: flights {s.live.flights ? "✓" : "— estimate"} · hotels{" "}
+            {s.stops.map((b) => `${b.place} ${s.live!.hotels.includes(b.slug) ? "✓" : "— estimate"}`).join(", ")}
+            {s.live.eurTnd ? ` · 1 EUR = ${s.live.eurTnd.toFixed(3)} DT` : ""}. Food, transport and activities are estimates.
+          </p>
+        ) : s.estimated ? (
           <p className="m-0 rounded-xl bg-orange/15 px-3 py-2 text-sm font-bold">
             Starter price estimates — check flights and stays before you send the plan.
           </p>

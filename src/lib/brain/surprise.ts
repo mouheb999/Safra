@@ -78,12 +78,13 @@ export function pickTwo(input: BrainInput, data: BuilderData): PickResult {
     return [{ ...c, priced, missingTND: c.fits ? 0 : Math.ceil(Math.max(0, -priced.marginTND) / 50) * 50 }];
   });
 
-  // The first is the best match; the second says what it's better at (or that it needs a bigger budget).
-  return {
-    status: "ok",
-    picks: picks.map(({ score: _score, ...p }, i) => ({
-      ...p,
-      label: !p.fits ? "stretch" : i === 0 ? "best_match" : p.priced.tripCostTND < picks[0].priced.tripCostTND ? "best_value" : "best_experience",
-    })),
-  };
+  return { status: "ok", picks: labelPicks(picks.map(({ score: _score, ...p }) => ({ ...p, label: "best_match" as PickLabel }))) };
+}
+
+/** The first is the best match; the second says what it's better at (or that it needs a bigger budget). */
+export function labelPicks<T extends Pick>(picks: T[]): T[] {
+  return picks.map((p, i) => ({
+    ...p,
+    label: !p.fits ? "stretch" : i === 0 ? "best_match" : p.priced.tripCostTND < picks[0].priced.tripCostTND ? "best_value" : "best_experience",
+  }));
 }

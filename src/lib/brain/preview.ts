@@ -6,7 +6,8 @@ import type { Locale } from "@/i18n/config";
 import { pick as tr } from "../../data/translations.ts";
 import type { BrainInput, Season } from "./engine";
 import type { BuilderData } from "./builder";
-import { pickTwo, type PickLabel } from "./surprise.ts";
+import { pickTwo, type PickLabel, type PickResult } from "./surprise.ts";
+import { NO_LIVE, type LiveInfo } from "../live/prices.ts";
 
 export interface ProgramDay {
   day: number;
@@ -28,6 +29,8 @@ export interface SurpriseOption {
   missingTND: number;
   activityCount: number;
   days: ProgramDay[];
+  /** Which prices are the day's (SerpApi) rather than SAFRA's estimates. */
+  live: { flights: boolean; hotels: boolean };
 }
 
 export type SurprisePreview =
@@ -48,8 +51,13 @@ export function programDays(stops: { place: string; nights: number }[]): Program
   return days;
 }
 
+/** The preview on SAFRA's estimates (no live prices). */
 export function buildPreview(input: BrainInput, data: BuilderData, locale: Locale): SurprisePreview {
-  const result = pickTwo(input, data);
+  return previewFromPicks(pickTwo(input, data), data, locale, NO_LIVE);
+}
+
+/** The preview of picks already made (e.g. with live prices: pass the data they were priced with). */
+export function previewFromPicks(result: PickResult, data: BuilderData, locale: Locale, live: LiveInfo): SurprisePreview {
   if (result.status === "need_info" || result.picks.length === 0) return { status: "need_info" };
   const first = result.picks[0].priced;
   return {
@@ -77,6 +85,10 @@ export function buildPreview(input: BrainInput, data: BuilderData, locale: Local
         missingTND: p.missingTND,
         activityCount: p.trip.stops.reduce((n, s) => n + s.activities.length, 0),
         days: programDays(stops),
+        live: {
+          flights: live.flights.includes(p.country),
+          hotels: p.trip.stops.length > 0 && p.trip.stops.every((s) => live.hotels.includes(s.slug)),
+        },
       };
     }),
   };

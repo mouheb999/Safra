@@ -7,8 +7,8 @@ import { fmt } from "@/i18n/fmt";
 import { routeLocale, type LocaleParams } from "@/i18n/server";
 import { pick } from "@/data/translations";
 import { decodeInput } from "@/lib/brain/input";
-import { pickTwo } from "@/lib/brain/surprise";
-import { getBookingConfig, getBrainData, getCheckoutConfig, getDestinations, getPacks, getVisaServices } from "@/lib/catalog";
+import { getBookingConfig, getCheckoutConfig, getDestinations, getPacks, getVisaServices } from "@/lib/catalog";
+import { pickTwoWithLivePrices } from "@/lib/live/server";
 import { parseTripRequestParams, type SearchParams } from "@/lib/search-params";
 import { pageMetadata } from "@/lib/site";
 
@@ -24,8 +24,7 @@ async function pickedTrip(sp: SearchParams, locale: Locale): Promise<BrainChecko
   const encoded = typeof sp.pick === "string" ? sp.pick : undefined;
   const input = decodeInput(encoded);
   if (!encoded || !input || typeof sp.country !== "string") return undefined;
-  const data = await getBrainData();
-  const result = pickTwo(input, data);
+  const { result, data } = await pickTwoWithLivePrices(input);
   const chosen = result.status === "ok" ? result.picks.find((p) => p.country === sp.country) : undefined;
   const country = data.countries.find((c) => c.code === chosen?.country);
   if (!chosen || !country) return undefined;

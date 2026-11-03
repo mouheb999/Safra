@@ -27,6 +27,7 @@ import type { Database } from "./supabase/database.types";
 import { toBrainBase, toBrainCountry, toDestination, toPack, toVisaService } from "./supabase/mappers";
 import { localizeDestination, localizePack, localizeVisaService } from "./localize";
 import type { Locale } from "@/i18n/config";
+import type { LiveSettings } from "@/lib/live/prices";
 
 const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
 const publishableKey = process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY;
@@ -120,6 +121,8 @@ export async function getVisaServices(locale: Locale = "en"): Promise<VisaServic
 export interface SiteSettings {
   bookingMode: BookingMode;
   brain: BrainSettings;
+  /** Live prices of the day (SerpApi); only used when SERPAPI_API_KEY is set. */
+  live: LiveSettings;
   whatsappNumber: string;
   planPriceDT: number;
   deliveryFeeDT: number;
@@ -139,9 +142,12 @@ export async function getCheckoutConfig(): Promise<CheckoutConfig> {
 }
 
 // Without settings, only cash on delivery is offered: no account numbers are ever made up.
+export const DEFAULT_LIVE_SETTINGS: LiveSettings = { enabled: true, monthlyLimit: 240, fallbackEurTnd: 3.4 };
+
 const DEFAULT_SETTINGS: SiteSettings = {
   bookingMode: "whatsapp",
   brain: DEFAULT_BRAIN_SETTINGS,
+  live: DEFAULT_LIVE_SETTINGS,
   whatsappNumber: DEFAULT_WHATSAPP_NUMBER,
   planPriceDT: DEFAULT_PLAN_PRICE_DT,
   deliveryFeeDT: DEFAULT_DELIVERY_FEE_DT,
@@ -161,6 +167,11 @@ export const getSiteSettings = cache(
           cardFeePct: data.brain_card_fee_pct == null ? DEFAULT_BRAIN_SETTINGS.cardFeePct : Number(data.brain_card_fee_pct),
           maxFlightSharePct: data.brain_max_flight_share ?? DEFAULT_BRAIN_SETTINGS.maxFlightSharePct,
           activityEveryDays: data.brain_activity_every ?? DEFAULT_BRAIN_SETTINGS.activityEveryDays,
+        },
+        live: {
+          enabled: data.live_prices_enabled ?? DEFAULT_LIVE_SETTINGS.enabled,
+          monthlyLimit: data.live_prices_monthly_limit ?? DEFAULT_LIVE_SETTINGS.monthlyLimit,
+          fallbackEurTnd: data.live_eur_tnd == null ? DEFAULT_LIVE_SETTINGS.fallbackEurTnd : Number(data.live_eur_tnd),
         },
         whatsappNumber: data.whatsapp_number,
         planPriceDT: data.plan_price_dt ?? DEFAULT_PLAN_PRICE_DT,
