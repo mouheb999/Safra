@@ -47,7 +47,7 @@ const fr: Messages = {
     knowTitle: "Je sais où je veux aller",
     knowBody: "Choisissez le lieu, on s’occupe du reste.",
     surpriseTitle: "Surprenez-moi",
-    surpriseBody: "Cinq questions, un voyage qui vous ressemble.",
+    surpriseBody: "Votre budget, 3 questions, 2 voyages qui vous vont.",
     visaHelp: "Besoin d’un visa ? On s’en charge",
     heroAlt: "Un bateau traditionnel thaïlandais à longue queue sur une eau turquoise, sous un ciel de coucher de soleil, avec des îles calcaires au loin",
     videoPause: "Mettre la vidéo en pause",

@@ -47,7 +47,7 @@ const en = {
     knowTitle: "I know where I want to go",
     knowBody: "Name the place, we plan the rest.",
     surpriseTitle: "Surprise me",
-    surpriseBody: "Five questions, one trip that fits you.",
+    surpriseBody: "Your budget, 3 questions, 2 trips that fit.",
     visaHelp: "Need a visa? We handle it",
     heroAlt: "A traditional Thai long-tail boat on blue-green water beneath a warm sunset sky, with distant limestone islands",
     videoPause: "Pause video",
