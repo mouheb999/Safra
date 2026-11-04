@@ -209,12 +209,13 @@ check("builder: room to spare suggests another place or a better hotel that fits
   assert(add && "costTND" in add && add.costTND <= margin, JSON.stringify(tips));
 });
 
-check("surprise: always 2 trips in 2 countries, the ones that fit first", () => {
+check("surprise: always 2 trips in 2 countries, focus destinations (Asia) first", () => {
   for (const budgetTND of [2500, 4000, 5500, 8000]) {
     const r = pickTwo({ ...couple, budgetTND }, data);
     assert(r.status === "ok" && r.picks.length === 2, `${budgetTND}: ${r.status}`);
     assert(r.picks[0].country !== r.picks[1].country, "two countries");
-    assert(!(!r.picks[0].fits && r.picks[1].fits), "fitting trips come first");
+    const focus = new Set(data.countries.filter((c) => c.featured).map((c) => c.code));
+    assert(focus.has(r.picks[0].country), `${budgetTND}: a focus destination leads (${r.picks[0].country})`);
     for (const p of r.picks) {
       assert(p.fits === (p.priced.marginTND >= 0), `${p.country}: fits matches the price`);
       assert(p.fits ? p.missingTND === 0 : p.missingTND >= -p.priced.marginTND && p.missingTND % 50 === 0, `${p.country}: missing amount`);
@@ -224,6 +225,19 @@ check("surprise: always 2 trips in 2 countries, the ones that fit first", () => 
     }
     console.log(`      ${budgetTND}/pp: ${r.picks.map((p) => `${p.label} ${p.country} ≈${p.priced.tripCostTND}${p.fits ? "" : ` (+${p.missingTND})`}`).join(" · ")}`);
   }
+});
+
+check("surprise: small budgets keep an Asian trip in view, with a backup that fits", () => {
+  const solo = { ...couple, adults: 1, group: "solo" as const, budgetTND: 2600, depart: "2026-12-10", ret: "2026-12-17", vibes: ["Food", "Culture"] };
+  const r = pickTwo(solo, data);
+  assert(r.status === "ok", r.status);
+  const [a, b] = r.picks;
+  const focus = new Set(data.countries.filter((c) => c.featured).map((c) => c.code));
+  assert(focus.has(a.country) && !a.fits && a.label === "stretch", `first: ${a.country} ${a.label}`);
+  assert(!focus.has(b.country) && b.fits, `second: ${b.country} fits ${b.fits}`);
+  console.log(`      solo 2,600 DT: ${a.country} (+${a.missingTND}) · ${b.country} ≈${b.priced.tripCostTND} (${b.label})`);
+  const big = pickTwo({ ...solo, budgetTND: 6000 }, data);
+  assert(big.status === "ok" && big.picks.every((p) => focus.has(p.country) && p.fits), "when Asia fits, both picks are Asian");
 });
 
 check("surprise: the preview has one program row per day and no money split, hotel or activity names", () => {

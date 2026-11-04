@@ -28,10 +28,21 @@ export function CountryForm({ country: c }: { country: Tables<"brain_countries">
         <Field label="Sort order">
           <TextInput name="sort_order" type="number" min={0} max={999} defaultValue={c?.sort_order ?? 0} />
         </Field>
-        <label className="flex items-center gap-2 self-end text-sm font-bold">
-          <input type="checkbox" name="is_active" defaultChecked={c?.is_active ?? true} className="size-4 accent-orange" />
-          Suggested by “Find my trip”
-        </label>
+        <div className="grid content-end gap-2">
+          <label className="flex items-center gap-2 text-sm font-bold">
+            <input type="checkbox" name="is_active" defaultChecked={c?.is_active ?? true} className="size-4 accent-orange" />
+            Suggested by “Find my trip”
+          </label>
+          <label className="grid gap-0.5 text-sm font-bold">
+            <span className="flex items-center gap-2">
+              <input type="checkbox" name="is_featured" defaultChecked={c?.is_featured ?? true} className="size-4 accent-orange" />
+              Focus destination
+            </span>
+            <span className="ps-6 text-xs font-semibold opacity-60">
+              Suggested first whenever it fits (or nearly fits) the budget. Unticked: a backup for smaller budgets.
+            </span>
+          </label>
+        </div>
       </Fieldset>
 
       <Fieldset legend="Costs (DT, per person)">

@@ -119,6 +119,7 @@ const countrySchema = z.object({
   image_url: z.string().refine((v) => v === "" || isAllowedImageUrl(v), `Photo: upload an image, or use an https link on ${IMAGE_HOSTS.join(" or ")}.`),
   sort_order: sortOrder,
   is_active: z.boolean(),
+  is_featured: z.boolean(),
 });
 
 /** `originalCode` is null when creating. */
@@ -136,6 +137,7 @@ export async function saveBrainCountry(originalCode: string | null, _prev: FormS
     image_url: get(fd, "image_url"),
     sort_order: get(fd, "sort_order") || "0",
     is_active: fd.get("is_active") === "on",
+    is_featured: fd.get("is_featured") === "on",
   });
   if (!parsed.success) return { error: firstIssue(parsed.error) };
   const { translations, error: translationError } = readTranslations(fd, BRAIN_COUNTRY_FIELDS);

@@ -151,8 +151,10 @@ to the previous question.
 - `src/lib/brain/engine.ts` (Safra Trip Brain v0.5): the best plan per country — skips places in their rainy season
   or without a shared vibe, splits the nights, adds about one activity every 2 days, cuts activities or a place to
   fit, and scores (budget 30, vibe 25, season 20, group 15, ease 10).
-- `src/lib/brain/surprise.ts`: the 2 picks — a good hotel when it fits, else a budget hotel; trips that fit first,
-  then the closest with what they'd still need.
+- `src/lib/brain/surprise.ts`: the 2 picks — a good hotel when it fits, else a budget hotel. **Focus destinations**
+  (Southeast Asia; `brain_countries.is_featured`, "Focus destination" in /admin/brain) lead: 2 that fit → both; 1 fits →
+  it plus the next focus trip if within 20% of the budget, else the best backup that fits; none fits → the closest
+  focus trip (with what it needs) plus the best backup that fits (or nearly fits).
 - `src/lib/brain/preview.ts` + `src/app/actions/surprise.ts`: computed on the server; the browser only receives what
   it shows. The money split, hotels, SAFRA's areas, activity names and the plan never leave the server, so removing
   the blur reveals nothing.

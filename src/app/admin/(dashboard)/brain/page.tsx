@@ -22,7 +22,7 @@ export default async function BrainPage({ searchParams }: { searchParams: Promis
 
   const month = new Intl.DateTimeFormat("en-CA", { timeZone: "Africa/Tunis", year: "numeric", month: "2-digit" }).format(new Date());
   const [{ data: countries }, { data: bases }, { data: settings }, { data: usage }, { count: cached }, { data: latest }] = await Promise.all([
-    supabase.from("brain_countries").select("code, name, flight_tnd, visa_tnd, flight_hours, sort_order, is_active").order("sort_order"),
+    supabase.from("brain_countries").select("code, name, flight_tnd, visa_tnd, flight_hours, sort_order, is_active, is_featured").order("sort_order"),
     supabase.from("brain_bases").select("slug, country_code, place, min_nights, best_months, ok_months, strengths, sort_order, is_active").order("sort_order"),
     supabase
       .from("site_settings")
@@ -99,7 +99,7 @@ export default async function BrainPage({ searchParams }: { searchParams: Promis
           {(countries ?? []).map((c) => (
             <Row
               key={c.code}
-              name={c.name}
+              name={c.is_featured ? `${c.name} · Focus` : `${c.name} · Backup`}
               detail={`Flights ${formatDT(c.flight_tnd)} pp · ${Number(c.flight_hours)} h · visa ${c.visa_tnd ? formatDT(c.visa_tnd) : "none"} · ${(bases ?? []).filter((b) => b.country_code === c.code).length} places`}
               active={c.is_active}
               order={c.sort_order}

@@ -59,7 +59,7 @@ const packRows = localPacks.map(
 
 const brainCountryRows = localBrainCountries.map(
   (c) =>
-    `  (${[q(c.code), q(c.name), q(c.airport), c.flightTND, c.flightHours, c.visaTND, c.internalMoveTND, c.insuranceDayTND, c.esimTND, q(c.image), json(c.translations), c.sortOrder].join(", ")})`,
+    `  (${[q(c.code), q(c.name), q(c.airport), c.flightTND, c.flightHours, c.visaTND, c.internalMoveTND, c.insuranceDayTND, c.esimTND, q(c.image), json(c.translations), c.sortOrder, c.featured].join(", ")})`,
 );
 
 const brainBaseRows = localBrainBases.map(
@@ -94,7 +94,7 @@ insert into public.packs (slug, title, country, route, blurb, price_dt, nights, 
 ${packRows.join(",\n")}
 on conflict (slug) do nothing;
 
-insert into public.brain_countries (code, name, airport, flight_tnd, flight_hours, visa_tnd, internal_move_tnd, insurance_day_tnd, esim_tnd, image_url, translations, sort_order) values
+insert into public.brain_countries (code, name, airport, flight_tnd, flight_hours, visa_tnd, internal_move_tnd, insurance_day_tnd, esim_tnd, image_url, translations, sort_order, is_featured) values
 ${brainCountryRows.join(",\n")}
 on conflict (code) do nothing;
 
