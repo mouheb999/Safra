@@ -127,6 +127,7 @@ export type Database = {
           insurance_day_tnd: number
           internal_move_tnd: number
           is_active: boolean
+          is_featured: boolean
           name: string
           sort_order: number
           translations: Json
@@ -144,6 +145,7 @@ export type Database = {
           insurance_day_tnd?: number
           internal_move_tnd?: number
           is_active?: boolean
+          is_featured?: boolean
           name: string
           sort_order?: number
           translations?: Json
@@ -161,6 +163,7 @@ export type Database = {
           insurance_day_tnd?: number
           internal_move_tnd?: number
           is_active?: boolean
+          is_featured?: boolean
           name?: string
           sort_order?: number
           translations?: Json

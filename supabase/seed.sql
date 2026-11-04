@@ -31,17 +31,17 @@ insert into public.packs (slug, title, country, route, blurb, price_dt, nights, 
   ('thai-islands', 'Thai islands, slowly', 'Thailand', 'Phuket · Phi Phi · Krabi', 'Three islands, beachfront rooms and a private longtail day.', 7490, 11, 'https://framerusercontent.com/images/GL4tcr2qJCc1BJINLyIiLL1ySA.jpg', array['flights', 'hotel', 'breakfast', 'transfers', 'activities', 'visa', 'plan']::text[], array['Beach', 'Luxury', 'Nature']::text[], 'thailand', '{"fr":{"title":"Les îles thaïes, en douceur","country":"Thaïlande","route":"Phuket · Phi Phi · Krabi","blurb":"Trois îles, des chambres face à la mer et une journée en longtail privé."},"ar":{"title":"جزر تايلاند على مهل","country":"تايلاند","route":"بوكيت · في في · كرابي","blurb":"ثلاث جزر، غرف على الشاطئ، ويوم كامل بقارب خاص."}}'::jsonb, 4)
 on conflict (slug) do nothing;
 
-insert into public.brain_countries (code, name, airport, flight_tnd, flight_hours, visa_tnd, internal_move_tnd, insurance_day_tnd, esim_tnd, image_url, translations, sort_order) values
-  ('thailand', 'Thailand', 'BKK', 2400, 15, 55, 220, 6, 45, 'https://framerusercontent.com/images/snHq8305shuNdUjeU5oyWBUIZw.jpg', '{"fr":{"name":"Thaïlande"},"ar":{"name":"تايلاند"}}'::jsonb, 0),
-  ('bali', 'Bali, Indonesia', 'DPS', 2900, 19, 140, 120, 6, 50, '', '{"fr":{"name":"Bali, Indonésie"},"ar":{"name":"بالي، إندونيسيا"}}'::jsonb, 1),
-  ('malaysia', 'Malaysia', 'KUL', 2300, 14, 0, 200, 6, 40, '', '{"fr":{"name":"Malaisie"},"ar":{"name":"ماليزيا"}}'::jsonb, 2),
-  ('vietnam', 'Vietnam', 'HAN / SGN', 2600, 17, 90, 230, 6, 40, '', '{"fr":{"name":"Viêt Nam"},"ar":{"name":"فيتنام"}}'::jsonb, 3),
-  ('philippines', 'Philippines', 'MNL', 2800, 18, 0, 300, 6, 50, '', '{"fr":{"name":"Philippines"},"ar":{"name":"الفلبين"}}'::jsonb, 4),
-  ('turkey', 'Turkey', 'IST', 900, 2.5, 0, 220, 5, 40, '', '{"fr":{"name":"Turquie"},"ar":{"name":"تركيا"}}'::jsonb, 5),
-  ('egypt', 'Egypt', 'CAI', 1000, 3.5, 100, 250, 5, 35, '', '{"fr":{"name":"Égypte"},"ar":{"name":"مصر"}}'::jsonb, 6),
-  ('morocco', 'Morocco', 'CMN', 850, 3.5, 0, 100, 5, 30, '', '{"fr":{"name":"Maroc"},"ar":{"name":"المغرب"}}'::jsonb, 7),
-  ('jordan', 'Jordan', 'AMM', 1150, 4.5, 180, 0, 6, 40, '', '{"fr":{"name":"Jordanie"},"ar":{"name":"الأردن"}}'::jsonb, 8),
-  ('georgia', 'Georgia', 'TBS', 1200, 6, 0, 60, 5, 30, '', '{"fr":{"name":"Géorgie"},"ar":{"name":"جورجيا"}}'::jsonb, 9)
+insert into public.brain_countries (code, name, airport, flight_tnd, flight_hours, visa_tnd, internal_move_tnd, insurance_day_tnd, esim_tnd, image_url, translations, sort_order, is_featured) values
+  ('thailand', 'Thailand', 'BKK', 2400, 15, 55, 220, 6, 45, 'https://framerusercontent.com/images/snHq8305shuNdUjeU5oyWBUIZw.jpg', '{"fr":{"name":"Thaïlande"},"ar":{"name":"تايلاند"}}'::jsonb, 0, true),
+  ('bali', 'Bali, Indonesia', 'DPS', 2900, 19, 140, 120, 6, 50, '', '{"fr":{"name":"Bali, Indonésie"},"ar":{"name":"بالي، إندونيسيا"}}'::jsonb, 1, true),
+  ('malaysia', 'Malaysia', 'KUL', 2300, 14, 0, 200, 6, 40, '', '{"fr":{"name":"Malaisie"},"ar":{"name":"ماليزيا"}}'::jsonb, 2, true),
+  ('vietnam', 'Vietnam', 'HAN / SGN', 2600, 17, 90, 230, 6, 40, '', '{"fr":{"name":"Viêt Nam"},"ar":{"name":"فيتنام"}}'::jsonb, 3, true),
+  ('philippines', 'Philippines', 'MNL', 2800, 18, 0, 300, 6, 50, '', '{"fr":{"name":"Philippines"},"ar":{"name":"الفلبين"}}'::jsonb, 4, true),
+  ('turkey', 'Turkey', 'IST', 900, 2.5, 0, 220, 5, 40, '', '{"fr":{"name":"Turquie"},"ar":{"name":"تركيا"}}'::jsonb, 5, false),
+  ('egypt', 'Egypt', 'CAI', 1000, 3.5, 100, 250, 5, 35, '', '{"fr":{"name":"Égypte"},"ar":{"name":"مصر"}}'::jsonb, 6, false),
+  ('morocco', 'Morocco', 'CMN', 850, 3.5, 0, 100, 5, 30, '', '{"fr":{"name":"Maroc"},"ar":{"name":"المغرب"}}'::jsonb, 7, false),
+  ('jordan', 'Jordan', 'AMM', 1150, 4.5, 180, 0, 6, 40, '', '{"fr":{"name":"Jordanie"},"ar":{"name":"الأردن"}}'::jsonb, 8, false),
+  ('georgia', 'Georgia', 'TBS', 1200, 6, 0, 60, 5, 30, '', '{"fr":{"name":"Géorgie"},"ar":{"name":"جورجيا"}}'::jsonb, 9, false)
 on conflict (code) do nothing;
 
 insert into public.brain_bases (

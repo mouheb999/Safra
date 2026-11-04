@@ -37,9 +37,10 @@ export default async function HomePage({ params }: LocaleParams) {
           </h1>
           <p className="m-0 mt-6 max-w-[480px] text-lg leading-relaxed text-pretty opacity-85 sm:text-xl">{t.home.lead}</p>
 
+          {/* "Surprise me" sits on the right in every language (in Arabic it comes first, which is the right). */}
           <div className="mt-8 grid grid-cols-2 gap-3">
             <StartCard href={href("/trip-request")} tone="bg-orange" icon={<CompassIcon size={28} color="#203D35" strokeWidth={1.6} />} title={t.home.knowTitle} body={t.home.knowBody} />
-            <StartCard href={href("/find-my-trip")} tone="bg-sky" icon={<SparklesIcon size={28} color="#203D35" strokeWidth={1.6} />} title={t.home.surpriseTitle} body={t.home.surpriseBody} />
+            <StartCard href={href("/find-my-trip")} tone="bg-sky" className="rtl:order-first" icon={<SparklesIcon size={28} color="#203D35" strokeWidth={1.6} />} title={t.home.surpriseTitle} body={t.home.surpriseBody} />
           </div>
 
           <Link
@@ -52,14 +53,9 @@ export default async function HomePage({ params }: LocaleParams) {
           </Link>
         </div>
 
-        <div className="relative mx-auto w-full max-w-[460px] md:max-w-none">
-          <div className="relative aspect-[4/5] overflow-hidden rounded-[40px_40px_180px_40px] bg-sky lg:aspect-[11/12] rtl:rounded-[40px_40px_40px_180px]">
-            <HeroMedia video={HERO_VIDEO} poster={HERO_POSTER} alt={t.home.heroAlt} />
-          </div>
-          <div className="absolute -bottom-3 -start-2 -rotate-6 rounded-xl border-2 border-dashed border-sea bg-cream px-5 py-2 text-center text-sea rtl:rotate-6" dir="ltr">
-            <div className="text-base font-black tracking-[0.12em]">SAFRA</div>
-            <div className="text-[10px] font-extrabold tracking-[0.14em]">EL NIDO · PH</div>
-          </div>
+        {/* A 16:9 player frame, like a YouTube video. */}
+        <div className="relative mx-auto aspect-video w-full max-w-[640px] overflow-hidden rounded-[24px] bg-ink shadow-[0_24px_50px_-28px_rgba(32,61,53,.55)] md:max-w-none">
+          <HeroMedia video={HERO_VIDEO} poster={HERO_POSTER} alt={t.home.heroAlt} />
         </div>
       </section>
 
@@ -69,11 +65,25 @@ export default async function HomePage({ params }: LocaleParams) {
 }
 
 /** One of the two ways to start: a coloured card with an icon, a title and one line. */
-function StartCard({ href, tone, icon, title, body }: { href: string; tone: string; icon: React.ReactNode; title: string; body: string }) {
+function StartCard({
+  href,
+  tone,
+  icon,
+  title,
+  body,
+  className = "",
+}: {
+  href: string;
+  tone: string;
+  icon: React.ReactNode;
+  title: string;
+  body: string;
+  className?: string;
+}) {
   return (
     <Link
       href={href}
-      className={`group relative flex min-h-[176px] flex-col gap-3 rounded-[24px] p-5 transition-[transform,box-shadow] duration-300 ease-out hover:-translate-y-1 hover:shadow-[0_18px_30px_-18px_rgba(32,61,53,.45)] motion-reduce:transition-none motion-reduce:hover:translate-none lg:min-h-[190px] ${tone}`}
+      className={`group relative flex min-h-[176px] flex-col gap-3 rounded-[24px] p-5 transition-[transform,box-shadow] duration-300 ease-out hover:-translate-y-1 hover:shadow-[0_18px_30px_-18px_rgba(32,61,53,.45)] motion-reduce:transition-none motion-reduce:hover:translate-none lg:min-h-[190px] ${tone} ${className}`}
     >
       {icon}
       <span className="mt-auto grid gap-1.5">

@@ -5,9 +5,10 @@ import { useEffect, useRef, useState } from "react";
 import { useI18n } from "@/i18n/client";
 
 /**
- * Home hero media: a muted looping video when one is configured (HERO_VIDEO in src/lib/site.ts),
- * otherwise a video placeholder (dimmed poster, play button, "Video coming soon", player bar). The video starts paused for visitors who reduce motion and always
- * has a pause button (anything moving for more than 5 seconds must be stoppable).
+ * Home hero media, inside a 16:9 frame: a YouTube video, or a muted looping video file, when one is configured
+ * (HERO_VIDEO in src/lib/site.ts), otherwise a video placeholder (dimmed poster, play button, "Video coming soon",
+ * player bar). A video file starts paused for visitors who reduce motion and always has a pause button (anything
+ * moving for more than 5 seconds must be stoppable); a YouTube video waits for a click and has YouTube's controls.
  */
 export function HeroMedia({ video, poster, alt }: { video: { src: string; type: string } | null; poster: string; alt: string }) {
   const { t } = useI18n();
@@ -21,6 +22,21 @@ export function HeroMedia({ video, poster, alt }: { video: { src: string; type: 
   }, [video]);
 
   if (!video) return <VideoPlaceholder poster={poster} label={t.home.videoSoon} />;
+  if (video.type === "youtube") {
+    const id = youTubeId(video.src);
+    return id ? (
+      <iframe
+        src={`https://www.youtube-nocookie.com/embed/${id}?rel=0&playsinline=1`}
+        title={alt}
+        allow="accelerometer; encrypted-media; gyroscope; picture-in-picture; web-share"
+        allowFullScreen
+        referrerPolicy="strict-origin-when-cross-origin"
+        className="absolute inset-0 size-full border-0"
+      />
+    ) : (
+      <VideoPlaceholder poster={poster} label={t.home.videoSoon} />
+    );
+  }
 
   const toggle = () => {
     const el = ref.current;
@@ -68,6 +84,13 @@ export function HeroMedia({ video, poster, alt }: { video: { src: string; type: 
   );
 }
 
+/** The video id from any YouTube link (watch?v=, youtu.be/, /embed/, /shorts/) or a bare 11-character id. */
+function youTubeId(src: string): string | null {
+  if (/^[\w-]{11}$/.test(src)) return src;
+  const m = src.match(/(?:youtu\.be\/|[?&]v=|\/embed\/|\/shorts\/|\/live\/)([\w-]{11})/);
+  return m ? m[1] : null;
+}
+
 /** Until the video is set: unmistakably a video frame, not a photo. Decorative only (nothing to click). */
 function VideoPlaceholder({ poster, label }: { poster: string; label: string }) {
   return (
@@ -76,11 +99,11 @@ function VideoPlaceholder({ poster, label }: { poster: string; label: string }) 
       <div aria-hidden className="absolute inset-0 bg-[radial-gradient(circle_at_50%_45%,rgba(32,61,53,.15),rgba(32,61,53,.7))]" />
 
       <div className="absolute inset-0 grid place-items-center">
-        <div className="grid justify-items-center gap-4 text-cream">
-          <span className="relative grid size-20 place-items-center">
+        <div className="grid justify-items-center gap-3 text-cream sm:gap-4">
+          <span className="relative grid size-16 place-items-center sm:size-20">
             <span aria-hidden className="absolute inset-0 animate-ripple rounded-full bg-cream/30 motion-reduce:hidden" />
             <span aria-hidden className="absolute inset-0 rounded-full bg-cream/20 ring-1 ring-cream/50 backdrop-blur-md" />
-            <svg width="26" height="26" viewBox="0 0 16 16" fill="currentColor" aria-hidden className="relative ml-1">
+            <svg width="26" height="26" viewBox="0 0 16 16" fill="currentColor" aria-hidden className="relative ml-1 size-[22px] sm:size-[26px]">
               <path d="M4.5 2.8v10.4a.8.8 0 0 0 1.2.7l8.3-5.2a.8.8 0 0 0 0-1.4L5.7 2.1a.8.8 0 0 0-1.2.7Z" />
             </svg>
           </span>
@@ -90,8 +113,8 @@ function VideoPlaceholder({ poster, label }: { poster: string; label: string }) 
         </div>
       </div>
 
-      {/* Player bar, kept clear of the rounded corner and the SAFRA stamp. */}
-      <div aria-hidden className="absolute inset-x-0 bottom-16 flex items-center gap-3 ps-7 pe-36 text-cream/85 rtl:ps-36 rtl:pe-7" dir="ltr">
+      {/* Player bar along the bottom, like a paused YouTube video. */}
+      <div aria-hidden className="absolute inset-x-0 bottom-3 flex items-center gap-3 px-5 text-cream/85 sm:bottom-4 sm:px-6" dir="ltr">
         <span className="text-xs font-bold tabular-nums">0:00</span>
         <span className="h-1 flex-1 overflow-hidden rounded-full bg-cream/25">
           <span className="block h-full w-[12%] rounded-full bg-orange" />

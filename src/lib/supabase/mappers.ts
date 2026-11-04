@@ -34,6 +34,7 @@ export function toBrainCountry(row: BrainCountryRow): BrainCountry {
     esimTND: row.esim_tnd,
     image: row.image_url,
     sortOrder: row.sort_order,
+    featured: row.is_featured ?? true,
     translations: translationsOf<{ name: string }>(row.translations),
   };
 }

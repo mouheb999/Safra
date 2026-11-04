@@ -12,7 +12,7 @@ npm run build      # production build + type check
 
 | Route | Rendering | Content |
 |---|---|---|
-| `/` | static | Home: hero (video or poster, see `HERO_VIDEO` in `src/lib/site.ts`), budget slider + packs carousel (main pack in the middle, swipe/arrows/dots) |
+| `/` | static | Home: hero (16:9 video frame: a YouTube link, a video file or a "coming soon" placeholder, see `HERO_VIDEO` in `src/lib/site.ts`), budget slider + packs carousel (main pack in the middle, swipe/arrows/dots) |
 | `/find-my-trip` | dynamic | Budget + 3 questions → the 2 best trips with a locked program; `?budget=`, `?category=` prefill |
 | `/trip?destination=thailand\|egypt\|turkiye` | dynamic, server-only | Destination preview carrying the quiz answers |
 | `/trip-request` | dynamic | Trip plan checkout (`?mode=direct`), or the visa form (`?mode=visa`) |
@@ -37,7 +37,7 @@ src/
   components/
     budget/            BudgetRange (shared slider track)
     packs/             PackCard + home PacksSlider
-    HeroMedia.tsx      home hero video (or its poster)
+    HeroMedia.tsx      home hero video (YouTube, file or placeholder)
     Flags.tsx          round SVG flags for the language switcher
     quiz/              BrainQuiz (the questions) + SurpriseResults (the 2 trips, locked program)
     trip/              TripExperience (server component)
@@ -151,8 +151,10 @@ to the previous question.
 - `src/lib/brain/engine.ts` (Safra Trip Brain v0.5): the best plan per country — skips places in their rainy season
   or without a shared vibe, splits the nights, adds about one activity every 2 days, cuts activities or a place to
   fit, and scores (budget 30, vibe 25, season 20, group 15, ease 10).
-- `src/lib/brain/surprise.ts`: the 2 picks — a good hotel when it fits, else a budget hotel; trips that fit first,
-  then the closest with what they'd still need.
+- `src/lib/brain/surprise.ts`: the 2 picks — a good hotel when it fits, else a budget hotel. **Focus destinations**
+  (Southeast Asia; `brain_countries.is_featured`, "Focus destination" in /admin/brain) lead: 2 that fit → both; 1 fits →
+  it plus the next focus trip if within 20% of the budget, else the best backup that fits; none fits → the closest
+  focus trip (with what it needs) plus the best backup that fits (or nearly fits).
 - `src/lib/brain/preview.ts` + `src/app/actions/surprise.ts`: computed on the server; the browser only receives what
   it shows. The money split, hotels, SAFRA's areas, activity names and the plan never leave the server, so removing
   the blur reveals nothing.

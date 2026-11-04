@@ -43,6 +43,8 @@ export interface BrainCountry {
   esimTND: number;
   image: string;
   sortOrder: number;
+  /** A focus destination: suggested first whenever it fits (or nearly fits) the budget. */
+  featured: boolean;
   translations?: Translations<{ name: string }>;
 }
 
@@ -100,6 +102,7 @@ export const localBrainCountries: BrainCountry[] = [
     esimTND: 45,
     image: "https://framerusercontent.com/images/snHq8305shuNdUjeU5oyWBUIZw.jpg",
     sortOrder: 0,
+    featured: true,
     translations: { fr: { name: "Thaïlande" }, ar: { name: "تايلاند" } },
   },
   {
@@ -114,6 +117,7 @@ export const localBrainCountries: BrainCountry[] = [
     esimTND: 50,
     image: "",
     sortOrder: 1,
+    featured: true,
     translations: { fr: { name: "Bali, Indonésie" }, ar: { name: "بالي، إندونيسيا" } },
   },
   {
@@ -128,6 +132,7 @@ export const localBrainCountries: BrainCountry[] = [
     esimTND: 40,
     image: "",
     sortOrder: 2,
+    featured: true,
     translations: { fr: { name: "Malaisie" }, ar: { name: "ماليزيا" } },
   },
   {
@@ -142,6 +147,7 @@ export const localBrainCountries: BrainCountry[] = [
     esimTND: 40,
     image: "",
     sortOrder: 3,
+    featured: true,
     translations: { fr: { name: "Viêt Nam" }, ar: { name: "فيتنام" } },
   },
   {
@@ -156,6 +162,7 @@ export const localBrainCountries: BrainCountry[] = [
     esimTND: 50,
     image: "",
     sortOrder: 4,
+    featured: true,
     translations: { fr: { name: "Philippines" }, ar: { name: "الفلبين" } },
   },
   // Closer to Tunis: shorter, cheaper flights, so smaller budgets get real trips too.
@@ -171,6 +178,7 @@ export const localBrainCountries: BrainCountry[] = [
     esimTND: 40,
     image: "",
     sortOrder: 5,
+    featured: false,
     translations: { fr: { name: "Turquie" }, ar: { name: "تركيا" } },
   },
   {
@@ -185,6 +193,7 @@ export const localBrainCountries: BrainCountry[] = [
     esimTND: 35,
     image: "",
     sortOrder: 6,
+    featured: false,
     translations: { fr: { name: "Égypte" }, ar: { name: "مصر" } },
   },
   {
@@ -199,6 +208,7 @@ export const localBrainCountries: BrainCountry[] = [
     esimTND: 30,
     image: "",
     sortOrder: 7,
+    featured: false,
     translations: { fr: { name: "Maroc" }, ar: { name: "المغرب" } },
   },
   {
@@ -213,6 +223,7 @@ export const localBrainCountries: BrainCountry[] = [
     esimTND: 40,
     image: "",
     sortOrder: 8,
+    featured: false,
     translations: { fr: { name: "Jordanie" }, ar: { name: "الأردن" } },
   },
   {
@@ -227,6 +238,7 @@ export const localBrainCountries: BrainCountry[] = [
     esimTND: 30,
     image: "",
     sortOrder: 9,
+    featured: false,
     translations: { fr: { name: "Géorgie" }, ar: { name: "جورجيا" } },
   },
 ];
