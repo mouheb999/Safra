@@ -12,7 +12,7 @@ npm run build      # production build + type check
 
 | Route | Rendering | Content |
 |---|---|---|
-| `/` | static | Home: hero (video or poster, see `HERO_VIDEO` in `src/lib/site.ts`), budget slider + packs carousel (main pack in the middle, swipe/arrows/dots) |
+| `/` | static | Home: hero (16:9 video frame: a YouTube link, a video file or a "coming soon" placeholder, see `HERO_VIDEO` in `src/lib/site.ts`), budget slider + packs carousel (main pack in the middle, swipe/arrows/dots) |
 | `/find-my-trip` | dynamic | Budget + 3 questions → the 2 best trips with a locked program; `?budget=`, `?category=` prefill |
 | `/trip?destination=thailand\|egypt\|turkiye` | dynamic, server-only | Destination preview carrying the quiz answers |
 | `/trip-request` | dynamic | Trip plan checkout (`?mode=direct`), or the visa form (`?mode=visa`) |
@@ -37,7 +37,7 @@ src/
   components/
     budget/            BudgetRange (shared slider track)
     packs/             PackCard + home PacksSlider
-    HeroMedia.tsx      home hero video (or its poster)
+    HeroMedia.tsx      home hero video (YouTube, file or placeholder)
     Flags.tsx          round SVG flags for the language switcher
     quiz/              BrainQuiz (the questions) + SurpriseResults (the 2 trips, locked program)
     trip/              TripExperience (server component)

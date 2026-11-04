@@ -190,9 +190,17 @@ export function Nav({ whatsappNumber = DEFAULT_WHATSAPP_NUMBER }: { whatsappNumb
   );
 }
 
+/** The wordmark: always Nunito, left-to-right and the same spacing, whatever the page language. */
 function Logo({ href, onClick }: { href: string; onClick?: () => void }) {
   return (
-    <Link href={href} onClick={onClick} className="text-[22px] font-black tracking-[0.06em] sm:text-2xl">
+    <Link
+      href={href}
+      onClick={onClick}
+      dir="ltr"
+      lang="en"
+      translate="no"
+      className="font-[family-name:var(--font-nunito)] text-[22px] font-black tracking-[0.06em] sm:text-2xl"
+    >
       SAFRA
     </Link>
   );
