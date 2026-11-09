@@ -53,7 +53,7 @@ export function Stepper({ label: text, value, min, max, onChange, display }: { l
 
 export function DateField({ label: text, value, min, onChange }: { label: string; value: string; min?: string; onChange: (v: string) => void }) {
   return (
-    <label className="grid gap-1.5 font-bold">
+    <label className="grid min-w-0 grid-cols-[minmax(0,1fr)] gap-1.5 font-bold">
       {text}
       <input type="date" value={value} min={min || undefined} onChange={(e) => onChange(e.target.value)} className="w-full min-w-0 rounded-xl border border-ink/25 bg-white px-3 py-2.5" />
     </label>
