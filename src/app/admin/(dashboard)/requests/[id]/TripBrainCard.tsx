@@ -83,6 +83,9 @@ export function TripBrainCard({ snapshot: s }: { snapshot: TripBrainSnapshot }) 
             ["Group", `${i.group} · ${party.join(", ")}`],
             ["When", when],
             ["Vibes", i.vibes.join(", ") || "—"],
+            ...(i.exclude?.length
+              ? ([["Other destinations", `Asked for others — passed on: ${i.exclude.join(", ")}`]] as [string, string][])
+              : []),
           ]}
         />
 

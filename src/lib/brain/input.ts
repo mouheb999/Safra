@@ -2,8 +2,8 @@
 // the checkout and the links between them. Client-safe.
 
 import { z } from "zod";
-import { GROUP_TYPES, STAY_TYPES } from "@/data/brain";
-import { MAX_VIBES, VIBE_OPTIONS } from "@/lib/quiz";
+import { GROUP_TYPES, STAY_TYPES } from "../../data/brain.ts";
+import { MAX_VIBES, VIBE_OPTIONS } from "../quiz.ts";
 import type { BuiltTrip } from "./builder";
 import type { BrainInput } from "./engine";
 
@@ -24,6 +24,7 @@ export const brainInputSchema = z
     nights: z.number().int().min(1).max(60).nullable(),
     vibes: z.array(z.enum(VIBE_OPTIONS)).max(MAX_VIBES),
     stay: z.enum(STAY_TYPES),
+    exclude: z.array(z.string().regex(/^[a-z0-9-]{1,40}$/)).max(30).optional(),
   })
   .refine((i) => !i.depart || !i.ret || i.ret > i.depart, "Return must be after departure.");
 

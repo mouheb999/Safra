@@ -6,7 +6,7 @@ import type { Locale } from "@/i18n/config";
 import { pick as tr } from "../../data/translations.ts";
 import type { BrainInput, Season } from "./engine";
 import type { BuilderData } from "./builder";
-import { pickTwo, type PickLabel, type PickResult } from "./surprise.ts";
+import { hasMoreDestinations, pickTwo, type PickLabel, type PickResult } from "./surprise.ts";
 import { NO_LIVE, type LiveInfo } from "../live/prices.ts";
 
 export interface ProgramDay {
@@ -35,7 +35,15 @@ export interface SurpriseOption {
 
 export type SurprisePreview =
   | { status: "need_info" }
-  | { status: "ok"; options: SurpriseOption[]; nights: number; travelers: number; totalBudgetTND: number };
+  | {
+      status: "ok";
+      options: SurpriseOption[];
+      nights: number;
+      travelers: number;
+      totalBudgetTND: number;
+      /** Other countries are left for "Show me 2 other destinations". */
+      more: boolean;
+    };
 
 const round50 = (n: number) => Math.round(n / 50) * 50;
 
@@ -53,11 +61,11 @@ export function programDays(stops: { place: string; nights: number }[]): Program
 
 /** The preview on SAFRA's estimates (no live prices). */
 export function buildPreview(input: BrainInput, data: BuilderData, locale: Locale): SurprisePreview {
-  return previewFromPicks(pickTwo(input, data), data, locale, NO_LIVE);
+  return previewFromPicks(input, pickTwo(input, data), data, locale, NO_LIVE);
 }
 
 /** The preview of picks already made (e.g. with live prices: pass the data they were priced with). */
-export function previewFromPicks(result: PickResult, data: BuilderData, locale: Locale, live: LiveInfo): SurprisePreview {
+export function previewFromPicks(input: BrainInput, result: PickResult, data: BuilderData, locale: Locale, live: LiveInfo): SurprisePreview {
   if (result.status === "need_info" || result.picks.length === 0) return { status: "need_info" };
   const first = result.picks[0].priced;
   return {
@@ -65,6 +73,7 @@ export function previewFromPicks(result: PickResult, data: BuilderData, locale: 
     nights: first.targetNights,
     travelers: first.travelers,
     totalBudgetTND: first.totalBudgetTND,
+    more: hasMoreDestinations(input, data, result.picks.map((p) => p.country)),
     options: result.picks.map((p) => {
       const country = data.countries.find((c) => c.code === p.country)!;
       const stops = p.trip.stops.map((s) => {

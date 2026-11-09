@@ -24,6 +24,8 @@ export interface BrainInput {
   nights: number | null;
   vibes: string[];
   stay: StayType;
+  /** Countries the visitor already saw and asked to replace ("Show me 2 other destinations"). */
+  exclude?: string[];
 }
 
 export type Season = "best" | "ok";

@@ -35,6 +35,8 @@ export function SurpriseResults({
   payOnline,
   assist,
   whatsappNumber,
+  onOther,
+  onBest,
   onRestart,
   headingRef,
 }: {
@@ -46,6 +48,10 @@ export function SurpriseResults({
   /** How the WhatsApp assistance is sold (/admin/settings). */
   assist: AssistOffer;
   whatsappNumber: string;
+  /** "Show me 2 other destinations": the next 2 countries, skipping every one shown so far. */
+  onOther: () => void;
+  /** Set once other destinations were asked for: back to the 2 best matches. */
+  onBest?: () => void;
   onRestart: () => void;
   headingRef: RefObject<HTMLHeadingElement | null>;
 }) {
@@ -77,7 +83,7 @@ export function SurpriseResults({
     <div className="grid gap-6">
       <div className="grid max-w-[820px] gap-3">
         <h2 ref={headingRef} tabIndex={-1} className={headingClass}>
-          {b.resultsTitle}
+          {input.exclude?.length ? b.resultsTitleOther : b.resultsTitle}
         </h2>
         <p className="m-0 text-lg font-bold opacity-85">
           {fmt(b.resultsLead, { travelers, when: whenLabel, budget: formatDT(preview.totalBudgetTND, locale) })}
@@ -97,6 +103,25 @@ export function SurpriseResults({
             payOnline={payOnline} assist={assist}
           />
         ))}
+      </div>
+
+      <div className="grid justify-items-center gap-3 rounded-3xl border-2 border-dashed border-ink/15 bg-white/55 px-5 py-6 text-center">
+        <p className="m-0 text-xl font-black">{preview.more ? b.otherLead : b.otherNone}</p>
+        {preview.more ? (
+          <button
+            type="button"
+            onClick={onOther}
+            className="inline-flex min-h-[52px] cursor-pointer items-center gap-2.5 rounded-full bg-ink px-6 font-black text-cream transition-[transform,filter] duration-200 hover:-translate-y-0.5 hover:brightness-110 motion-reduce:transition-none"
+          >
+            <ShuffleIcon />
+            {b.otherCta}
+          </button>
+        ) : null}
+        {onBest ? (
+          <button type="button" onClick={onBest} className="cursor-pointer p-0 text-sm font-extrabold underline underline-offset-4 hover:no-underline">
+            {b.backToBest}
+          </button>
+        ) : null}
       </div>
 
       <p className="m-0 text-sm opacity-70">{preview.options.some((o) => o.live.flights || o.live.hotels) ? b.estimatedLive : b.estimated}</p>
@@ -375,5 +400,15 @@ export function LoadingStep({ headingRef }: { headingRef: RefObject<HTMLHeadingE
         </div>
       </div>
     </div>
+  );
+}
+
+/** Two crossing arrows: other destinations. */
+function ShuffleIcon() {
+  return (
+    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" aria-hidden className="rtl:-scale-x-100">
+      <path d="M3 7h3.5c2.2 0 3.6 1 4.8 3l1.4 2.4c1.2 2 2.6 3 4.8 3H21M18 12.5l3 2.9-3 3" />
+      <path d="M3 17h3.5c1.4 0 2.5-.4 3.4-1.2M14.3 8.2c.9-.8 2-1.2 3.2-1.2H21M18 4l3 3-3 3" />
+    </svg>
   );
 }

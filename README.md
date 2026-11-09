@@ -122,11 +122,16 @@ Pages and server actions check admin membership on the server, and RLS checks it
 ## Trip plan checkout
 
 "Find my trip", the packs and `/trip`'s "Get my complete trip plan" open the checkout at
-`/trip-request`, in two pages (each a browser history entry, so Back returns to page 1):
+`/trip-request`, one step per screen with the same headings, choice cards, buttons, progress bar and pictures as
+"Find my trip" (shared in `src/components/quiz/controls.tsx`); each step is a browser history entry:
 
-1. **The trip**, answered like "Find my trip" (`TripChoices.tsx`): where (when not already chosen), who
-   (group cards + travelers), when (date or "not sure yet"), how long, total budget, notes.
+1. **The trip** (`TripChoices.tsx`): where (a dropdown of SAFRA's destinations — the active Trip brain countries —
+   when not already chosen) → who (group cards + travelers) → when (date or "not sure yet") and how long → total
+   budget and notes.
 2. **The customer**: name, WhatsApp, governorate and address (required for every order), then payment.
+
+A trip chosen on "Find my trip" skips step 1 (it's already decided) and opens on the details; Back returns to the
+same results (kept in sessionStorage).
 
 - **Cash on delivery**: a delivery company brings the order to the customer’s home, paid in cash (plan price + delivery fee).
 - **Pay online**: D17, Flouci, Wafacash or bank transfer, no API — the checkout shows the account to pay into
@@ -165,6 +170,10 @@ to the previous question.
   (Southeast Asia; `brain_countries.is_featured`, "Focus destination" in /admin/brain) lead: 2 that fit → both; 1 fits →
   it plus the next focus trip if within 20% of the budget, else the best backup that fits; none fits → the closest
   focus trip (with what it needs) plus the best backup that fits (or nearly fits).
+- **"Show me 2 other destinations"** under the results: the next 2 countries, skipping every one already shown
+  (`BrainInput.exclude`), until none are left ("Back to my 2 best matches" returns to the first pair). The skipped
+  countries travel inside the encoded answers, so the checkout and the order rebuild exactly that pair; the admin
+  request card lists them.
 - `src/lib/brain/preview.ts` + `src/app/actions/surprise.ts`: computed on the server; the browser only receives what
   it shows. The money split, hotels, SAFRA's areas, activity names and the plan never leave the server, so removing
   the blur reveals nothing.

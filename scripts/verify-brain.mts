@@ -5,7 +5,8 @@ import { DEFAULT_BRAIN_SETTINGS, localBrainBases, localBrainCountries } from "..
 import { CATEGORIES, seasonOf, suggestTrips, type BrainInput, type BrainResult } from "../src/lib/brain/engine.ts";
 import { adviseTrip, cleanTrip, priceTrip, stopSeason } from "../src/lib/brain/builder.ts";
 import { buildPreview } from "../src/lib/brain/preview.ts";
-import { pickTwo, rankCountries } from "../src/lib/brain/surprise.ts";
+import { decodeInput, encodeInput } from "../src/lib/brain/input.ts";
+import { hasMoreDestinations, pickTwo, rankCountries } from "../src/lib/brain/surprise.ts";
 import { liveFlightTND, parseEurTnd, parseFlightPrice, parseHotelRates, pickTwoLive, searchDates, type LiveDeps } from "../src/lib/live/prices.ts";
 import { buildSnapshot } from "../src/lib/brain/snapshot.ts";
 
@@ -426,6 +427,31 @@ check("more vibes: up to 5, and the new ones lead to places tagged with them", (
   }
   const shopping = pickTwo({ ...couple, vibes: ["Shopping"] }, data);
   assert(shopping.status === "ok" && shopping.picks.every((p) => p.trip.stops.some((s) => data.bases.find((b) => b.slug === s.slug)!.strengths.includes("Shopping"))), "shopping trips include a shopping place");
+});
+
+check("other destinations: the next 2 skip every country shown, until none are left", () => {
+  const seen: string[] = [];
+  let rounds = 0;
+  for (;;) {
+    const input: BrainInput = seen.length ? { ...couple, exclude: [...seen] } : couple;
+    const r = pickTwo(input, data);
+    assert(r.status === "ok", r.status);
+    const countries = r.status === "ok" ? r.picks.map((p) => p.country) : [];
+    assert(countries.length >= 1 && countries.every((c) => !seen.includes(c)), `round ${rounds + 1}: ${countries} vs ${seen}`);
+    // The checkout rebuilds the chosen trip from the same answers: same countries, same trips.
+    assert(JSON.stringify(pickTwo(decodeInput(encodeInput(input))!, data)) === JSON.stringify(r), "rebuilt from the encoded answers");
+    const preview = buildPreview(input, data, "en");
+    seen.push(...countries);
+    rounds++;
+    assert(preview.status === "ok" && preview.more === hasMoreDestinations(input, data, countries), "preview says whether more are left");
+    if (preview.status !== "ok" || !preview.more) break;
+    assert(rounds < 10, "ends");
+  }
+  // Every country that has a trip for these answers, each once (the others have no place in season with these vibes).
+  const possible = rankCountries(couple, data);
+  assert(new Set(seen).size === seen.length && [...seen].sort().join() === [...possible].sort().join(), `every possible country once: ${seen.join(", ")} vs ${possible.join(", ")}`);
+  assert(decodeInput(encodeInput({ ...couple, exclude: ["thailand"] }))?.exclude?.[0] === "thailand", "exclusions survive the URL");
+  assert(decodeInput(encodeInput({ ...couple, exclude: ["<script>"] })) === null, "odd country codes are refused");
 });
 
 for (const [name, fn] of queue) {

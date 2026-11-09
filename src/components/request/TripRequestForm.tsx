@@ -23,7 +23,18 @@ import {
 import { requestMessage, whatsappUrl, type BookingConfig, type TripRequest } from "@/lib/requests";
 import type { TripRequestPrefill } from "@/lib/search-params";
 import { cardClass, chipClass } from "./RequestHeader";
-import { MAX_TRAVELERS, TripChoices, durationLabel, travelersLabel, type TripAnswers } from "./TripChoices";
+import { StepProgress, questionHeading } from "@/components/quiz/controls";
+import {
+  MAX_TRAVELERS,
+  TripChoices,
+  durationLabel,
+  matchDestination,
+  travelersLabel,
+  tripSteps,
+  type DestinationOption,
+  type TripAnswers,
+  type TripStep,
+} from "./TripChoices";
 
 /** The destination being ordered, when it came from the catalog. */
 export interface CheckoutDestination {
@@ -53,7 +64,7 @@ interface PlacedOrder {
   whatsappNumber: string;
 }
 
-type Page = "trip" | "details";
+type Page = TripStep | "details";
 
 /**
  * Trip plan checkout — reached from /trip (destination known) or directly (destination typed in), in two pages:
@@ -69,6 +80,7 @@ export function TripRequestForm({
   destination,
   packTitle,
   brainTrip,
+  destinationOptions,
 }: {
   prefill: TripRequestPrefill;
   booking: BookingConfig;
@@ -78,6 +90,8 @@ export function TripRequestForm({
   packTitle?: string;
   /** Set when the visitor chose a trip on "Find my trip"; the server stores its full breakdown. */
   brainTrip?: BrainCheckoutTrip;
+  /** What "Where do you want to go?" offers: SAFRA's destinations, in the visitor's language. */
+  destinationOptions: DestinationOption[];
 }) {
   const { t, locale } = useI18n();
   const c = t.checkout;
@@ -96,9 +110,12 @@ export function TripRequestForm({
   const [error, setError] = useState<string | null>(null);
   const [placed, setPlaced] = useState<PlacedOrder | null>(null);
 
-  const [page, setPage] = useState<Page>("trip");
+  // A trip chosen on "Find my trip" is already decided: straight to the details and payment.
+  const steps = brainTrip ? [] : tripSteps(askDestination);
+  const [page, setPage] = useState<Page>(steps[0] ?? "details");
   const [trip, setTrip] = useState<TripAnswers>(() => ({
-    destination: prefill.desiredDestination,
+    // A destination from the link is kept only when it's one of SAFRA's (then shown in the visitor's language).
+    destination: matchDestination(prefill.desiredDestination, destinationOptions)?.name ?? "",
     group: "",
     travelers: Math.min(MAX_TRAVELERS, Math.max(1, Number(prefill.travelers) || 2)),
     date: prefill.preferredDate,
@@ -107,11 +124,12 @@ export function TripRequestForm({
     notes: packTitle ? `${fmt(t.request.packChip, { value: packTitle })}\n` : "",
   }));
   const detailsHeading = useRef<HTMLHeadingElement>(null);
+  const stepHeading = useRef<HTMLHeadingElement>(null);
   const firstPage = useRef(true);
 
-  // Page 2 gets its own history entry: the browser's Back (or ours) returns to the trip choices.
+  // Each step is a browser history entry: the browser's Back (or ours) returns to the previous one.
   useEffect(() => {
-    window.history.replaceState({ ...window.history.state, safraCheckout: "trip" }, "");
+    window.history.replaceState({ ...window.history.state, safraCheckout: page }, "");
     const onPop = (event: PopStateEvent) => {
       const target = (event.state as { safraCheckout?: Page } | null)?.safraCheckout;
       if (target) setPage(target);
@@ -126,14 +144,17 @@ export function TripRequestForm({
       return;
     }
     window.scrollTo({ top: 0 });
-    if (page === "details") detailsHeading.current?.focus({ preventScroll: true });
+    (page === "details" ? detailsHeading : stepHeading).current?.focus({ preventScroll: true });
   }, [page]);
 
-  const toDetails = () => {
-    window.history.pushState({ ...window.history.state, safraCheckout: "details" }, "");
-    setPage("details");
+  const stepIndex = page === "details" ? steps.length : steps.indexOf(page);
+  const goNext = () => {
+    const next: Page = steps[stepIndex + 1] ?? "details";
+    window.history.pushState({ ...window.history.state, safraCheckout: next }, "");
+    setPage(next);
   };
-  const toTrip = () => window.history.back();
+  // Back to the previous question — or, from a trip chosen on "Find my trip", back to its results.
+  const goBack = () => window.history.back();
 
   const form = useRequestForm((data) => {
     const typedDestination = askDestination ? trip.destination.trim() : "";
@@ -181,6 +202,23 @@ export function TripRequestForm({
     if (placed) window.scrollTo({ top: 0, behavior: "smooth" });
   }, [placed]);
 
+  // What was chosen before reaching the checkout, as chips under the first heading.
+  const chipTexts = [
+    brainTrip ? t.brain.chip : "",
+    packTitle ? fmt(t.request.packChip, { value: packTitle }) : "",
+    hasSelection ? fmt(t.request.destinationChip, { value: prefill.selectedCountry }) : "",
+    prefill.category ? fmt(t.request.categoryChip, { value: label(t.options.vibes, prefill.category) }) : "",
+  ].filter(Boolean);
+  const chips = chipTexts.length ? (
+    <div className="flex flex-wrap gap-2">
+      {chipTexts.map((text) => (
+        <div key={text} className={chipClass}>
+          {text}
+        </div>
+      ))}
+    </div>
+  ) : null;
+
   const summary = (
     <OrderSummary checkout={checkout} method={method} assistTaken={assistTaken} destination={destination} tripCostTND={brainTrip?.tripCostTND} />
   );
@@ -192,50 +230,41 @@ export function TripRequestForm({
           <OrderConfirmation order={placed} checkout={checkout} />
         ) : (
           <>
-            <Progress page={page} />
+            {steps.length ? <StepProgress current={stepIndex + 1} total={steps.length + 1} /> : null}
 
-            {/* Page 1: the trip. */}
-            <div hidden={page !== "trip"} className="grid gap-[18px]">
-              <header className={cardClass}>
-                <span className="justify-self-start rounded-full bg-orange px-3 py-1.5 text-xs font-black">{c.eyebrow}</span>
-                <h1 className="m-0 text-5xl leading-[1.05] font-black tracking-[-0.03em] @max-[810px]:text-[34px] rtl:leading-[1.3] rtl:tracking-normal">
-                  {c.title}
-                </h1>
-                <p className="m-0 font-bold">{c.tripLead}</p>
-                <div className="flex flex-wrap gap-2">
-                  {brainTrip ? <div className={chipClass}>{t.brain.chip}</div> : null}
-                  {packTitle ? <div className={chipClass}>{fmt(t.request.packChip, { value: packTitle })}</div> : null}
-                  {hasSelection ? <div className={chipClass}>{fmt(t.request.destinationChip, { value: prefill.selectedCountry })}</div> : null}
-                  {prefill.category ? (
-                    <div className={chipClass}>{fmt(t.request.categoryChip, { value: label(t.options.vibes, prefill.category) })}</div>
-                  ) : null}
-                </div>
-              </header>
-            </div>
+            {page !== "details" ? (
+              <TripChoices
+                answers={trip}
+                setAnswers={setTrip}
+                step={page}
+                isFirst={stepIndex === 0}
+                isLast={stepIndex === steps.length - 1}
+                destinationRequired={askDestination && !hasSelection}
+                destinations={destinationOptions}
+                chips={chips}
+                onNext={goNext}
+                onBack={goBack}
+                headingRef={stepHeading}
+              />
+            ) : null}
 
-            <div className="grid grid-cols-[minmax(0,1.5fr)_minmax(300px,1fr)] items-start gap-[18px] @max-[880px]:grid-cols-1">
+            {/* Last step: who the visitor is, where they live, how they pay. Kept mounted so typed details survive going back. */}
+            <div hidden={page !== "details"} className="grid grid-cols-[minmax(0,1.5fr)_minmax(300px,1fr)] items-start gap-[18px] @max-[880px]:grid-cols-1">
               <div className="grid min-w-0 gap-[18px]">
-                <div hidden={page !== "trip"}>
-                  <TripChoices
-                    answers={trip}
-                    setAnswers={setTrip}
-                    askDestination={askDestination}
-                    destinationRequired={askDestination && !hasSelection}
-                    onNext={toDetails}
-                  />
-                </div>
-
-                {/* Page 2: who the visitor is, where they live, how they pay. Kept mounted so typed details survive a trip back to page 1. */}
-                <form {...form} hidden={page !== "details"} className="grid min-w-0 gap-[18px]">
-                  <div className="grid gap-2">
-                    <button type="button" onClick={toTrip} className="cursor-pointer justify-self-start p-0 font-extrabold">
-                      {t.quiz.back}
-                    </button>
+                <form {...form} className="grid min-w-0 gap-[18px]">
+                  <div className="grid gap-3">
+                    {steps.length || brainTrip ? (
+                      <button type="button" onClick={goBack} className="cursor-pointer justify-self-start p-0 font-extrabold">
+                        {t.quiz.back}
+                      </button>
+                    ) : null}
+                    <h1 className={`${questionHeading} @min-[811px]:text-[48px]`}>{c.title}</h1>
+                    {brainTrip ? chips : null}
                     <TripRecap
                       trip={trip}
                       destination={brainTrip?.countryName ?? (trip.destination.trim() || prefill.selectedCountry)}
                       itinerary={brainTrip?.itinerary}
-                      onEdit={toTrip}
+                      onEdit={goBack}
                     />
                   </div>
 
@@ -344,22 +373,7 @@ export function TripRequestForm({
 /** Brand names stay as they are; "Bank transfer" is translated. */
 const methodName = (m: OnlineMethod, t: Messages) => (m === "bank" ? t.checkout.bankTransfer : METHOD_NAME[m]);
 
-/** "01/02" with two bars, like the "Find my trip" questions. */
-function Progress({ page }: { page: Page }) {
-  const n = page === "trip" ? 1 : 2;
-  return (
-    <div className="flex items-center justify-between">
-      <div className="text-[15px] font-extrabold tabular-nums">{String(n).padStart(2, "0")}/02</div>
-      <div className="flex w-[120px] gap-1.5" aria-hidden>
-        {[1, 2].map((i) => (
-          <span key={i} className={`h-1 flex-1 rounded-full transition-colors ${i <= n ? "bg-orange" : "bg-[#D2D8CF]"}`} />
-        ))}
-      </div>
-    </div>
-  );
-}
-
-/** Page 2's reminder of the trip chosen on page 1, with a way back to change it. */
+/** The last step's reminder of the trip, with a way back to change it. */
 function TripRecap({ trip, destination, itinerary, onEdit }: { trip: TripAnswers; destination: string; itinerary?: string; onEdit: () => void }) {
   const { t, locale } = useI18n();
   const c = t.checkout;

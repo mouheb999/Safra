@@ -12,5 +12,5 @@ export async function surpriseMe(answers: unknown, locale: string): Promise<Surp
   const input = parseBrainInput(answers);
   if (!input) return { status: "need_info" };
   const { result, data, live } = await pickTwoWithLivePrices(input);
-  return previewFromPicks(result, data, isLocale(locale) ? locale : "en", live);
+  return previewFromPicks(input, result, data, isLocale(locale) ? locale : "en", live);
 }
