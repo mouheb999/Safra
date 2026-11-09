@@ -180,7 +180,7 @@ export const getSiteSettings = cache(
         whatsappNumber: data.whatsapp_number,
         planPriceDT: data.plan_price_dt ?? DEFAULT_PLAN_PRICE_DT,
         deliveryFeeDT: data.delivery_fee_dt ?? DEFAULT_DELIVERY_FEE_DT,
-        // `?? defaults`: the columns arrive with migration 20261109120000_checkout_address_assist.
+        // `?? defaults`: the columns arrive with migration 20261109182832_checkout_address_assist.
         assist: {
           mode: data.assist_mode === "addon" ? "addon" : "included",
           priceDT: data.assist_price_dt ?? DEFAULT_ASSIST.priceDT,

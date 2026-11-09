@@ -61,9 +61,14 @@ function candidate(input: BrainInput, countryCode: string, data: BuilderData): C
   };
 }
 
-/** Every country's best trip for these answers, best first: the ones that fit, by score, then the closest. */
+/**
+ * Every country's best trip for these answers, best first: the ones that fit, by score, then the closest.
+ * Countries the visitor asked to replace (`input.exclude`) are left out.
+ */
 function rankCandidates(input: BrainInput, data: BuilderData): Candidate[] {
+  const skip = new Set(input.exclude ?? []);
   return [...data.countries]
+    .filter((c) => !skip.has(c.code))
     .sort((a, b) => a.sortOrder - b.sortOrder)
     .map((c) => candidate(input, c.code, data))
     .filter((c): c is Candidate => c !== null)
@@ -104,6 +109,11 @@ export function rankCountries(input: BrainInput, data: BuilderData): string[] {
   const chosen = chooseTwo(ranked, featured, totalBudget(input)).map((c) => c.country);
   const rest = [...ranked.filter((c) => featured.has(c.country)), ...ranked.filter((c) => !featured.has(c.country))].map((c) => c.country);
   return [...new Set([...chosen, ...rest])];
+}
+
+/** Whether "Show me 2 other destinations" has anything left once these countries are skipped too. */
+export function hasMoreDestinations(input: BrainInput, data: BuilderData, shown: string[]): boolean {
+  return rankCandidates({ ...input, exclude: [...(input.exclude ?? []), ...shown] }, data).length > 0;
 }
 
 export function pickTwo(input: BrainInput, data: BuilderData): PickResult {

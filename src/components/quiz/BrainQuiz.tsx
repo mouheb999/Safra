@@ -72,6 +72,9 @@ function toInput(a: Answers): BrainInput {
   };
 }
 
+/** The answers, plus the countries to skip when there are any (kept out of the encoded answers otherwise). */
+const withExclude = (input: BrainInput, exclude: string[]): BrainInput => (exclude.length ? { ...input, exclude } : input);
+
 /**
  * "Find my trip": four quick questions (budget, when, who, vibe), then the trip builder — the visitor picks a
  * country and shapes their own trip while the brain prices it live and advises (src/lib/brain/builder.ts).
@@ -112,7 +115,9 @@ export function BrainQuiz({
   const [, startTransition] = useTransition();
   // Only the latest request may show its result (the visitor can go back while it loads).
   const requestId = useRef(0);
-  const input = useMemo(() => toInput(answers), [answers]);
+  // Countries already shown and replaced with "Show me 2 other destinations" (reset by a new run from the questions).
+  const [exclude, setExclude] = useState<string[]>([]);
+  const input = useMemo(() => withExclude(toInput(answers), exclude), [answers, exclude]);
   const headingRef = useRef<HTMLHeadingElement>(null);
   const firstRender = useRef(true);
 
@@ -177,16 +182,20 @@ export function BrainQuiz({
   const isQuestion = index !== -1;
   const progress = isQuestion ? index + 1 : STEPS.length + 1;
   const goBack = () => window.history.back();
-  /** The results get their own history entry; the loading screen shows under it. */
-  const run = () => {
+  /**
+   * The results get their own history entry; the loading screen shows under it. `skip`: countries to leave out
+   * ("Show me 2 other destinations"); those reruns replace the results in place, so Back still returns to the questions.
+   */
+  const run = (skip: string[] = [], newEntry = true) => {
     const id = ++requestId.current;
     const started = Date.now();
-    window.history.pushState({ ...window.history.state, safraStep: "Results" }, "");
+    if (newEntry) window.history.pushState({ ...window.history.state, safraStep: "Results" }, "");
+    setExclude(skip);
     setStep("Loading");
     startTransition(async () => {
       let result: SurprisePreview | null = null;
       try {
-        result = await surpriseMe(toInput(answers), locale);
+        result = await surpriseMe(withExclude(toInput(answers), skip), locale);
       } catch {
         // shown as the error state
       }
@@ -197,6 +206,9 @@ export function BrainQuiz({
     });
   };
   const goNext = () => (index < STEPS.length - 1 ? go(STEPS[index + 1]) : run());
+  const showOthers = () => {
+    if (preview?.status === "ok") run([...exclude, ...preview.options.map((o) => o.country)], false);
+  };
 
   const visualStep: QuestionStep = isQuestion ? (step as QuestionStep) : "Budget";
   const visual = { ...VISUALS[visualStep], ...t.brain.visuals[visualStep] };
@@ -297,6 +309,8 @@ export function BrainQuiz({
               payOnline={payOnline}
               assist={assist}
               whatsappNumber={whatsappNumber}
+              onOther={showOthers}
+              onBest={exclude.length ? () => run([], false) : undefined}
               onRestart={() => {
                 setAnswers((a) => ({ ...a, depart: "", ret: "", month: null, group: "", vibes: [], children: 0, childAges: [] }));
                 go("Budget");

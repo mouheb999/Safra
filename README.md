@@ -165,6 +165,10 @@ to the previous question.
   (Southeast Asia; `brain_countries.is_featured`, "Focus destination" in /admin/brain) lead: 2 that fit → both; 1 fits →
   it plus the next focus trip if within 20% of the budget, else the best backup that fits; none fits → the closest
   focus trip (with what it needs) plus the best backup that fits (or nearly fits).
+- **"Show me 2 other destinations"** under the results: the next 2 countries, skipping every one already shown
+  (`BrainInput.exclude`), until none are left ("Back to my 2 best matches" returns to the first pair). The skipped
+  countries travel inside the encoded answers, so the checkout and the order rebuild exactly that pair; the admin
+  request card lists them.
 - `src/lib/brain/preview.ts` + `src/app/actions/surprise.ts`: computed on the server; the browser only receives what
   it shows. The money split, hotels, SAFRA's areas, activity names and the plan never leave the server, so removing
   the blur reveals nothing.
