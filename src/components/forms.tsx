@@ -21,8 +21,10 @@ export const primaryButtonClass =
   "justify-self-start rounded-full bg-orange px-[18px] py-3 font-black text-ink hover:brightness-95 cursor-pointer";
 
 export function Field({ label, hint, children }: { label: ReactNode; hint?: ReactNode; children: ReactNode }) {
+  // One shrinkable column: without it, iPhone Safari sizes the column to a date input's wide built-in
+  // minimum and the field spills out of its grid cell (off the screen on phones).
   return (
-    <label className="grid gap-1.5 font-bold">
+    <label className="grid min-w-0 grid-cols-[minmax(0,1fr)] gap-1.5 font-bold">
       {label}
       {children}
       {hint ? <span className="text-xs font-semibold opacity-85">{hint}</span> : null}

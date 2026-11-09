@@ -49,7 +49,28 @@ export interface LiveDeps {
   now(): Date;
 }
 
-/** What was live in a result (shown to the visitor, stored with the order). */
+/** Where a live flight price came from: the day's Google Flights search, for SAFRA to open when the order comes in. */
+export interface FlightLink {
+  url: string;
+  /** Round trip per person, TND (before the card fee). */
+  priceTND: number;
+  airline: string | null;
+  depart: string;
+  ret: string;
+}
+
+/** Where a place's live hotel rates came from: the day's Google Hotels search, and a hotel at each rate used. */
+export interface HotelLink {
+  url: string;
+  checkIn: string;
+  checkOut: string;
+  examples: { stay: StayType; name: string; nightTND: number; url: string | null }[];
+}
+
+/**
+ * What was live in a result. Only the yes/no flags reach the visitor (src/lib/brain/preview.ts); the links are
+ * stored with the order for SAFRA (src/lib/brain/snapshot.ts) and never sent to the browser.
+ */
 export interface LiveInfo {
   /** Countries whose flight price is live. */
   flights: string[];
@@ -57,9 +78,13 @@ export interface LiveInfo {
   hotels: string[];
   eurTnd: number | null;
   checkedAt: string | null;
+  /** By country code. */
+  flightLinks: Record<string, FlightLink>;
+  /** By base slug. */
+  hotelLinks: Record<string, HotelLink>;
 }
 
-export const NO_LIVE: LiveInfo = { flights: [], hotels: [], eurTnd: null, checkedAt: null };
+export const NO_LIVE: LiveInfo = { flights: [], hotels: [], eurTnd: null, checkedAt: null, flightLinks: {}, hotelLinks: {} };
 
 // ---- Dates ------------------------------------------------------------------------------------
 
@@ -99,8 +124,23 @@ export function parseFlightPrice(json: unknown): number | null {
   return prices.length ? Math.min(...prices) : null;
 }
 
-const percentile = (xs: number[], p: number) => {
-  const s = [...xs].sort((a, b) => a - b);
+/** The airline of the cheapest itinerary, when the response names it. */
+function cheapestAirline(json: unknown): string | null {
+  const j = (json ?? {}) as Record<string, unknown>;
+  const offers = [...arr(j.best_flights), ...arr(j.other_flights)].filter((f) => num(f.price) !== null);
+  offers.sort((a, b) => num(a.price)! - num(b.price)!);
+  const airlines = [...new Set(arr(offers[0]?.flights).map((leg) => leg.airline).filter((a): a is string => typeof a === "string"))];
+  return airlines.length ? airlines.join(" + ") : null;
+}
+
+/** A Google link from SerpApi's search metadata (only Google's own pages: never a SerpApi URL). */
+function googleUrl(json: unknown, field: "google_flights_url" | "google_hotels_url"): string | null {
+  const url = ((json ?? {}) as { search_metadata?: Record<string, unknown> }).search_metadata?.[field];
+  return typeof url === "string" && /^https:\/\/www\.google\.[a-z.]+\//.test(url) ? url : null;
+}
+
+const percentile = <T extends { rate: number }>(xs: T[], p: number): T => {
+  const s = [...xs].sort((a, b) => a.rate - b.rate);
   return s[Math.min(s.length - 1, Math.max(0, Math.round((s.length - 1) * p)))];
 };
 
@@ -109,18 +149,31 @@ const percentile = (xs: number[], p: number) => {
  * 1–3 star hotels, a good hotel the middle of 4–5 star ones. Needs at least 3 hotels per level.
  */
 export function parseHotelRates(json: unknown): Partial<Record<StayType, number>> {
+  return Object.fromEntries(Object.entries(parseHotelOffers(json)).map(([stay, h]) => [stay, h.rate]));
+}
+
+interface HotelOffer {
+  rate: number;
+  stars: number | null;
+  name: string;
+  url: string | null;
+}
+
+/** parseHotelRates, plus the hotel each rate comes from (its name and website, for SAFRA). */
+export function parseHotelOffers(json: unknown): Partial<Record<StayType, HotelOffer>> {
   const j = (json ?? {}) as Record<string, unknown>;
   const hotels = arr(j.properties)
     .filter((p) => typeof p.type !== "string" || /hotel/i.test(p.type))
     .map((p) => {
       const rate = (p.rate_per_night ?? {}) as Record<string, unknown>;
       const stars = num(p.extracted_hotel_class) ?? num(p.hotel_class);
-      return { rate: num(rate.extracted_lowest) ?? num(rate.lowest), stars };
+      const link = typeof p.link === "string" && /^https?:\/\//.test(p.link) ? p.link : null;
+      return { rate: num(rate.extracted_lowest) ?? num(rate.lowest), stars, name: typeof p.name === "string" ? p.name : "", url: link };
     })
-    .filter((h): h is { rate: number; stars: number | null } => h.rate !== null);
-  const out: Partial<Record<StayType, number>> = {};
-  const budget = hotels.filter((h) => h.stars === null || h.stars <= 3).map((h) => h.rate);
-  const good = hotels.filter((h) => h.stars !== null && h.stars >= 4).map((h) => h.rate);
+    .filter((h): h is HotelOffer => h.rate !== null);
+  const out: Partial<Record<StayType, HotelOffer>> = {};
+  const budget = hotels.filter((h) => h.stars === null || h.stars <= 3);
+  const good = hotels.filter((h) => h.stars !== null && h.stars >= 4);
   if (budget.length >= 3) out.budget_hotel = percentile(budget, 0.3);
   if (good.length >= 3) out.good_hotel = percentile(good, 0.5);
   return out;
@@ -203,10 +256,26 @@ export const saneFlightTND = (eur: number | null, fx: number) => {
 
 /** Round-trip flight from Tunis per person, TND (before the card fee, like SAFRA's table). */
 export async function liveFlightTND(country: BrainCountry, dates: { depart: string; ret: string }, fx: number, settings: LiveSettings, deps: LiveDeps) {
+  return (await liveFlight(country, dates, fx, settings, deps))?.priceTND ?? null;
+}
+
+/** liveFlightTND, with the Google Flights link it came from. */
+export async function liveFlight(
+  country: BrainCountry,
+  dates: { depart: string; ret: string },
+  fx: number,
+  settings: LiveSettings,
+  deps: LiveDeps,
+): Promise<FlightLink | null> {
   const search = flightSearch(country, dates, deps.apiKey);
   if (!search) return null;
   const hit = await cachedSearch(search.key, "flight", search.url, settings, deps);
-  return saneFlightTND(hit ? parseFlightPrice(hit.value) : null, fx);
+  const priceTND = saneFlightTND(hit ? parseFlightPrice(hit.value) : null, fx);
+  if (!hit || priceTND === null) return null;
+  const fallback = `https://www.google.com/travel/flights?hl=en&q=${encodeURIComponent(
+    `Flights from ${ORIGIN_AIRPORT} to ${search.airport} on ${dates.depart} through ${dates.ret}`,
+  )}`;
+  return { url: googleUrl(hit.value, "google_flights_url") ?? fallback, priceTND, airline: cheapestAirline(hit.value), ...dates };
 }
 
 /** Nightly room rates for one place, TND, by hotel level (only the levels that could be measured). */
@@ -218,20 +287,35 @@ export async function liveHotelTND(
   settings: LiveSettings,
   deps: LiveDeps,
 ): Promise<Partial<Record<StayType, number>>> {
-  if (!deps.apiKey) return {};
+  return (await liveHotel(base, countryName, stay, fx, settings, deps)).rates;
+}
+
+/** liveHotelTND, with the Google Hotels link and a hotel at each rate (link null when nothing was measured). */
+export async function liveHotel(
+  base: BrainBase,
+  countryName: string,
+  stay: { checkIn: string; checkOut: string },
+  fx: number,
+  settings: LiveSettings,
+  deps: LiveDeps,
+): Promise<{ rates: Partial<Record<StayType, number>>; link: HotelLink | null }> {
+  if (!deps.apiKey) return { rates: {}, link: null };
+  const query = `hotels in ${base.place}, ${countryName}`;
   const key = `hotel:${base.slug}:${stay.checkIn}:${stay.checkOut}`;
-  const url = serpUrl(
-    { engine: "google_hotels", q: `hotels in ${base.place}, ${countryName}`, check_in_date: stay.checkIn, check_out_date: stay.checkOut, adults: "2" },
-    deps.apiKey,
-  );
+  const url = serpUrl({ engine: "google_hotels", q: query, check_in_date: stay.checkIn, check_out_date: stay.checkOut, adults: "2" }, deps.apiKey);
   const hit = await cachedSearch(key, "hotel", url, settings, deps);
-  const rates = hit ? parseHotelRates(hit.value) : {};
-  const out: Partial<Record<StayType, number>> = {};
-  for (const [stayType, eur] of Object.entries(rates) as [StayType, number][]) {
-    const tnd = Math.round(eur * fx);
-    if (tnd >= 30 && tnd <= 5000) out[stayType] = tnd;
+  const offers = hit ? parseHotelOffers(hit.value) : {};
+  const rates: Partial<Record<StayType, number>> = {};
+  const examples: HotelLink["examples"] = [];
+  for (const [stayType, offer] of Object.entries(offers) as [StayType, HotelOffer][]) {
+    const tnd = Math.round(offer.rate * fx);
+    if (tnd < 30 || tnd > 5000) continue;
+    rates[stayType] = tnd;
+    if (offer.name) examples.push({ stay: stayType, name: offer.name, nightTND: tnd, url: offer.url });
   }
-  return out;
+  if (!hit || Object.keys(rates).length === 0) return { rates, link: null };
+  const fallback = `https://www.google.com/travel/search?hl=en&q=${encodeURIComponent(query)}`;
+  return { rates, link: { url: googleUrl(hit.value, "google_hotels_url") ?? fallback, ...stay, examples } };
 }
 
 // ---- Picking with live prices ---------------------------------------------------------------------
@@ -257,11 +341,11 @@ export async function pickTwoLive(input: BrainInput, data: BuilderData, settings
   const fx = await eurToTnd(settings, deps);
   const shortlist = new Set(rankCountries(input, data).slice(0, LIVE_FLIGHT_COUNTRIES));
   const flights = await Promise.all(
-    data.countries.map((c) => (shortlist.has(c.code) ? liveFlightTND(c, dates, fx, settings, deps).catch(() => null) : Promise.resolve(null))),
+    data.countries.map((c) => (shortlist.has(c.code) ? liveFlight(c, dates, fx, settings, deps).catch(() => null) : Promise.resolve(null))),
   );
   const withFlights: BuilderData = {
     ...data,
-    countries: data.countries.map((c, i) => (flights[i] ? { ...c, flightTND: flights[i]! } : c)),
+    countries: data.countries.map((c, i) => (flights[i] ? { ...c, flightTND: flights[i]!.priceTND } : c)),
   };
   const result = pickTwo(input, withFlights);
   if (result.status !== "ok") return offline;
@@ -279,10 +363,11 @@ export async function pickTwoLive(input: BrainInput, data: BuilderData, settings
     stays.map((s) => {
       const base = data.bases.find((b) => b.slug === s.slug)!;
       const country = data.countries.find((c) => c.code === s.country)!;
-      return liveHotelTND(base, country.name, s, fx, settings, deps).catch(() => ({}));
+      return liveHotel(base, country.name, s, fx, settings, deps).catch(() => ({ rates: {}, link: null }));
     }),
   );
-  const liveRates = new Map(stays.map((s, i) => [s.slug, rates[i]] as const).filter(([, r]) => Object.keys(r).length > 0));
+  const liveRates = new Map(stays.map((s, i) => [s.slug, rates[i].rates] as const).filter(([, r]) => Object.keys(r).length > 0));
+  const hotelLinks = Object.fromEntries(stays.flatMap((s, i) => (rates[i].link ? [[s.slug, rates[i].link!] as const] : [])));
   const priced: BuilderData = {
     ...withFlights,
     bases: withFlights.bases.map((b) => (liveRates.has(b.slug) ? { ...b, stayTND: { ...b.stayTND, ...liveRates.get(b.slug) } } : b)),
@@ -302,6 +387,8 @@ export async function pickTwoLive(input: BrainInput, data: BuilderData, settings
       hotels: [...liveRates.keys()],
       eurTnd: liveFlights.length || liveRates.size ? fx : null,
       checkedAt: liveFlights.length || liveRates.size ? deps.now().toISOString() : null,
+      flightLinks: Object.fromEntries(data.countries.flatMap((c, i) => (flights[i] ? [[c.code, flights[i]!] as const] : []))),
+      hotelLinks,
     },
   };
 }

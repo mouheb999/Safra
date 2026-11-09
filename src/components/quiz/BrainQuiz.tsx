@@ -1,5 +1,6 @@
 "use client";
 
+import type { AssistOffer } from "@/lib/payments";
 import Image from "next/image";
 import { useEffect, useMemo, useRef, useState, useTransition } from "react";
 import { surpriseMe } from "@/app/actions/surprise";
@@ -79,12 +80,15 @@ export function BrainQuiz({
   prefill,
   planPriceDT,
   payOnline,
+  assist,
   whatsappNumber,
 }: {
   prefill: QuizPrefill;
   planPriceDT: number;
   /** An online payment account is set in /admin/settings (otherwise cash on delivery only). */
   payOnline: boolean;
+  /** How the WhatsApp assistance is sold (/admin/settings). */
+  assist: AssistOffer;
   whatsappNumber: string;
 }) {
   const { t, locale } = useI18n();
@@ -291,6 +295,7 @@ export function BrainQuiz({
               whenLabel={whenText(answers, locale)}
               planPriceDT={planPriceDT}
               payOnline={payOnline}
+              assist={assist}
               whatsappNumber={whatsappNumber}
               onRestart={() => {
                 setAnswers((a) => ({ ...a, depart: "", ret: "", month: null, group: "", vibes: [], children: 0, childAges: [] }));

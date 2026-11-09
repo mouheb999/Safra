@@ -7,7 +7,7 @@ import { activitiesFor, adviseTrip, cleanTrip, priceTrip, stopSeason, type Build
 import type { BrainInput } from "./engine.ts";
 import type { EncodedBuild } from "./input.ts";
 import type { Budget } from "./pricing.ts";
-import { NO_LIVE, type LiveInfo } from "../live/prices.ts";
+import { NO_LIVE, type FlightLink, type HotelLink, type LiveInfo } from "../live/prices.ts";
 
 export const BRAIN_SNAPSHOT_KIND = "trip_brain";
 
@@ -40,7 +40,16 @@ export interface TripBrainSnapshot {
   /** True unless the flights and every stay's hotel prices were the day's live prices. */
   estimated: boolean;
   /** Which prices were live (SerpApi) when the customer ordered. Missing on orders placed before live prices. */
-  live?: { flights: boolean; hotels: string[]; eurTnd: number | null; checkedAt: string | null };
+  live?: {
+    flights: boolean;
+    hotels: string[];
+    eurTnd: number | null;
+    checkedAt: string | null;
+    /** The day's Google Flights search behind the live flight price (orders placed before links: missing). */
+    flightLink?: FlightLink | null;
+    /** The day's Google Hotels search behind each live stay price, by base slug. */
+    hotelLinks?: Record<string, HotelLink>;
+  };
   computedAt: string;
 }
 
@@ -84,6 +93,8 @@ export function buildSnapshot(build: EncodedBuild, data: BuilderData, now = new 
       hotels: trip.stops.map((s) => s.slug).filter((slug) => liveInfo.hotels.includes(slug)),
       eurTnd: liveInfo.eurTnd,
       checkedAt: liveInfo.checkedAt,
+      flightLink: liveInfo.flightLinks[trip.country] ?? null,
+      hotelLinks: Object.fromEntries(trip.stops.flatMap((s) => (liveInfo.hotelLinks[s.slug] ? [[s.slug, liveInfo.hotelLinks[s.slug]] as const] : []))),
     },
     computedAt: now.toISOString(),
   };

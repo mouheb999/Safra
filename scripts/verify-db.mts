@@ -423,9 +423,12 @@ await check("prices sent by the browser are ignored", async () => {
   assertEqual(r.total_dt, 86);
 });
 
-await check("cash on delivery needs a governorate and an address", async () => {
+await check("every order needs a governorate and an address", async () => {
   await expectError(as("service_role", () => submit(order("cod", { governorate: "Sousse", address: "  " }))), /Delivery address is required/);
   await expectError(as("service_role", () => submit(order("cod", { address: "12 Rue" }))), /Delivery address is required/);
+  await rows(`update site_settings set d17_number = '+216 20 000 000' where id = 1`);
+  await expectError(as("service_role", () => submit(order("d17"))), /Delivery address is required/);
+  await rows(`update site_settings set d17_number = '' where id = 1`);
 });
 
 await check("online methods are refused until their account details are set", async () => {
@@ -434,13 +437,30 @@ await check("online methods are refused until their account details are set", as
   await expectError(as("service_role", () => submit(order("paypal"))), /payment method is not available/);
 });
 
-await check("online payment: no delivery fee, no address kept", async () => {
+await check("online payment: no delivery fee, the address is kept", async () => {
   await rows(`update site_settings set d17_number = '+216 20 000 000', plan_price_dt = 120 where id = 1`);
-  const [r] = await as("service_role", () => submit(order("d17", { governorate: "Tunis", address: "ignored" })));
+  const [r] = await as("service_role", () => submit(order("d17", { governorate: "Tunis", address: " 5 Rue de Marseille " })));
   assertEqual([r.plan_price_dt, r.delivery_fee_dt, r.total_dt], [120, 0, 120]);
   const [row] = await rows(`select delivery_governorate, delivery_address from requests where id = $1`, [r.id]);
-  assertEqual(row, { delivery_governorate: null, delivery_address: null });
+  assertEqual(row, { delivery_governorate: "Tunis", delivery_address: "5 Rue de Marseille" });
   await rows(`update site_settings set d17_number = '', plan_price_dt = 79 where id = 1`);
+});
+
+await check("WhatsApp assistance: included by default, or a paid add-on priced from the settings", async () => {
+  const [inc] = await as("service_role", () => submit(cod));
+  const [incRow] = await rows(`select assist, assist_dt, total_dt from requests where id = $1`, [inc.id]);
+  assertEqual(incRow, { assist: "included", assist_dt: 0, total_dt: 86 });
+
+  await rows(`update site_settings set assist_mode = 'addon', assist_price_dt = 49 where id = 1`);
+  const [added] = await as("service_role", () => submit({ ...cod, assistance: true, assistDT: "1" }));
+  assertEqual([added.total_dt], [86 + 49]);
+  const [addedRow] = await rows(`select assist, assist_dt from requests where id = $1`, [added.id]);
+  assertEqual(addedRow, { assist: "added", assist_dt: 49 });
+  const [declined] = await as("service_role", () => submit(cod));
+  const [declinedRow] = await rows(`select assist, assist_dt, total_dt from requests where id = $1`, [declined.id]);
+  assertEqual(declinedRow, { assist: "declined", assist_dt: 0, total_dt: 86 });
+  await expectError(rows(`update site_settings set assist_mode = 'sometimes' where id = 1`), /check constraint/);
+  await rows(`update site_settings set assist_mode = 'included' where id = 1`);
 });
 
 await check("only trip plans can be ordered", async () => {

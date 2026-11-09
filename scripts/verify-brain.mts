@@ -283,10 +283,16 @@ check("builder: an order is re-priced on the server and ignores unknown places o
 
 // ---- Live prices (SerpApi), with fake responses ------------------------------------------------------
 const liveSettings = { enabled: true, monthlyLimit: 100, fallbackEurTnd: 3.4 };
-const flightJson = (eur: number) => ({ best_flights: [{ price: eur + 40 }], other_flights: [{ price: eur }, { price: eur + 90 }], price_insights: { lowest_price: eur + 10 } });
+const flightJson = (eur: number) => ({
+  search_metadata: { google_flights_url: "https://www.google.com/travel/flights?hl=en&tfs=TEST", json_endpoint: "https://serpapi.com/searches/x.json" },
+  best_flights: [{ price: eur + 40, flights: [{ airline: "Turkish Airlines" }] }],
+  other_flights: [{ price: eur, flights: [{ airline: "Qatar Airways" }, { airline: "Qatar Airways" }] }, { price: eur + 90 }],
+  price_insights: { lowest_price: eur + 10 },
+});
 const hotelJson = {
+  search_metadata: { google_hotels_url: "https://serpapi.com/not-google" },
   properties: [
-    ...[30, 34, 38, 45, 60].map((r) => ({ type: "hotel", extracted_hotel_class: 3, rate_per_night: { extracted_lowest: r } })),
+    ...[30, 34, 38, 45, 60].map((r) => ({ type: "hotel", name: `Inn ${r}`, link: `https://inn${r}.example`, extracted_hotel_class: 3, rate_per_night: { extracted_lowest: r } })),
     ...[80, 95, 110].map((r) => ({ type: "hotel", extracted_hotel_class: 4, rate_per_night: { lowest: `€${r}` } })),
     { type: "vacation rental", rate_per_night: { extracted_lowest: 5 } },
   ],
@@ -358,6 +364,15 @@ check("live: the day's flights decide the picks, hotels re-price them, and both 
     const again = priceTrip(couple, p.trip, r.data)!;
     assert(again.tripCostTND === p.priced.tripCostTND, "picks priced with the returned data");
   }
+  // The links behind the prices, for SAFRA: Google's own pages only, never a SerpApi URL (it could carry the key).
+  const fl = r.live.flightLinks.malaysia;
+  assert(fl?.url === "https://www.google.com/travel/flights?hl=en&tfs=TEST" && fl.priceTND === Math.round(500 * 3.3) && fl.airline === "Qatar Airways", JSON.stringify(fl));
+  const slug = r.result.status === "ok" ? r.result.picks[0].trip.stops[0].slug : "";
+  const hl = r.live.hotelLinks[slug];
+  assert(hl?.url.startsWith("https://www.google.com/travel/search?") && !hl.url.includes("serpapi"), `hotel link ${hl?.url}`);
+  const budgetEx = hl.examples.find((e) => e.stay === "budget_hotel");
+  assert(budgetEx?.name === "Inn 34" && budgetEx.url === "https://inn34.example" && budgetEx.nightTND === Math.round(34 * 3.3), JSON.stringify(hl.examples));
+  assert(!JSON.stringify(r.live).includes("test-key"), "no API key in what's stored");
   const searches = f.serpCalls().length;
   const second = await pickTwoLive(couple, data, liveSettings, f.deps);
   assert(f.serpCalls().length === searches, `second visitor costs no searches (${f.serpCalls().length - searches} more)`);
@@ -400,6 +415,17 @@ check("live: a failing service never breaks the picks", async () => {
   const r = await pickTwoLive(couple, data, liveSettings, f.deps);
   assert(r.result.status === "ok" && r.live.flights.length === 0 && r.live.hotels.length === 0, JSON.stringify(r.live));
   assert(JSON.stringify(r.result) === JSON.stringify(pickTwo(couple, data)), "same as estimates");
+});
+
+check("more vibes: up to 5, and the new ones lead to places tagged with them", () => {
+  const five: BrainInput = { ...couple, vibes: ["Islands", "Diving", "Romance", "Relaxation", "Wellness"] };
+  const r = pickTwo(five, data);
+  assert(r.status === "ok" && r.picks.length === 2, r.status);
+  for (const p of r.status === "ok" ? r.picks : []) {
+    assert(p.vibesMatched.some((v) => ["Islands", "Diving"].includes(v)), `${p.country} matches ${p.vibesMatched.join(", ")}`);
+  }
+  const shopping = pickTwo({ ...couple, vibes: ["Shopping"] }, data);
+  assert(shopping.status === "ok" && shopping.picks.every((p) => p.trip.stops.some((s) => data.bases.find((b) => b.slug === s.slug)!.strengths.includes("Shopping"))), "shopping trips include a shopping place");
 });
 
 for (const [name, fn] of queue) {

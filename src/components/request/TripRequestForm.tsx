@@ -1,10 +1,10 @@
 "use client";
 
 import Image from "next/image";
-import { useCallback, useEffect, useState, useTransition, type ReactNode } from "react";
+import { useCallback, useEffect, useRef, useState, useTransition, type ReactNode } from "react";
 import { submitRequest } from "@/app/actions/submit-request";
 import { Field, FormError, HONEYPOT_FIELD, Honeypot, inputClass, str, useRequestForm } from "@/components/forms";
-import { WhatsAppIcon } from "@/components/icons";
+import { AssistJourney, AssistLine, AssistToggle } from "@/components/AssistJourney";
 import { useI18n } from "@/i18n/client";
 import { fmt, label } from "@/i18n/fmt";
 import type { Messages } from "@/i18n/messages/en";
@@ -23,6 +23,7 @@ import {
 import { requestMessage, whatsappUrl, type BookingConfig, type TripRequest } from "@/lib/requests";
 import type { TripRequestPrefill } from "@/lib/search-params";
 import { cardClass, chipClass } from "./RequestHeader";
+import { MAX_TRAVELERS, TripChoices, durationLabel, travelersLabel, type TripAnswers } from "./TripChoices";
 
 /** The destination being ordered, when it came from the catalog. */
 export interface CheckoutDestination {
@@ -52,10 +53,14 @@ interface PlacedOrder {
   whatsappNumber: string;
 }
 
+type Page = "trip" | "details";
+
 /**
- * Trip plan checkout — reached from /trip (destination known) or directly (destination typed in).
- * The visitor describes the trip, then pays on delivery (printed plan, +delivery fee) or online
- * (D17 / Flouci / Wafacash / bank transfer, receipt sent on WhatsApp). Prices come from /admin/settings.
+ * Trip plan checkout — reached from /trip (destination known) or directly (destination typed in), in two pages:
+ * 1. the trip, answered with choice cards like "Find my trip" (TripChoices);
+ * 2. the visitor's details (name, WhatsApp, governorate, address) and payment: on delivery (printed plan,
+ *    +delivery fee) or online (D17 / Flouci / Wafacash / bank transfer, receipt sent on WhatsApp).
+ * Prices come from /admin/settings. Each page is a browser history entry, so Back returns to page 1.
  */
 export function TripRequestForm({
   prefill,
@@ -83,14 +88,55 @@ export function TripRequestForm({
   const [payMode, setPayMode] = useState<"cod" | "online">("cod");
   const [onlineMethod, setOnlineMethod] = useState<OnlineMethod | undefined>(onlineMethods[0]);
   const method: PaymentMethod = payMode === "online" && onlineMethod ? onlineMethod : "cod";
-  const total = orderTotal(checkout, method);
+  const assistAddon = checkout.assist.mode === "addon";
+  const [assistTaken, setAssistTaken] = useState(false);
+  const total = orderTotal(checkout, method, assistTaken);
 
   const [pending, startTransition] = useTransition();
   const [error, setError] = useState<string | null>(null);
   const [placed, setPlaced] = useState<PlacedOrder | null>(null);
 
+  const [page, setPage] = useState<Page>("trip");
+  const [trip, setTrip] = useState<TripAnswers>(() => ({
+    destination: prefill.desiredDestination,
+    group: "",
+    travelers: Math.min(MAX_TRAVELERS, Math.max(1, Number(prefill.travelers) || 2)),
+    date: prefill.preferredDate,
+    days: Number(prefill.durationDays) || null,
+    budget: Number(prefill.budgetDT) || null,
+    notes: packTitle ? `${fmt(t.request.packChip, { value: packTitle })}\n` : "",
+  }));
+  const detailsHeading = useRef<HTMLHeadingElement>(null);
+  const firstPage = useRef(true);
+
+  // Page 2 gets its own history entry: the browser's Back (or ours) returns to the trip choices.
+  useEffect(() => {
+    window.history.replaceState({ ...window.history.state, safraCheckout: "trip" }, "");
+    const onPop = (event: PopStateEvent) => {
+      const target = (event.state as { safraCheckout?: Page } | null)?.safraCheckout;
+      if (target) setPage(target);
+    };
+    window.addEventListener("popstate", onPop);
+    return () => window.removeEventListener("popstate", onPop);
+  }, []);
+
+  useEffect(() => {
+    if (firstPage.current) {
+      firstPage.current = false;
+      return;
+    }
+    window.scrollTo({ top: 0 });
+    if (page === "details") detailsHeading.current?.focus({ preventScroll: true });
+  }, [page]);
+
+  const toDetails = () => {
+    window.history.pushState({ ...window.history.state, safraCheckout: "details" }, "");
+    setPage("details");
+  };
+  const toTrip = () => window.history.back();
+
   const form = useRequestForm((data) => {
-    const typedDestination = askDestination ? str(data, "desiredDestination") : "";
+    const typedDestination = askDestination ? trip.destination.trim() : "";
     const request: TripRequest = {
       kind: "trip",
       locale,
@@ -99,16 +145,17 @@ export function TripRequestForm({
       destinationSlug: !typedDestination || typedDestination === prefill.selectedCountry ? prefill.selectedSlug : "",
       fullName: str(data, "fullName"),
       whatsapp: str(data, "whatsapp"),
-      travelers: str(data, "travelers"),
+      travelers: String(trip.travelers),
       destination: brainTrip?.countryName ?? ((askDestination ? typedDestination : prefill.desiredDestination) || prefill.selectedCountry),
       category: prefill.category,
-      preferredDate: str(data, "preferredDate"),
-      durationDays: str(data, "durationDays"),
-      budgetDT: str(data, "budgetDT"),
-      notes: str(data, "notes"),
+      preferredDate: trip.date,
+      durationDays: trip.days ? String(trip.days) : "",
+      budgetDT: trip.budget ? String(trip.budget) : "",
+      notes: trip.notes.trim(),
       paymentMethod: method,
-      governorate: method === "cod" ? str(data, "governorate") : "",
-      address: method === "cod" ? str(data, "address") : "",
+      governorate: str(data, "governorate"),
+      address: str(data, "address"),
+      assist: assistAddon ? (assistTaken ? "added" : "declined") : "included",
       ...(brainTrip ? { brain: { pick: brainTrip.pick, country: brainTrip.country }, itinerary: brainTrip.itinerary } : {}),
     };
     setError(null);
@@ -134,7 +181,9 @@ export function TripRequestForm({
     if (placed) window.scrollTo({ top: 0, behavior: "smooth" });
   }, [placed]);
 
-  const summary = <OrderSummary checkout={checkout} method={method} destination={destination} tripCostTND={brainTrip?.tripCostTND} />;
+  const summary = (
+    <OrderSummary checkout={checkout} method={method} assistTaken={assistTaken} destination={destination} tripCostTND={brainTrip?.tripCostTND} />
+  );
 
   return (
     <section className="@container px-[clamp(20px,3vw,32px)]">
@@ -143,105 +192,69 @@ export function TripRequestForm({
           <OrderConfirmation order={placed} checkout={checkout} />
         ) : (
           <>
-            <header className={cardClass}>
-              <span className="justify-self-start rounded-full bg-orange px-3 py-1.5 text-xs font-black">{c.eyebrow}</span>
-              <h1 className="m-0 text-5xl leading-[1.05] font-black tracking-[-0.03em] @max-[810px]:text-[34px] rtl:leading-[1.3] rtl:tracking-normal">
-                {c.title}
-              </h1>
-              <p className="m-0 font-bold">{c.intro}</p>
-              <div className="flex flex-wrap gap-2">
-                {brainTrip ? <div className={chipClass}>{t.brain.chip}</div> : null}
-                {packTitle ? <div className={chipClass}>{fmt(t.request.packChip, { value: packTitle })}</div> : null}
-                {hasSelection ? <div className={chipClass}>{fmt(t.request.destinationChip, { value: prefill.selectedCountry })}</div> : null}
-                {prefill.category ? (
-                  <div className={chipClass}>{fmt(t.request.categoryChip, { value: label(t.options.vibes, prefill.category) })}</div>
-                ) : null}
-              </div>
-            </header>
+            <Progress page={page} />
+
+            {/* Page 1: the trip. */}
+            <div hidden={page !== "trip"} className="grid gap-[18px]">
+              <header className={cardClass}>
+                <span className="justify-self-start rounded-full bg-orange px-3 py-1.5 text-xs font-black">{c.eyebrow}</span>
+                <h1 className="m-0 text-5xl leading-[1.05] font-black tracking-[-0.03em] @max-[810px]:text-[34px] rtl:leading-[1.3] rtl:tracking-normal">
+                  {c.title}
+                </h1>
+                <p className="m-0 font-bold">{c.tripLead}</p>
+                <div className="flex flex-wrap gap-2">
+                  {brainTrip ? <div className={chipClass}>{t.brain.chip}</div> : null}
+                  {packTitle ? <div className={chipClass}>{fmt(t.request.packChip, { value: packTitle })}</div> : null}
+                  {hasSelection ? <div className={chipClass}>{fmt(t.request.destinationChip, { value: prefill.selectedCountry })}</div> : null}
+                  {prefill.category ? (
+                    <div className={chipClass}>{fmt(t.request.categoryChip, { value: label(t.options.vibes, prefill.category) })}</div>
+                  ) : null}
+                </div>
+              </header>
+            </div>
 
             <div className="grid grid-cols-[minmax(0,1.5fr)_minmax(300px,1fr)] items-start gap-[18px] @max-[880px]:grid-cols-1">
-              <form {...form} className="grid min-w-0 gap-[18px]">
-                <section className={cardClass}>
-                  <StepHeading n={1}>{c.stepTrip}</StepHeading>
-                  <p className="m-0 text-xs opacity-80">{t.forms.required}</p>
-                  <div className="grid grid-cols-2 gap-3 @max-[560px]:grid-cols-1">
-                    {askDestination ? (
-                      <Field label={`${t.request.desiredDestination}${hasSelection ? "" : " *"}`}>
-                        <input
-                          name="desiredDestination"
-                          required={!hasSelection}
-                          type="text"
-                          maxLength={120}
-                          defaultValue={prefill.desiredDestination}
-                          placeholder={t.request.desiredPlaceholder}
-                          className={inputClass}
-                        />
+              <div className="grid min-w-0 gap-[18px]">
+                <div hidden={page !== "trip"}>
+                  <TripChoices
+                    answers={trip}
+                    setAnswers={setTrip}
+                    askDestination={askDestination}
+                    destinationRequired={askDestination && !hasSelection}
+                    onNext={toDetails}
+                  />
+                </div>
+
+                {/* Page 2: who the visitor is, where they live, how they pay. Kept mounted so typed details survive a trip back to page 1. */}
+                <form {...form} hidden={page !== "details"} className="grid min-w-0 gap-[18px]">
+                  <div className="grid gap-2">
+                    <button type="button" onClick={toTrip} className="cursor-pointer justify-self-start p-0 font-extrabold">
+                      {t.quiz.back}
+                    </button>
+                    <TripRecap
+                      trip={trip}
+                      destination={brainTrip?.countryName ?? (trip.destination.trim() || prefill.selectedCountry)}
+                      itinerary={brainTrip?.itinerary}
+                      onEdit={toTrip}
+                    />
+                  </div>
+
+                  <section className={cardClass}>
+                    <StepHeading n={1} headingRef={detailsHeading}>
+                      {c.stepDetails}
+                    </StepHeading>
+                    <p className="m-0 font-bold opacity-80">{c.detailsLead}</p>
+                    <div className="grid grid-cols-2 gap-3 @max-[560px]:grid-cols-1">
+                      <Field label={t.forms.fullName}>
+                        <input name="fullName" required type="text" maxLength={120} autoComplete="name" placeholder={t.forms.fullNamePlaceholder} className={inputClass} />
                       </Field>
-                    ) : null}
-                    <Field label={t.forms.travelers}>
-                      <input name="travelers" required type="number" min={1} max={99} defaultValue={prefill.travelers} className={inputClass} />
-                    </Field>
-                    <Field label={t.forms.preferredDate}>
-                      <input name="preferredDate" type="date" defaultValue={prefill.preferredDate} className={inputClass} />
-                    </Field>
-                    <Field label={t.request.durationDays}>
-                      <input name="durationDays" type="number" min={1} defaultValue={prefill.durationDays} className={inputClass} />
-                    </Field>
-                  </div>
-                  <Field label={t.request.budget} hint={t.request.budgetHint}>
-                    <input name="budgetDT" required type="number" min={1} defaultValue={prefill.budgetDT} placeholder="2900" className={inputClass} />
-                  </Field>
-                  <Field label={t.forms.notes}>
-                    <textarea
-                      name="notes"
-                      rows={3}
-                      maxLength={1500}
-                      defaultValue={packTitle ? `${fmt(t.request.packChip, { value: packTitle })}\n` : undefined}
-                      placeholder={t.forms.notesPlaceholder}
-                      className={`${inputClass} resize-y`}
-                    />
-                  </Field>
-                </section>
-
-                <section className={cardClass}>
-                  <StepHeading n={2}>{c.stepDetails}</StepHeading>
-                  <div className="grid grid-cols-2 gap-3 @max-[560px]:grid-cols-1">
-                    <Field label={t.forms.fullName}>
-                      <input name="fullName" required type="text" maxLength={120} autoComplete="name" placeholder={t.forms.fullNamePlaceholder} className={inputClass} />
-                    </Field>
-                    <Field label={t.forms.whatsapp}>
-                      <input name="whatsapp" required type="tel" dir="ltr" maxLength={40} autoComplete="tel" placeholder={t.forms.whatsappPlaceholder} className={`${inputClass} rtl:text-end`} />
-                    </Field>
-                  </div>
-                </section>
-
-                <section className={cardClass}>
-                  <StepHeading n={3}>{c.stepPayment}</StepHeading>
-                  <div role="radiogroup" aria-label={c.stepPayment} className="grid gap-2.5">
-                    <PayOption
-                      checked={payMode === "cod"}
-                      onSelect={() => setPayMode("cod")}
-                      icon={<TruckIcon />}
-                      title={c.codTitle}
-                      body={c.codBody}
-                      tag={fmt(c.codFee, { fee: formatDT(checkout.deliveryFeeDT, locale) })}
-                    />
-                    {onlineMethods.length > 0 ? (
-                      <PayOption
-                        checked={payMode === "online"}
-                        onSelect={() => setPayMode("online")}
-                        icon={<PhoneIcon />}
-                        title={c.onlineTitle}
-                        body={c.onlineBody}
-                        tag={c.onlineFee}
-                      />
-                    ) : null}
-                  </div>
-
-                  {payMode === "cod" ? (
-                    <div className="grid animate-fade grid-cols-[minmax(0,.8fr)_minmax(0,1.2fr)] gap-3 @max-[560px]:grid-cols-1">
+                      <Field label={t.forms.whatsapp}>
+                        <input name="whatsapp" required type="tel" dir="ltr" maxLength={40} autoComplete="tel" placeholder={t.forms.whatsappPlaceholder} className={`${inputClass} rtl:text-end`} />
+                      </Field>
+                    </div>
+                    <div className="grid grid-cols-[minmax(0,.8fr)_minmax(0,1.2fr)] gap-3 @max-[560px]:grid-cols-1">
                       <Field label={c.governorate}>
-                        <select name="governorate" required defaultValue="" className={inputClass}>
+                        <select name="governorate" required defaultValue="" autoComplete="address-level1" className={inputClass}>
                           <option value="">{t.forms.select}</option>
                           {GOVERNORATES.map((g) => (
                             <option key={g.value} value={g.value}>
@@ -254,43 +267,70 @@ export function TripRequestForm({
                         <input name="address" required type="text" maxLength={300} autoComplete="street-address" placeholder={c.addressPlaceholder} className={inputClass} />
                       </Field>
                     </div>
-                  ) : onlineMethod ? (
-                    <div className="grid animate-fade gap-3">
-                      <div className="font-bold">{c.methodLabel}</div>
-                      <div role="radiogroup" aria-label={c.methodLabel} className="grid grid-cols-4 gap-2 @max-[560px]:grid-cols-2">
-                        {onlineMethods.map((m) => (
-                          <button
-                            key={m}
-                            type="button"
-                            role="radio"
-                            aria-checked={onlineMethod === m}
-                            onClick={() => setOnlineMethod(m)}
-                            className={`cursor-pointer rounded-xl border px-3 py-3 text-center font-black transition-colors ${
-                              onlineMethod === m ? "border-orange bg-orange/15" : "border-ink/16 bg-white hover:border-ink/35"
-                            }`}
-                          >
-                            {methodName(m, t)}
-                          </button>
-                        ))}
-                      </div>
-                      <AccountPanel method={onlineMethod} checkout={checkout} totalDT={total} />
-                      <p className="m-0 text-sm font-bold opacity-80">{c.onlineSteps}</p>
-                    </div>
-                  ) : null}
+                  </section>
 
-                  <Honeypot />
-                  <FormError message={error} />
-                  <button
-                    type="submit"
-                    disabled={pending}
-                    aria-busy={pending}
-                    className="mt-1 w-full cursor-pointer rounded-full bg-orange px-6 py-4 text-lg font-black text-ink hover:brightness-95 disabled:cursor-wait disabled:opacity-70"
-                  >
-                    {pending ? t.forms.sending : fmt(c.submit, { total: formatDT(total, locale) })}
-                  </button>
-                  <p className="m-0 text-center text-xs opacity-75">{c.noCardNote}</p>
-                </section>
-              </form>
+                  <section className={cardClass}>
+                    <StepHeading n={2}>{c.stepPayment}</StepHeading>
+                    <div role="radiogroup" aria-label={c.stepPayment} className="grid gap-2.5">
+                      <PayOption
+                        checked={payMode === "cod"}
+                        onSelect={() => setPayMode("cod")}
+                        icon={<TruckIcon />}
+                        title={c.codTitle}
+                        body={c.codBody}
+                        tag={fmt(c.codFee, { fee: formatDT(checkout.deliveryFeeDT, locale) })}
+                      />
+                      {onlineMethods.length > 0 ? (
+                        <PayOption
+                          checked={payMode === "online"}
+                          onSelect={() => setPayMode("online")}
+                          icon={<PhoneIcon />}
+                          title={c.onlineTitle}
+                          body={c.onlineBody}
+                          tag={c.onlineFee}
+                        />
+                      ) : null}
+                    </div>
+
+                    {payMode === "online" && onlineMethod ? (
+                      <div className="grid animate-fade gap-3">
+                        <div className="font-bold">{c.methodLabel}</div>
+                        <div role="radiogroup" aria-label={c.methodLabel} className="grid grid-cols-4 gap-2 @max-[560px]:grid-cols-2">
+                          {onlineMethods.map((m) => (
+                            <button
+                              key={m}
+                              type="button"
+                              role="radio"
+                              aria-checked={onlineMethod === m}
+                              onClick={() => setOnlineMethod(m)}
+                              className={`cursor-pointer rounded-xl border px-3 py-3 text-center font-black transition-colors ${
+                                onlineMethod === m ? "border-orange bg-orange/15" : "border-ink/16 bg-white hover:border-ink/35"
+                              }`}
+                            >
+                              {methodName(m, t)}
+                            </button>
+                          ))}
+                        </div>
+                        <AccountPanel method={onlineMethod} checkout={checkout} totalDT={total} />
+                        <p className="m-0 text-sm font-bold opacity-80">{c.onlineSteps}</p>
+                      </div>
+                    ) : null}
+
+                    {assistAddon ? <AssistToggle offer={checkout.assist} checked={assistTaken} onChange={setAssistTaken} /> : <AssistLine />}
+                    <Honeypot />
+                    <FormError message={error} />
+                    <button
+                      type="submit"
+                      disabled={pending}
+                      aria-busy={pending}
+                      className="mt-1 w-full cursor-pointer rounded-full bg-orange px-6 py-4 text-lg font-black text-ink hover:brightness-95 disabled:cursor-wait disabled:opacity-70"
+                    >
+                      {pending ? t.forms.sending : fmt(c.submit, { total: formatDT(total, locale) })}
+                    </button>
+                    <p className="m-0 text-center text-xs opacity-75">{c.noCardNote}</p>
+                  </section>
+                </form>
+              </div>
 
               <aside className="sticky top-4 @max-[880px]:static">{summary}</aside>
             </div>
@@ -304,9 +344,49 @@ export function TripRequestForm({
 /** Brand names stay as they are; "Bank transfer" is translated. */
 const methodName = (m: OnlineMethod, t: Messages) => (m === "bank" ? t.checkout.bankTransfer : METHOD_NAME[m]);
 
-function StepHeading({ n, children }: { n: number; children: ReactNode }) {
+/** "01/02" with two bars, like the "Find my trip" questions. */
+function Progress({ page }: { page: Page }) {
+  const n = page === "trip" ? 1 : 2;
   return (
-    <h2 className="m-0 flex items-center gap-2.5 text-2xl font-black tracking-[-0.01em] rtl:tracking-normal">
+    <div className="flex items-center justify-between">
+      <div className="text-[15px] font-extrabold tabular-nums">{String(n).padStart(2, "0")}/02</div>
+      <div className="flex w-[120px] gap-1.5" aria-hidden>
+        {[1, 2].map((i) => (
+          <span key={i} className={`h-1 flex-1 rounded-full transition-colors ${i <= n ? "bg-orange" : "bg-[#D2D8CF]"}`} />
+        ))}
+      </div>
+    </div>
+  );
+}
+
+/** Page 2's reminder of the trip chosen on page 1, with a way back to change it. */
+function TripRecap({ trip, destination, itinerary, onEdit }: { trip: TripAnswers; destination: string; itinerary?: string; onEdit: () => void }) {
+  const { t, locale } = useI18n();
+  const c = t.checkout;
+  const facts = [
+    travelersLabel(trip.travelers, c),
+    trip.date ? new Intl.DateTimeFormat(locale === "ar" ? "ar-TN-u-nu-latn" : locale, { day: "numeric", month: "short", year: "numeric" }).format(new Date(`${trip.date}T12:00:00`)) : null,
+    trip.days ? durationLabel(trip.days, c) : null,
+    trip.budget ? formatDT(trip.budget, locale) : null,
+  ].filter(Boolean);
+  return (
+    <div className="flex items-start justify-between gap-3 rounded-3xl bg-sky/70 p-4 ring-1 ring-ink/8">
+      <div className="grid min-w-0 gap-1">
+        <span className="text-xs font-black tracking-[.12em] text-sea rtl:tracking-normal">{c.recapTitle}</span>
+        {destination ? <span className="text-xl leading-tight font-black">{destination}</span> : null}
+        {itinerary ? <span className="text-sm font-bold opacity-80">{itinerary}</span> : null}
+        <span className="text-sm font-bold opacity-85">{facts.join(" · ")}</span>
+      </div>
+      <button type="button" onClick={onEdit} className="shrink-0 cursor-pointer rounded-full border border-ink/20 bg-white px-3.5 py-1.5 text-sm font-black hover:border-ink/45">
+        {c.edit}
+      </button>
+    </div>
+  );
+}
+
+function StepHeading({ n, children, headingRef }: { n: number; children: ReactNode; headingRef?: React.Ref<HTMLHeadingElement> }) {
+  return (
+    <h2 ref={headingRef} tabIndex={headingRef ? -1 : undefined} className="m-0 flex items-center gap-2.5 text-2xl font-black tracking-[-0.01em] outline-none rtl:tracking-normal">
       <span aria-hidden className="grid size-8 shrink-0 place-items-center rounded-full bg-ink text-base text-cream">
         {n}
       </span>
@@ -423,11 +503,13 @@ function CopyButton({ value }: { value: string }) {
 function OrderSummary({
   checkout,
   method,
+  assistTaken,
   destination,
   tripCostTND,
 }: {
   checkout: CheckoutConfig;
   method: PaymentMethod;
+  assistTaken: boolean;
   destination?: CheckoutDestination;
   /** The trip brain's estimate for the trip itself (paid later, not part of this order). */
   tripCostTND?: number;
@@ -458,11 +540,21 @@ function OrderSummary({
         <dl className="m-0 grid gap-2 border-y border-cream/15 py-4">
           <SummaryRow label={c.planLine} value={formatDT(checkout.planPriceDT, locale)} />
           <SummaryRow label={c.delivery} value={fee ? formatDT(fee, locale) : c.free} />
+          {checkout.assist.mode === "included" || assistTaken ? (
+            <div className="flex items-baseline justify-between gap-3">
+              <dt className="opacity-85">{c.assist.row}</dt>
+              <dd className="m-0 font-black whitespace-nowrap text-[#7CF0A9]">
+                {checkout.assist.mode === "included" ? c.assist.included : formatDT(checkout.assist.priceDT, locale)}
+              </dd>
+            </div>
+          ) : null}
           <div className="mt-1 flex items-baseline justify-between gap-3">
             <dt className="text-lg font-black">{c.total}</dt>
-            <dd className="m-0 text-[32px] leading-none font-black tracking-[-0.02em]">{formatDT(checkout.planPriceDT + fee, locale)}</dd>
+            <dd className="m-0 text-[32px] leading-none font-black tracking-[-0.02em]">{formatDT(orderTotal(checkout, method, assistTaken), locale)}</dd>
           </div>
         </dl>
+
+        <AssistJourney offer={checkout.assist} />
 
         <div className="grid gap-2">
           <span className="font-black">{c.includesTitle}</span>
@@ -476,16 +568,6 @@ function OrderSummary({
               </li>
             ))}
           </ul>
-        </div>
-
-        <div className="flex items-start gap-3 rounded-2xl bg-[#25D366]/12 px-3.5 py-3 ring-1 ring-[#25D366]/35">
-          <span className="grid size-9 shrink-0 place-items-center rounded-full bg-[#25D366] text-white">
-            <WhatsAppIcon size={19} />
-          </span>
-          <span className="grid gap-0.5">
-            <strong className="text-[15px] leading-tight">{c.assistTitle}</strong>
-            <span className="text-sm leading-snug opacity-85">{c.assistBody}</span>
-          </span>
         </div>
       </div>
     </div>

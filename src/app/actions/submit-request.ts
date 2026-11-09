@@ -67,11 +67,11 @@ function requestSchema(e: Messages["errors"]) {
       paymentMethod: z.enum(PAYMENT_METHODS, e.payment),
       governorate,
       address: text(300),
+      assist: z.enum(["included", "added", "declined"]).optional(),
       brain: z.object({ pick: z.string().max(2000), country: z.string().max(40) }).optional(),
     })
-      // Cash on delivery needs somewhere to deliver; online payments keep no address.
-      .refine((r) => r.paymentMethod !== "cod" || (r.governorate && r.address), { message: e.address, path: ["address"] })
-      .transform((r) => (r.paymentMethod === "cod" ? r : { ...r, governorate: "", address: "" })),
+      // Every order says where the customer lives (delivery address for cash on delivery).
+      .refine((r) => r.governorate && r.address, { message: e.address, path: ["address"] }),
     z.object({
       kind: z.literal("visa"),
       locale,
@@ -147,7 +147,7 @@ export async function submitRequest(request: ConciergeRequest, honeypot = ""): P
   const payload =
     data.kind === "visa"
       ? { ...data, service: undefined, serviceSlug: data.service.slug, source: "visa" }
-      : { ...data, brain: undefined, quizAnswers: await brainAnswers(data.brain) };
+      : { ...data, brain: undefined, assistance: data.assist === "added", quizAnswers: await brainAnswers(data.brain) };
 
   const { data: rows, error } = await admin.rpc("submit_request", { payload });
   if (error) {

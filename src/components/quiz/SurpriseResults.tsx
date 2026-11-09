@@ -1,9 +1,11 @@
 "use client";
 
+import type { AssistOffer } from "@/lib/payments";
 import Image from "next/image";
 import Link from "next/link";
 import { useEffect, useState, type RefObject } from "react";
-import { ArrowIcon, CheckIcon, ClockIcon, LockIcon, PaperPlaneIcon, WhatsAppIcon } from "@/components/icons";
+import { AssistJourney } from "@/components/AssistJourney";
+import { ArrowIcon, CheckIcon, ClockIcon, LockIcon, PaperPlaneIcon } from "@/components/icons";
 import type { GroupType } from "@/data/brain";
 import { useI18n } from "@/i18n/client";
 import { fmt, label } from "@/i18n/fmt";
@@ -31,6 +33,7 @@ export function SurpriseResults({
   whenLabel,
   planPriceDT,
   payOnline,
+  assist,
   whatsappNumber,
   onRestart,
   headingRef,
@@ -40,6 +43,8 @@ export function SurpriseResults({
   whenLabel: string;
   planPriceDT: number;
   payOnline: boolean;
+  /** How the WhatsApp assistance is sold (/admin/settings). */
+  assist: AssistOffer;
   whatsappNumber: string;
   onRestart: () => void;
   headingRef: RefObject<HTMLHeadingElement | null>;
@@ -89,7 +94,7 @@ export function SurpriseResults({
             nights={preview.nights}
             travelers={preview.travelers}
             planPriceDT={planPriceDT}
-            payOnline={payOnline}
+            payOnline={payOnline} assist={assist}
           />
         ))}
       </div>
@@ -108,6 +113,7 @@ function OptionCard({
   travelers,
   planPriceDT,
   payOnline,
+  assist,
 }: {
   option: SurpriseOption;
   index: number;
@@ -116,6 +122,8 @@ function OptionCard({
   travelers: number;
   planPriceDT: number;
   payOnline: boolean;
+  /** How the WhatsApp assistance is sold (/admin/settings). */
+  assist: AssistOffer;
 }) {
   const { t, locale, href } = useI18n();
   const b = t.brain;
@@ -178,7 +186,7 @@ function OptionCard({
         </div>
 
 
-        <LockedProgram option={o} depart={input.depart} unlockHref={unlockHref} planPriceDT={planPriceDT} payOnline={payOnline} />
+        <LockedProgram option={o} depart={input.depart} unlockHref={unlockHref} planPriceDT={planPriceDT} payOnline={payOnline} assist={assist} />
       </div>
     </article>
   );
@@ -197,6 +205,7 @@ function LockedProgram({
   unlockHref,
   planPriceDT,
   payOnline,
+  assist,
 }: {
   option: SurpriseOption;
   /** Departure date (exact-dates answers only). */
@@ -204,6 +213,8 @@ function LockedProgram({
   unlockHref: string;
   planPriceDT: number;
   payOnline: boolean;
+  /** How the WhatsApp assistance is sold (/admin/settings). */
+  assist: AssistOffer;
 }) {
   const { t, locale } = useI18n();
   const b = t.brain;
@@ -311,15 +322,7 @@ function LockedProgram({
           ))}
         </ul>
 
-        <div className="flex items-start gap-3 rounded-2xl bg-[#ECFDF3] px-3.5 py-3 ring-1 ring-[#25D366]/30">
-          <span className="grid size-9 shrink-0 place-items-center rounded-full bg-[#25D366] text-white shadow-[0_6px_14px_-6px_rgba(37,211,102,.9)]">
-            <WhatsAppIcon size={19} />
-          </span>
-          <span className="grid gap-0.5">
-            <strong className="text-[14px] leading-tight text-[#14532D]">{t.checkout.assistTitle}</strong>
-            <span className="text-[13px] leading-snug font-semibold text-[#166534]">{t.checkout.assistBody}</span>
-          </span>
-        </div>
+        <AssistJourney variant="compact" offer={assist} />
 
         <Link
           href={unlockHref}

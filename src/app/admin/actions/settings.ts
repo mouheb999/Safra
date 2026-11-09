@@ -16,6 +16,9 @@ const settingsSchema = z.object({
     .pipe(z.string().regex(/^[1-9]\d{6,14}$/, "WhatsApp number: country code + number, e.g. +216 97 433 003.")),
   plan_price_dt: z.coerce.number("Plan price: a number of DT.").int("Plan price: whole DT only.").min(1, "Plan price must be at least 1 DT.").max(100000),
   delivery_fee_dt: z.coerce.number("Delivery fee: a number of DT.").int("Delivery fee: whole DT only.").min(0).max(1000, "Delivery fee: at most 1,000 DT."),
+  // Live WhatsApp assistance: in every plan, or a paid add-on the customer ticks at checkout.
+  assist_mode: z.enum(["included", "addon"], "Choose how WhatsApp assistance is offered."),
+  assist_price_dt: z.coerce.number("Assistance price: a number of DT.").int("Assistance price: whole DT only.").min(0).max(10000, "Assistance price: at most 10,000 DT."),
   // Payment accounts shown at checkout; an empty field hides that method.
   d17_number: z.string().trim().max(40, "D17 number: 40 characters at most."),
   flouci_number: z.string().trim().max(40, "Flouci number: 40 characters at most."),
@@ -32,6 +35,8 @@ export async function saveSettings(_prev: SettingsState, fd: FormData): Promise<
   const { supabase } = await requireAdmin();
   const parsed = settingsSchema.safeParse(Object.fromEntries(SETTINGS_FIELDS.map((k) => [k, String(fd.get(k) ?? "")])));
   if (!parsed.success) return { error: parsed.error.issues[0]?.message ?? "Please check the form." };
+  if (parsed.data.assist_mode === "addon" && parsed.data.assist_price_dt < 1)
+    return { error: "Set a price for the WhatsApp assistance add-on (or include it in the plan)." };
   if ((parsed.data.wafacash_name === "") !== (parsed.data.wafacash_phone === ""))
     return { error: "Wafacash needs both the recipient’s name and phone (or leave both empty to hide it)." };
 

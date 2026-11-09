@@ -122,30 +122,40 @@ Pages and server actions check admin membership on the server, and RLS checks it
 ## Trip plan checkout
 
 "Find my trip", the packs and `/trip`'s "Get my complete trip plan" open the checkout at
-`/trip-request`: trip details, contact, then payment.
+`/trip-request`, in two pages (each a browser history entry, so Back returns to page 1):
 
-- **Cash on delivery**: governorate + address; a delivery company brings the order to the customer’s home, paid in cash (plan price + delivery fee).
+1. **The trip**, answered like "Find my trip" (`TripChoices.tsx`): where (when not already chosen), who
+   (group cards + travelers), when (date or "not sure yet"), how long, total budget, notes.
+2. **The customer**: name, WhatsApp, governorate and address (required for every order), then payment.
+
+- **Cash on delivery**: a delivery company brings the order to the customer’s home, paid in cash (plan price + delivery fee).
 - **Pay online**: D17, Flouci, Wafacash or bank transfer, no API — the checkout shows the account to pay into
   (with copy buttons); after ordering, the confirmation repeats it and opens WhatsApp with the order so the
   customer attaches their receipt. Mark the request **Paid** once the receipt checks out.
 
 `submit_request()` prices every order from `site_settings` (the browser never sends a price) and refuses an
-online method whose account details are empty. Orders show as "Plan order" in Requests, with the method,
+online method whose account details are empty, or an order without a governorate and address. Orders show as "Plan order" in Requests, with the method,
 amounts and delivery address on the request page. Trip orders always confirm on the site (whatever the booking
 mode), because the customer needs to see how to pay.
 
 ## Trip brain ("Find my trip" — surprise me)
 
 The visitor gives a budget per person (set once, on the first step) and answers 3 quick questions (dates or a
-month, who's going, vibes). The brain answers with **exactly 2 trips** in 2 countries — places, nights, weather,
+month, who's going, up to 5 of 14 vibes). The brain answers with **exactly 2 trips** in 2 countries — places, nights, weather,
 total cost and pocket money — each with a **locked block**: where the money goes (category names, blurred amounts)
 on top of the day-by-day program (day numbers and places, blurred details). "Unlock my program" opens the checkout
-(the plan price from /admin/settings). The plan includes **live WhatsApp assistance** before and during the trip,
-highlighted on the locked block and in the checkout summary. Each step is a browser history entry, so Back returns
+(the plan price from /admin/settings). **Live WhatsApp assistance** (`src/components/AssistJourney.tsx`) is shown as
+a door-to-door journey (before you leave → departure day → during the trip → back home) on the locked block and in
+the checkout. /admin/settings decides how it's sold: **included** in every plan, or a **paid add-on** the customer
+ticks at checkout (never pre-ticked); `submit_request()` charges it from the settings and records
+`requests.assist` (`included` / `added` / `declined`) and `assist_dt`. Each step is a browser history entry, so Back returns
 to the previous question.
 
 - `src/lib/brain/pricing.ts`: the cost formulas — 9 categories, card fee on foreign-currency items, rooms per hotel
   type, food per eater, moves between places.
+- Vibes (`src/lib/quiz.ts`): Beach, Islands, Diving, Nightlife, Adventure, Nature, Food, City, Shopping, Culture,
+  Relaxation, Wellness, Romance, Luxury. A place is only suggested when it shares one, so each place's "Strong in"
+  (and each activity's vibes) in /admin/brain should list every vibe it really offers.
 - Destinations: 10 countries, 36 places — Southeast Asia (Thailand, Bali, Malaysia, Vietnam, Philippines) for bigger
   budgets, and closer to Tunis (Turkey, Egypt, Morocco, Jordan, Georgia) so smaller budgets get real trips too.
 - `src/lib/brain/engine.ts` (Safra Trip Brain v0.5): the best plan per country — skips places in their rainy season
@@ -169,7 +179,10 @@ to the previous question.
   and counted in `public.live_price_usage` against the monthly limit set in **/admin/brain**
   (`claim_live_price_search()`, atomic). Missing, failing or over-budget prices fall back to a recent cached
   price or SAFRA's estimates; food, transport and activities are always estimates. Cards say "prices checked
-  today" only when they are, and orders record what was live. **/admin/brain → Live prices** shows usage and
+  today" only when they are, and orders record what was live — with the **links**: the day's Google Flights
+  search (price, airline, dates) and, per place, the day's Google Hotels search plus the hotel each rate came from,
+  listed under "Price links" on the admin request page. Links are Google's own pages (never a SerpApi URL, which
+  could carry the key) and are never sent to the visitor's browser. **/admin/brain → Live prices** shows usage and
   has a "Test live prices" button.
 
 ```bash

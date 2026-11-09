@@ -26,6 +26,7 @@ export default async function FindMyTripPage({ params, searchParams }: Props) {
         prefill={parseQuizParams(sp)}
         planPriceDT={checkout.planPriceDT}
         payOnline={availableOnlineMethods(checkout.accounts).length > 0}
+        assist={checkout.assist}
         whatsappNumber={settings.whatsappNumber}
       />
     </main>

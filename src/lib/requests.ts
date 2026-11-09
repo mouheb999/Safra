@@ -41,9 +41,11 @@ export interface TripRequest {
   notes: string;
   /** How the trip plan is paid; the price comes from /admin/settings. */
   paymentMethod: PaymentMethod;
-  /** Cash on delivery only. */
+  /** Where the customer lives (where a cash-on-delivery plan is delivered). */
   governorate: string;
   address: string;
+  /** Live WhatsApp assistance: in the plan, or the paid add-on taken / not taken (submit_request() charges it). */
+  assist?: "included" | "added" | "declined";
   /** Chosen on "Find my trip": the encoded answers + the country; the server rebuilds and stores the trip. */
   brain?: { pick: string; country: string };
   /** The chosen trip's places and nights, for the WhatsApp message. */
@@ -99,7 +101,8 @@ function orderLines(r: TripRequest, w: Wording, totalDT?: number): string[] {
   return [
     ...(totalDT ? [fmt(w.order, { total: totalDT })] : []),
     fmt(w.payment, { v: method }),
-    ...(r.paymentMethod === "cod" ? [fmt(w.deliverTo, { v: [r.address, r.governorate].filter(Boolean).join(", ") })] : []),
+    fmt(r.paymentMethod === "cod" ? w.deliverTo : w.address, { v: dash([r.address, r.governorate].filter(Boolean).join(", ")) }),
+    ...(r.assist ? [r.assist === "included" ? w.assistIncluded : r.assist === "added" ? w.assistAdded : w.assistDeclined] : []),
   ];
 }
 

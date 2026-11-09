@@ -124,6 +124,18 @@ const vibePaths: Record<string, string> = {
   City: "M4 20V9l5-3v14M11 20V5l5-2v17M18 20v-9l2-1v10",
   Culture: "M4 9h16M6 9v9m12-9v9M3 20h18M12 4l8 5H4l8-5Z",
   Luxury: "M12 4.2l2.5 5.1 5.7.8-4.1 4 .9 5.7-5-2.7-5 2.7.9-5.7-4.1-4 5.7-.8L12 4.2Z",
+  // An island with a palm tree
+  Islands: "M3 18.5c2.5-2 5.5-3 9-3s6.5 1 9 3M12 15.5V8m0 0c-1.5-2-4-2.6-6-1.6M12 8c1.5-2 4-2.6 6-1.6M12 8c-.8-1.8-.4-3.5 1-4.5",
+  // A diving mask
+  Diving: "M4 9.5h16v4.5a2 2 0 0 1-2 2h-3l-1.5-2h-3L9 16H6a2 2 0 0 1-2-2V9.5ZM12 9.5V7M20 12h1.5v6",
+  // A hammock between two posts
+  Relaxation: "M4 6v14M20 6v14M4 9c2.5 4.5 13.5 4.5 16 0M8 18h8",
+  // A lotus
+  Wellness: "M12 19c-3.5 0-7-2-8-5.5 2.5-.5 5 .3 6.5 2M12 19c3.5 0 7-2 8-5.5-2.5-.5-5 .3-6.5 2M12 19c-2-2-2.8-5-1.6-8.5L12 7l1.6 3.5c1.2 3.5.4 6.5-1.6 8.5Z",
+  // A shopping bag
+  Shopping: "M5 8h14l-1 12H6L5 8Zm4 0V6.5a3 3 0 0 1 6 0V8",
+  // A heart
+  Romance: "M12 19.5s-7.5-4.4-7.5-9.6A4.1 4.1 0 0 1 12 7.6a4.1 4.1 0 0 1 7.5 2.3c0 5.2-7.5 9.6-7.5 9.6Z",
 };
 
 /** Icons for the quiz's "when", "duration" and "vibe" answers. */

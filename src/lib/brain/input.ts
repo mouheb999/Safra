@@ -3,7 +3,7 @@
 
 import { z } from "zod";
 import { GROUP_TYPES, STAY_TYPES } from "@/data/brain";
-import { VIBE_OPTIONS } from "@/lib/quiz";
+import { MAX_VIBES, VIBE_OPTIONS } from "@/lib/quiz";
 import type { BuiltTrip } from "./builder";
 import type { BrainInput } from "./engine";
 
@@ -22,7 +22,7 @@ export const brainInputSchema = z
     flexDays: z.number().int().min(0).max(7),
     month: z.number().int().min(1).max(12).nullable(),
     nights: z.number().int().min(1).max(60).nullable(),
-    vibes: z.array(z.enum(VIBE_OPTIONS)).max(3),
+    vibes: z.array(z.enum(VIBE_OPTIONS)).max(MAX_VIBES),
     stay: z.enum(STAY_TYPES),
   })
   .refine((i) => !i.depart || !i.ret || i.ret > i.depart, "Return must be after departure.");
