@@ -21,14 +21,14 @@ export function StatusControl({ id, status }: { id: string; status: RequestStatu
   return (
     <div className="grid gap-3">
       {next ? (
-        <button type="button" disabled={pending} onClick={() => move(next)} className={`${adminPrimaryButton} justify-self-start`}>
+        <button type="button" disabled={pending} onClick={() => move(next)} className={`${adminPrimaryButton} w-full sm:w-auto sm:justify-self-start`}>
           {pending ? "Saving…" : `Mark as ${STATUS_LABEL[next].toLowerCase()} →`}
         </button>
       ) : null}
       <div className="flex flex-wrap items-center gap-1.5 text-sm">
-        <span className="font-bold opacity-60">Set to:</span>
+        <span className="w-full text-xs font-extrabold text-ink/55 sm:w-auto">Or set to</span>
         {STATUSES.filter((s) => s !== status && s !== next).map((s) => (
-          <button key={s} type="button" disabled={pending} onClick={() => move(s)} className={`${adminSecondaryButton} px-3 py-1`}>
+          <button key={s} type="button" disabled={pending} onClick={() => move(s)} className={`${adminSecondaryButton} min-h-8 px-3 py-1 text-[13px]`}>
             {STATUS_LABEL[s]}
           </button>
         ))}

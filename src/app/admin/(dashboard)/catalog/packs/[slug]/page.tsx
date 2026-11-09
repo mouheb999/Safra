@@ -21,7 +21,7 @@ export default async function PackPage({ params }: Props) {
   return (
     <div className="grid max-w-[900px] gap-4">
       <BackLink href="/admin/catalog">Catalog</BackLink>
-      <h1 className="m-0 text-3xl font-black tracking-[-0.02em]">{pack ? pack.title : "New pack"}</h1>
+      <h1 className="m-0 text-2xl font-black tracking-[-0.02em] sm:text-3xl">{pack ? pack.title : "New pack"}</h1>
       <PackForm pack={pack} destinations={destinations ?? []} />
     </div>
   );

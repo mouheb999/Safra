@@ -4,7 +4,7 @@ import { DEFAULT_BRAIN_SETTINGS } from "@/data/brain";
 import { formatDT } from "@/lib/admin/format";
 import { requireAdmin } from "@/lib/admin/session";
 import { setBrainActive } from "../../actions/brain";
-import { Card, Notice, adminPrimaryButton, adminSecondaryButton } from "../../ui";
+import { Card, ItemRow, Notice, PageHeader, adminPrimaryButton, adminSecondaryButton } from "../../ui";
 import { liveKeyConfigured } from "@/lib/live/server";
 import { BrainSettingsForm } from "./BrainSettingsForm";
 import { LivePricesForm } from "./LivePricesForm";
@@ -37,15 +37,11 @@ export default async function BrainPage({ searchParams }: { searchParams: Promis
   const limit = settings?.live_prices_monthly_limit ?? 240;
 
   return (
-    <div className="grid gap-4">
-      <div>
-        <h1 className="m-0 text-3xl font-black tracking-[-0.02em]">Trip brain</h1>
-        <p className="m-0 mt-1 max-w-[760px] text-sm opacity-70">
-          What “Find my trip” picks from. The prices below are SAFRA’s estimates in DT: they are used whenever live prices
-          aren’t available, and always for food, transport and activities, so keep them close to what you actually pay.
-          Changes apply to the questionnaire right away.
-        </p>
-      </div>
+    <div className="grid gap-5">
+      <PageHeader
+        title="Trip brain"
+        lead="What “Find my trip” picks from. The prices below are SAFRA’s estimates in DT: they’re used whenever live prices aren’t available, and always for food, transport and activities, so keep them close to what you actually pay. Changes apply to the questionnaire right away."
+      />
       {saved ? <Notice>Saved: {saved}</Notice> : null}
       {deleted ? <Notice>Place deleted.</Notice> : null}
 
@@ -97,9 +93,16 @@ export default async function BrainPage({ searchParams }: { searchParams: Promis
       >
         <ul className="m-0 grid list-none gap-0 p-0">
           {(countries ?? []).map((c) => (
-            <Row
+            <ItemRow
               key={c.code}
-              name={c.is_featured ? `${c.name} · Focus` : `${c.name} · Backup`}
+              name={
+                <>
+                  {c.name}
+                  <span className={`rounded-full px-2 py-0.5 text-[11px] font-extrabold ${c.is_featured ? "bg-orange/25" : "bg-sky"}`}>
+                    {c.is_featured ? "Focus" : "Backup"}
+                  </span>
+                </>
+              }
               detail={`Flights ${formatDT(c.flight_tnd)} pp · ${Number(c.flight_hours)} h · visa ${c.visa_tnd ? formatDT(c.visa_tnd) : "none"} · ${(bases ?? []).filter((b) => b.country_code === c.code).length} places`}
               active={c.is_active}
               order={c.sort_order}
@@ -110,37 +113,50 @@ export default async function BrainPage({ searchParams }: { searchParams: Promis
         </ul>
       </Card>
 
-      {(countries ?? []).map((c) => (
-        <Card
-          key={c.code}
-          title={`Places in ${c.name}`}
-          actions={
-            <Link href={`/admin/brain/places/new?country=${c.code}`} className={adminSecondaryButton}>
-              + New place
-            </Link>
-          }
-        >
-          <ul className="m-0 grid list-none gap-0 p-0">
-            {(bases ?? [])
-              .filter((b) => b.country_code === c.code)
-              .map((b) => (
-                <Row
-                  key={b.slug}
-                  name={b.place}
-                  detail={
-                    <>
-                      <MonthStrip best={b.best_months} ok={b.ok_months} /> · min {b.min_nights} nights · {b.strengths.join(", ")}
-                    </>
-                  }
-                  active={b.is_active}
-                  order={b.sort_order}
-                  toggle={setBrainActive.bind(null, "brain_bases", b.slug, !b.is_active)}
-                  href={`/admin/brain/places/${b.slug}`}
-                />
-              ))}
-          </ul>
-        </Card>
-      ))}
+      <div className="grid gap-2.5">
+        <h2 className="m-0 text-lg font-black">Places</h2>
+        {(countries ?? []).map((c) => {
+          const places = (bases ?? []).filter((b) => b.country_code === c.code);
+          return (
+            // One collapsible section per country, so the page stays short on a phone.
+            <details key={c.code} className="group overflow-hidden rounded-2xl border border-ink/8 bg-white shadow-[0_1px_2px_rgba(32,61,53,.05)]">
+              <summary className="flex cursor-pointer list-none items-center justify-between gap-3 px-4 py-3.5 sm:px-5 [&::-webkit-details-marker]:hidden">
+                <span className="flex min-w-0 items-center gap-2.5">
+                  <span className="font-black">{c.name}</span>
+                  <span className="rounded-md bg-ink/5 px-2 py-0.5 text-xs font-extrabold text-ink/60">
+                    {places.length} place{places.length === 1 ? "" : "s"}
+                  </span>
+                </span>
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" aria-hidden className="shrink-0 transition-transform group-open:rotate-180">
+                  <path d="m6 9 6 6 6-6" />
+                </svg>
+              </summary>
+              <div className="grid gap-3 border-t border-ink/6 p-4 sm:p-5">
+                <ul className="m-0 grid list-none gap-0 p-0">
+                  {places.map((b) => (
+                    <ItemRow
+                      key={b.slug}
+                      name={b.place}
+                      detail={
+                        <>
+                          <MonthStrip best={b.best_months} ok={b.ok_months} /> · min {b.min_nights} nights · {b.strengths.join(", ")}
+                        </>
+                      }
+                      active={b.is_active}
+                      order={b.sort_order}
+                      toggle={setBrainActive.bind(null, "brain_bases", b.slug, !b.is_active)}
+                      href={`/admin/brain/places/${b.slug}`}
+                    />
+                  ))}
+                </ul>
+                <Link href={`/admin/brain/places/new?country=${c.code}`} className={`${adminSecondaryButton} justify-self-start`}>
+                  + New place in {c.name}
+                </Link>
+              </div>
+            </details>
+          );
+        })}
+      </div>
     </div>
   );
 }
@@ -159,42 +175,5 @@ function MonthStrip({ best, ok }: { best: number[]; ok: number[] }) {
         );
       })}
     </span>
-  );
-}
-
-function Row({
-  name,
-  detail,
-  active,
-  order,
-  toggle,
-  href,
-}: {
-  name: string;
-  detail: React.ReactNode;
-  active: boolean;
-  order: number;
-  toggle: () => Promise<void>;
-  href: string;
-}) {
-  return (
-    <li className="flex flex-wrap items-center gap-x-4 gap-y-2 border-b border-ink/5 py-2.5 last:border-0">
-      <span className="w-6 text-sm font-bold opacity-50" title="Sort order">
-        {order}
-      </span>
-      <div className={`min-w-[200px] flex-1 ${active ? "" : "opacity-50"}`}>
-        <div className="font-extrabold">
-          {name}
-          {active ? null : <span className="ml-2 rounded-full bg-ink/10 px-2 py-0.5 text-xs">Hidden</span>}
-        </div>
-        <div className="text-sm opacity-70">{detail}</div>
-      </div>
-      <form action={toggle}>
-        <button className={`${adminSecondaryButton} px-3 py-1`}>{active ? "Hide" : "Show"}</button>
-      </form>
-      <Link href={href} className={`${adminSecondaryButton} px-3 py-1`}>
-        Edit
-      </Link>
-    </li>
   );
 }

@@ -14,7 +14,7 @@ import {
   paymentLabel,
 } from "@/lib/admin/format";
 import { requireAdmin } from "@/lib/admin/session";
-import { BackLink, Card, Facts, StatusBadge, adminPrimaryButton } from "../../../ui";
+import { BackLink, Card, Facts, StatusBadge } from "../../../ui";
 import { isBrainSnapshot } from "@/lib/brain/snapshot";
 import { StatusControl } from "./StatusControl";
 import { TripBrainCard } from "./TripBrainCard";
@@ -63,24 +63,55 @@ export default async function RequestPage({ params }: Props) {
     <div className="grid gap-4">
       <BackLink href="/admin">All requests</BackLink>
 
-      <div className="flex flex-wrap items-center gap-3">
-        <h1 className="m-0 text-3xl font-black tracking-[-0.02em]">{r.reference}</h1>
-        <StatusBadge status={r.status} />
-        <span className="text-sm opacity-70">
-          {KIND_LABEL[r.kind]} · received {formatDateTime(r.created_at)} · {CHANNEL_LABEL[r.channel] ?? r.channel}
-        </span>
+      {/* Summary: who, what, how much, and the one action used most (WhatsApp). */}
+      <div className="grid gap-4 rounded-2xl border border-ink/8 bg-white p-4 shadow-[0_1px_2px_rgba(32,61,53,.05)] sm:p-5">
+        <div className="flex flex-wrap items-start justify-between gap-3">
+          <div className="grid min-w-0 gap-1.5">
+            <div className="flex flex-wrap items-center gap-2.5">
+              <h1 className="m-0 text-2xl font-black tracking-[-0.02em] sm:text-3xl">{r.reference}</h1>
+              <StatusBadge status={r.status} />
+            </div>
+            <p className="m-0 text-sm text-ink/60">
+              {KIND_LABEL[r.kind]} · received {formatDateTime(r.created_at)} · {CHANNEL_LABEL[r.channel] ?? r.channel}
+            </p>
+          </div>
+          <a
+            href={customerWhatsappUrl(r.whatsapp, r.full_name, r.reference, r.locale)}
+            target="_blank"
+            rel="noopener"
+            className="inline-flex min-h-10 w-full items-center justify-center gap-2 rounded-lg bg-[#25D366] px-4 text-sm font-black text-white shadow-sm hover:brightness-95 sm:w-auto"
+          >
+            Message {r.full_name.split(" ")[0]} on WhatsApp ↗
+          </a>
+        </div>
+        <dl className="m-0 grid grid-cols-2 gap-2.5 sm:grid-cols-4">
+          {(
+            [
+              ["Customer", r.full_name],
+              ["For", what],
+              ["Travelers", String(r.travelers)],
+              r.payment_method ? ["Order total", formatDT(r.total_dt)] : ["Budget", formatDT(r.budget_dt)],
+            ] as [string, string][]
+          ).map(([label, value]) => (
+            <div key={label} className="grid min-w-0 gap-0.5 rounded-xl bg-ink/[0.035] px-3 py-2.5">
+              <dt className="text-xs font-extrabold text-ink/55">{label}</dt>
+              <dd className="m-0 truncate font-black" title={value}>
+                {value}
+              </dd>
+            </div>
+          ))}
+        </dl>
       </div>
 
       <div className="grid items-start gap-4 lg:grid-cols-[minmax(0,1.5fr)_minmax(0,1fr)]">
-        <div className="grid gap-4">
-          <Card
-            title="Customer"
-            actions={
-              <a href={customerWhatsappUrl(r.whatsapp, r.full_name, r.reference, r.locale)} target="_blank" rel="noopener" className={adminPrimaryButton}>
-                Message on WhatsApp ↗
-              </a>
-            }
-          >
+        {/* On phones the status comes first (it's what changes); on wide screens it sits in the side column. */}
+        <div className="lg:hidden">
+          <Card title="Status">
+            <StatusControl id={r.id} status={r.status} />
+          </Card>
+        </div>
+        <div className="grid min-w-0 gap-4">
+          <Card title="Customer">
             <Facts
               rows={[
                 ["Name", r.full_name],
@@ -170,10 +201,12 @@ export default async function RequestPage({ params }: Props) {
           ) : null}
         </div>
 
-        <div className="grid gap-4">
-          <Card title="Status">
-            <StatusControl id={r.id} status={r.status} />
-          </Card>
+        <div className="grid min-w-0 gap-4 lg:sticky lg:top-20">
+          <div className="hidden lg:block">
+            <Card title="Status">
+              <StatusControl id={r.id} status={r.status} />
+            </Card>
+          </div>
 
           <Card title="History">
             <ol className="m-0 grid list-none gap-3 p-0">

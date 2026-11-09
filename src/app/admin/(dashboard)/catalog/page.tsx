@@ -3,7 +3,7 @@ import Link from "next/link";
 import { formatDT } from "@/lib/admin/format";
 import { requireAdmin } from "@/lib/admin/session";
 import { setActive } from "../../actions/catalog";
-import { Card, Notice, adminPrimaryButton, adminSecondaryButton } from "../../ui";
+import { Card, ItemRow, Notice, PageHeader, adminPrimaryButton } from "../../ui";
 
 export const metadata: Metadata = { title: "Catalog" };
 
@@ -18,13 +18,8 @@ export default async function CatalogPage({ searchParams }: { searchParams: Prom
   ]);
 
   return (
-    <div className="grid gap-4">
-      <div>
-        <h1 className="m-0 text-3xl font-black tracking-[-0.02em]">Catalog</h1>
-        <p className="m-0 mt-1 text-sm opacity-70">
-          Changes show on the public site right away. Hidden items disappear from the site but keep their history.
-        </p>
-      </div>
+    <div className="grid gap-5">
+      <PageHeader title="Catalog" lead="Changes show on the public site right away. Hidden items disappear from the site but keep their history." />
       {saved ? <Notice>Saved: {saved}</Notice> : null}
       {deleted ? <Notice>Pack deleted.</Notice> : null}
 
@@ -99,28 +94,19 @@ function CatalogTable({
   rows: { slug: string; name: string; detail: string; active: boolean; order: number }[];
   table: "destinations" | "services" | "packs";
 }) {
-  if (rows.length === 0) return <p className="m-0 text-sm opacity-70">Nothing here yet.</p>;
+  if (rows.length === 0) return <p className="m-0 text-sm text-ink/60">Nothing here yet.</p>;
   return (
     <ul className="m-0 grid list-none gap-0 p-0">
       {rows.map((row) => (
-        <li key={row.slug} className="flex flex-wrap items-center gap-x-4 gap-y-2 border-b border-ink/5 py-2.5 last:border-0">
-          <span className="w-6 text-sm font-bold opacity-50" title="Sort order">
-            {row.order}
-          </span>
-          <div className={`min-w-[200px] flex-1 ${row.active ? "" : "opacity-50"}`}>
-            <div className="font-extrabold">
-              {row.name}
-              {row.active ? null : <span className="ml-2 rounded-full bg-ink/10 px-2 py-0.5 text-xs">Hidden</span>}
-            </div>
-            <div className="text-sm opacity-70">{row.detail}</div>
-          </div>
-          <form action={setActive.bind(null, table, row.slug, !row.active)}>
-            <button className={`${adminSecondaryButton} px-3 py-1`}>{row.active ? "Hide" : "Show"}</button>
-          </form>
-          <Link href={`/admin/catalog/${table}/${row.slug}`} className={`${adminSecondaryButton} px-3 py-1`}>
-            Edit
-          </Link>
-        </li>
+        <ItemRow
+          key={row.slug}
+          order={row.order}
+          name={row.name}
+          detail={row.detail}
+          active={row.active}
+          toggle={setActive.bind(null, table, row.slug, !row.active)}
+          href={`/admin/catalog/${table}/${row.slug}`}
+        />
       ))}
     </ul>
   );

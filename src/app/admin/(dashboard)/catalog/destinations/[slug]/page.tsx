@@ -22,7 +22,7 @@ export default async function DestinationPage({ params }: Props) {
   return (
     <div className="grid max-w-[900px] gap-4">
       <BackLink href="/admin/catalog">Catalog</BackLink>
-      <h1 className="m-0 text-3xl font-black tracking-[-0.02em]">{destination ? destination.title : "New destination"}</h1>
+      <h1 className="m-0 text-2xl font-black tracking-[-0.02em] sm:text-3xl">{destination ? destination.title : "New destination"}</h1>
       <DestinationForm destination={destination} />
     </div>
   );

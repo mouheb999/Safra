@@ -6,7 +6,7 @@ import { BRAIN_BASE_FIELDS } from "@/lib/admin/translations";
 import { VIBE_OPTIONS } from "@/lib/quiz";
 import type { Tables } from "@/lib/supabase/database.types";
 import { deleteBrainBase, saveBrainBase, type FormState } from "../../../../actions/brain";
-import { Notice, adminInput, adminPrimaryButton, adminSecondaryButton } from "../../../../ui";
+import { adminInput, adminPrimaryButton, adminSaveBar, adminSecondaryButton, Notice } from "../../../../ui";
 import { Checkboxes, Field, Fieldset, TextArea, TextInput, TranslationFields } from "../../../catalog/fields";
 
 type Base = Tables<"brain_bases">;
@@ -130,7 +130,7 @@ export function BaseForm({ base: b, countries, defaultCountry }: { base: Base | 
         <TranslationFields fields={BRAIN_BASE_FIELDS} stored={b?.translations} />
 
         {state.error ? <Notice tone="error">{state.error}</Notice> : null}
-        <div className="sticky bottom-0 -mx-4 flex gap-3 border-t border-ink/10 bg-[#F3EEE2]/95 px-4 py-3 backdrop-blur">
+        <div className={adminSaveBar}>
           <button disabled={pending} className={adminPrimaryButton}>
             {pending ? "Saving…" : b ? "Save changes" : "Create place"}
           </button>
