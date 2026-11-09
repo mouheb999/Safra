@@ -39,8 +39,8 @@ export default async function HomePage({ params }: LocaleParams) {
 
           {/* "Surprise me" sits on the right in every language (in Arabic it comes first, which is the right). */}
           <div className="mt-8 grid grid-cols-2 gap-3">
-            <StartCard href={href("/trip-request")} tone="bg-orange" icon={<CompassIcon size={28} color="#203D35" strokeWidth={1.6} />} title={t.home.knowTitle} body={t.home.knowBody} />
-            <StartCard href={href("/find-my-trip")} tone="bg-sky" className="rtl:order-first" icon={<SparklesIcon size={28} color="#203D35" strokeWidth={1.6} />} title={t.home.surpriseTitle} body={t.home.surpriseBody} />
+            <StartCard href={href("/trip-request")} icon={<CompassIcon size={26} color="#203D35" strokeWidth={1.7} />} title={t.home.knowTitle} body={t.home.knowBody} />
+            <StartCard href={href("/find-my-trip")} className="rtl:order-first" icon={<SparklesIcon size={26} color="#203D35" strokeWidth={1.7} />} title={t.home.surpriseTitle} body={t.home.surpriseBody} />
           </div>
 
           <Link
@@ -64,34 +64,23 @@ export default async function HomePage({ params }: LocaleParams) {
   );
 }
 
-/** One of the two ways to start: a coloured card with an icon, a title and one line. */
-function StartCard({
-  href,
-  tone,
-  icon,
-  title,
-  body,
-  className = "",
-}: {
-  href: string;
-  tone: string;
-  icon: React.ReactNode;
-  title: string;
-  body: string;
-  className?: string;
-}) {
+/** One of the two ways to start: the two cards look the same (same size, colours and button), only the icon and words differ. */
+function StartCard({ href, icon, title, body, className = "" }: { href: string; icon: React.ReactNode; title: string; body: string; className?: string }) {
   return (
     <Link
       href={href}
-      className={`group relative flex min-h-[176px] flex-col gap-3 rounded-[24px] p-5 transition-[transform,box-shadow] duration-300 ease-out hover:-translate-y-1 hover:shadow-[0_18px_30px_-18px_rgba(32,61,53,.45)] motion-reduce:transition-none motion-reduce:hover:translate-none lg:min-h-[190px] ${tone} ${className}`}
+      className={`group relative flex min-h-[184px] flex-col gap-3 rounded-[24px] border border-ink/10 bg-white/85 p-5 shadow-[0_1px_2px_rgba(32,61,53,.06)] transition-[transform,box-shadow,border-color] duration-300 ease-out hover:-translate-y-1 hover:border-orange/60 hover:shadow-[0_18px_34px_-20px_rgba(32,61,53,.45)] motion-reduce:transition-none motion-reduce:hover:translate-none lg:min-h-[196px] ${className}`}
     >
-      {icon}
+      <span className="grid size-12 place-items-center rounded-2xl bg-orange/18">{icon}</span>
       <span className="mt-auto grid gap-1.5">
         <span className="text-lg leading-tight font-extrabold">{title}</span>
-        <span className="text-[13px] leading-snug opacity-85">{body}</span>
+        <span className="text-[13px] leading-snug opacity-75">{body}</span>
       </span>
-      <span aria-hidden className="absolute end-4 top-4 opacity-40 transition-[opacity,transform] duration-300 group-hover:translate-x-0.5 group-hover:opacity-90 rtl:group-hover:-translate-x-0.5">
-        <ArrowIcon size={18} />
+      <span
+        aria-hidden
+        className="absolute end-4 top-4 grid size-9 place-items-center rounded-full bg-ink text-cream transition-transform duration-300 group-hover:translate-x-0.5 rtl:group-hover:-translate-x-0.5"
+      >
+        <ArrowIcon size={15} />
       </span>
     </Link>
   );

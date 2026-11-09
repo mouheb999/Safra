@@ -1,7 +1,6 @@
 "use client";
 
 import type { AssistOffer } from "@/lib/payments";
-import Image from "next/image";
 import { useEffect, useMemo, useRef, useState, useTransition } from "react";
 import { surpriseMe } from "@/app/actions/surprise";
 import { BudgetRange } from "@/components/budget/BudgetRange";
@@ -16,7 +15,7 @@ import type { BrainInput } from "@/lib/brain/engine";
 import type { SurprisePreview } from "@/lib/brain/preview";
 import { MAX_VIBES, VIBE_OPTIONS, vibesForCategory } from "@/lib/quiz";
 import type { QuizPrefill } from "@/lib/search-params";
-import { Choice, DateField, Pill, Stepper, choiceBase } from "./controls";
+import { Choice, DateField, Pill, StepProgress, StepVisual, Stepper, choiceBase, questionHeading, stepButton } from "./controls";
 import { LoadingStep, SurpriseResults } from "./SurpriseResults";
 
 const STEPS = ["Budget", "When", "Who", "Vibe"] as const;
@@ -24,7 +23,7 @@ type QuestionStep = (typeof STEPS)[number];
 type Step = QuestionStep | "Loading" | "Results";
 
 const unsplash = (id: string) => `https://images.unsplash.com/${id}?auto=format&fit=crop&w=1000&q=85`;
-const VISUALS: Record<QuestionStep, { image: string; position?: string }> = {
+export const VISUALS: Record<QuestionStep, { image: string; position?: string }> = {
   Budget: { image: "https://framerusercontent.com/images/snHq8305shuNdUjeU5oyWBUIZw.jpg" },
   When: { image: unsplash("photo-1535392432937-a27c36ec07b5") },
   Who: { image: unsplash("photo-1508904635850-d986b19765d0"), position: "50% 80%" },
@@ -50,8 +49,7 @@ interface Answers {
 const DEFAULT_ADULTS: Record<GroupType, number> = { solo: 1, couple: 2, honeymoon: 2, friends: 3, family: 2 };
 const GROUP_ICON: Record<GroupType, string> = { solo: "Just me", couple: "Couple", honeymoon: "Couple", friends: "Friends", family: "Family" };
 
-const headingClass =
-  "m-0 text-[38px] leading-[1.03] font-black tracking-[-0.03em] outline-none @min-[501px]:text-[44px] @min-[811px]:text-[56px] rtl:leading-[1.3] rtl:tracking-normal";
+const headingClass = questionHeading;
 
 function toInput(a: Answers): BrainInput {
   return {
@@ -70,6 +68,29 @@ function toInput(a: Answers): BrainInput {
     // Not asked: the brain picks a good hotel when it fits, else a budget hotel (src/lib/brain/surprise.ts).
     stay: "good_hotel",
   };
+}
+
+/** The last results, so Back from the checkout shows them again instead of the first question (this tab only). */
+const LAST_RESULTS_KEY = "safra-find-my-trip-results";
+interface LastResults {
+  answers: Answers;
+  exclude: string[];
+  preview: SurprisePreview;
+}
+function saveLastResults(value: LastResults) {
+  try {
+    sessionStorage.setItem(LAST_RESULTS_KEY, JSON.stringify(value));
+  } catch {
+    // storage unavailable: Back then starts the questions again
+  }
+}
+function readLastResults(): LastResults | null {
+  try {
+    const value = JSON.parse(sessionStorage.getItem(LAST_RESULTS_KEY) ?? "null") as LastResults | null;
+    return value?.preview?.status === "ok" && value.answers ? value : null;
+  } catch {
+    return null;
+  }
 }
 
 /** The answers, plus the countries to skip when there are any (kept out of the encoded answers otherwise). */
@@ -135,7 +156,16 @@ export function BrainQuiz({
   // Each step is a browser history entry, so Back (the browser's or ours) returns to the previous question
   // instead of leaving the page. Next.js keeps its own fields in history.state; ours sits alongside them.
   useEffect(() => {
-    window.history.replaceState({ ...window.history.state, safraStep: "Budget" }, "");
+    // Coming back from the checkout (browser Back onto the results entry): show the same 2 trips again.
+    const saved = (window.history.state as { safraStep?: Step } | null)?.safraStep === "Results" ? readLastResults() : null;
+    if (saved) {
+      setAnswers(saved.answers);
+      setExclude(saved.exclude);
+      setPreview(saved.preview);
+      setStep("Results");
+    } else {
+      window.history.replaceState({ ...window.history.state, safraStep: "Budget" }, "");
+    }
     const onPop = (event: PopStateEvent) => {
       const target = (event.state as { safraStep?: Step } | null)?.safraStep;
       if (!target) return;
@@ -203,6 +233,7 @@ export function BrainQuiz({
       if (id !== requestId.current) return;
       setPreview(result);
       setStep("Results");
+      if (result?.status === "ok") saveLastResults({ answers, exclude: skip, preview: result });
     });
   };
   const goNext = () => (index < STEPS.length - 1 ? go(STEPS[index + 1]) : run());
@@ -215,14 +246,7 @@ export function BrainQuiz({
 
   return (
     <section className="@container relative mx-auto min-h-[620px] w-full max-w-[1120px]">
-      <div className="mb-3.5 flex items-center justify-between">
-        <div className="text-[15px] font-extrabold tabular-nums">{String(progress).padStart(2, "0")}/05</div>
-        <div className="flex w-[120px] gap-1.5" aria-hidden>
-          {[...STEPS, "Results"].map((s, i) => (
-            <span key={s} className={`h-1 flex-1 rounded-full transition-colors ${i < progress ? "bg-orange" : "bg-[#D2D8CF]"}`} />
-          ))}
-        </div>
-      </div>
+      <StepProgress current={progress} total={STEPS.length + 1} />
 
       <div className={`grid min-w-0 items-start gap-7 ${isQuestion ? "grid-cols-[minmax(0,1.6fr)_minmax(220px,.95fr)] @max-[810px]:grid-cols-1 @max-[810px]:gap-4" : ""}`}>
         <div className="min-w-0">
@@ -291,7 +315,7 @@ export function BrainQuiz({
                 type="button"
                 disabled={!canContinue(step as QuestionStep)}
                 onClick={goNext}
-                className="mt-2 inline-flex cursor-pointer items-center gap-2 justify-self-start rounded-full bg-orange px-7 py-[18px] font-black disabled:cursor-not-allowed disabled:bg-[#B9C0B8]"
+                className={stepButton}
               >
                 {step === "Vibe" ? t.brain.next : t.quiz.continue} <ArrowIcon />
               </button>
@@ -321,22 +345,7 @@ export function BrainQuiz({
         </div>
 
         {isQuestion ? (
-          <aside className="relative w-full self-stretch @max-[810px]:hidden">
-            <div className="sticky top-2.5 grid gap-2">
-              <div className="text-xs font-black tracking-[.12em] text-sea rtl:tracking-normal">{visual.label}</div>
-              <div className="text-[13px] font-bold opacity-80">{visual.detail}</div>
-              <Image
-                src={visual.image}
-                alt=""
-                width={760}
-                height={860}
-                preload
-                sizes="380px"
-                className="mt-2 h-[430px] w-full rounded-[80px_24px_100px_28px] bg-sky object-cover shadow-[0_12px_28px_rgba(32,61,53,.18)] rtl:rounded-[24px_80px_28px_100px]"
-                style={{ objectPosition: visual.position }}
-              />
-            </div>
-          </aside>
+          <StepVisual {...visual} />
         ) : null}
       </div>
     </section>
