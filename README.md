@@ -122,15 +122,19 @@ Pages and server actions check admin membership on the server, and RLS checks it
 ## Trip plan checkout
 
 "Find my trip", the packs and `/trip`'s "Get my complete trip plan" open the checkout at
-`/trip-request`: trip details, contact, then payment.
+`/trip-request`, in two pages (each a browser history entry, so Back returns to page 1):
 
-- **Cash on delivery**: governorate + address; a delivery company brings the order to the customer’s home, paid in cash (plan price + delivery fee).
+1. **The trip**, answered like "Find my trip" (`TripChoices.tsx`): where (when not already chosen), who
+   (group cards + travelers), when (date or "not sure yet"), how long, total budget, notes.
+2. **The customer**: name, WhatsApp, governorate and address (required for every order), then payment.
+
+- **Cash on delivery**: a delivery company brings the order to the customer’s home, paid in cash (plan price + delivery fee).
 - **Pay online**: D17, Flouci, Wafacash or bank transfer, no API — the checkout shows the account to pay into
   (with copy buttons); after ordering, the confirmation repeats it and opens WhatsApp with the order so the
   customer attaches their receipt. Mark the request **Paid** once the receipt checks out.
 
 `submit_request()` prices every order from `site_settings` (the browser never sends a price) and refuses an
-online method whose account details are empty. Orders show as "Plan order" in Requests, with the method,
+online method whose account details are empty, or an order without a governorate and address. Orders show as "Plan order" in Requests, with the method,
 amounts and delivery address on the request page. Trip orders always confirm on the site (whatever the booking
 mode), because the customer needs to see how to pay.
 

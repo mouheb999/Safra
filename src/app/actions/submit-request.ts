@@ -69,9 +69,8 @@ function requestSchema(e: Messages["errors"]) {
       address: text(300),
       brain: z.object({ pick: z.string().max(2000), country: z.string().max(40) }).optional(),
     })
-      // Cash on delivery needs somewhere to deliver; online payments keep no address.
-      .refine((r) => r.paymentMethod !== "cod" || (r.governorate && r.address), { message: e.address, path: ["address"] })
-      .transform((r) => (r.paymentMethod === "cod" ? r : { ...r, governorate: "", address: "" })),
+      // Every order says where the customer lives (delivery address for cash on delivery).
+      .refine((r) => r.governorate && r.address, { message: e.address, path: ["address"] }),
     z.object({
       kind: z.literal("visa"),
       locale,

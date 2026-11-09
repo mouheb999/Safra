@@ -423,9 +423,12 @@ await check("prices sent by the browser are ignored", async () => {
   assertEqual(r.total_dt, 86);
 });
 
-await check("cash on delivery needs a governorate and an address", async () => {
+await check("every order needs a governorate and an address", async () => {
   await expectError(as("service_role", () => submit(order("cod", { governorate: "Sousse", address: "  " }))), /Delivery address is required/);
   await expectError(as("service_role", () => submit(order("cod", { address: "12 Rue" }))), /Delivery address is required/);
+  await rows(`update site_settings set d17_number = '+216 20 000 000' where id = 1`);
+  await expectError(as("service_role", () => submit(order("d17"))), /Delivery address is required/);
+  await rows(`update site_settings set d17_number = '' where id = 1`);
 });
 
 await check("online methods are refused until their account details are set", async () => {
@@ -434,12 +437,12 @@ await check("online methods are refused until their account details are set", as
   await expectError(as("service_role", () => submit(order("paypal"))), /payment method is not available/);
 });
 
-await check("online payment: no delivery fee, no address kept", async () => {
+await check("online payment: no delivery fee, the address is kept", async () => {
   await rows(`update site_settings set d17_number = '+216 20 000 000', plan_price_dt = 120 where id = 1`);
-  const [r] = await as("service_role", () => submit(order("d17", { governorate: "Tunis", address: "ignored" })));
+  const [r] = await as("service_role", () => submit(order("d17", { governorate: "Tunis", address: " 5 Rue de Marseille " })));
   assertEqual([r.plan_price_dt, r.delivery_fee_dt, r.total_dt], [120, 0, 120]);
   const [row] = await rows(`select delivery_governorate, delivery_address from requests where id = $1`, [r.id]);
-  assertEqual(row, { delivery_governorate: null, delivery_address: null });
+  assertEqual(row, { delivery_governorate: "Tunis", delivery_address: "5 Rue de Marseille" });
   await rows(`update site_settings set d17_number = '', plan_price_dt = 79 where id = 1`);
 });
 
