@@ -313,8 +313,21 @@ const fr: Messages = {
     free: "Gratuite",
     total: "Total",
     includesTitle: "Ce qui est inclus",
-    assistTitle: "Assistance WhatsApp en direct",
-    assistBody: "Un planificateur SAFRA vous répond sur WhatsApp, avant et pendant votre voyage.",
+    assist: {
+      badge: "Inclus · sans frais en plus",
+      title: "Votre planificateur SAFRA voyage avec vous",
+      lead: "Assistance WhatsApp en direct, du jour du départ jusqu’à votre retour à la maison.",
+      steps: [
+        { title: "Avant le départ", body: "Questions, réservations, visa, valise." },
+        { title: "Jour du départ", body: "Aéroport, enregistrement, escales : on est avec vous sur WhatsApp." },
+        { title: "Pendant le voyage", body: "Transferts, changement de plan, souci : une vraie personne vous répond." },
+        { title: "Retour", body: "On reste avec vous jusqu’à votre atterrissage en Tunisie." },
+      ],
+      human: "Une vraie personne de l’équipe SAFRA, jamais un robot.",
+      row: "Assistance WhatsApp en direct",
+      included: "Inclus",
+      short: "Inclut l’assistance WhatsApp en direct, du départ jusqu’à votre retour.",
+    },
     includes: [
       "Itinéraire personnalisé jour par jour",
       "Organisation des hébergements et des transports",

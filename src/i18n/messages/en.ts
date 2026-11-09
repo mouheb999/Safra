@@ -313,8 +313,21 @@ const en = {
     free: "Free",
     total: "Total",
     includesTitle: "What’s included",
-    assistTitle: "Live WhatsApp assistance",
-    assistBody: "A SAFRA planner answers you on WhatsApp, before and during your trip.",
+    assist: {
+      badge: "Included · no extra cost",
+      title: "Your SAFRA planner travels with you",
+      lead: "Live WhatsApp assistance from the day you leave until you land back home.",
+      steps: [
+        { title: "Before you leave", body: "Questions, bookings, visa, what to pack." },
+        { title: "Departure day", body: "Airport, check-in, connections: we’re with you on WhatsApp." },
+        { title: "During your trip", body: "Transfers, a change of plan, a problem: a real person answers." },
+        { title: "Back home", body: "We stay with you until you land in Tunisia." },
+      ],
+      human: "A real person from the SAFRA team, never a bot.",
+      row: "Live WhatsApp assistance",
+      included: "Included",
+      short: "Includes live WhatsApp assistance, from departure until you’re back home.",
+    },
     includes: [
       "Day-by-day personalized itinerary",
       "Accommodation and transport structure",

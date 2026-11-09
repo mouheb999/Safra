@@ -4,7 +4,7 @@ import Image from "next/image";
 import { useCallback, useEffect, useRef, useState, useTransition, type ReactNode } from "react";
 import { submitRequest } from "@/app/actions/submit-request";
 import { Field, FormError, HONEYPOT_FIELD, Honeypot, inputClass, str, useRequestForm } from "@/components/forms";
-import { WhatsAppIcon } from "@/components/icons";
+import { AssistJourney, AssistLine } from "@/components/AssistJourney";
 import { useI18n } from "@/i18n/client";
 import { fmt, label } from "@/i18n/fmt";
 import type { Messages } from "@/i18n/messages/en";
@@ -311,6 +311,7 @@ export function TripRequestForm({
                       </div>
                     ) : null}
 
+                    <AssistLine />
                     <Honeypot />
                     <FormError message={error} />
                     <button
@@ -532,11 +533,17 @@ function OrderSummary({
         <dl className="m-0 grid gap-2 border-y border-cream/15 py-4">
           <SummaryRow label={c.planLine} value={formatDT(checkout.planPriceDT, locale)} />
           <SummaryRow label={c.delivery} value={fee ? formatDT(fee, locale) : c.free} />
+          <div className="flex items-baseline justify-between gap-3">
+            <dt className="opacity-85">{c.assist.row}</dt>
+            <dd className="m-0 font-black whitespace-nowrap text-[#7CF0A9]">{c.assist.included}</dd>
+          </div>
           <div className="mt-1 flex items-baseline justify-between gap-3">
             <dt className="text-lg font-black">{c.total}</dt>
             <dd className="m-0 text-[32px] leading-none font-black tracking-[-0.02em]">{formatDT(checkout.planPriceDT + fee, locale)}</dd>
           </div>
         </dl>
+
+        <AssistJourney />
 
         <div className="grid gap-2">
           <span className="font-black">{c.includesTitle}</span>
@@ -550,16 +557,6 @@ function OrderSummary({
               </li>
             ))}
           </ul>
-        </div>
-
-        <div className="flex items-start gap-3 rounded-2xl bg-[#25D366]/12 px-3.5 py-3 ring-1 ring-[#25D366]/35">
-          <span className="grid size-9 shrink-0 place-items-center rounded-full bg-[#25D366] text-white">
-            <WhatsAppIcon size={19} />
-          </span>
-          <span className="grid gap-0.5">
-            <strong className="text-[15px] leading-tight">{c.assistTitle}</strong>
-            <span className="text-sm leading-snug opacity-85">{c.assistBody}</span>
-          </span>
         </div>
       </div>
     </div>
