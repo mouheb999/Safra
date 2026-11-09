@@ -141,15 +141,21 @@ mode), because the customer needs to see how to pay.
 ## Trip brain ("Find my trip" — surprise me)
 
 The visitor gives a budget per person (set once, on the first step) and answers 3 quick questions (dates or a
-month, who's going, vibes). The brain answers with **exactly 2 trips** in 2 countries — places, nights, weather,
+month, who's going, up to 5 of 14 vibes). The brain answers with **exactly 2 trips** in 2 countries — places, nights, weather,
 total cost and pocket money — each with a **locked block**: where the money goes (category names, blurred amounts)
 on top of the day-by-day program (day numbers and places, blurred details). "Unlock my program" opens the checkout
-(the plan price from /admin/settings). The plan includes **live WhatsApp assistance** before and during the trip,
-highlighted on the locked block and in the checkout summary. Each step is a browser history entry, so Back returns
+(the plan price from /admin/settings). **Live WhatsApp assistance** (`src/components/AssistJourney.tsx`) is shown as
+a door-to-door journey (before you leave → departure day → during the trip → back home) on the locked block and in
+the checkout. /admin/settings decides how it's sold: **included** in every plan, or a **paid add-on** the customer
+ticks at checkout (never pre-ticked); `submit_request()` charges it from the settings and records
+`requests.assist` (`included` / `added` / `declined`) and `assist_dt`. Each step is a browser history entry, so Back returns
 to the previous question.
 
 - `src/lib/brain/pricing.ts`: the cost formulas — 9 categories, card fee on foreign-currency items, rooms per hotel
   type, food per eater, moves between places.
+- Vibes (`src/lib/quiz.ts`): Beach, Islands, Diving, Nightlife, Adventure, Nature, Food, City, Shopping, Culture,
+  Relaxation, Wellness, Romance, Luxury. A place is only suggested when it shares one, so each place's "Strong in"
+  (and each activity's vibes) in /admin/brain should list every vibe it really offers.
 - Destinations: 10 countries, 36 places — Southeast Asia (Thailand, Bali, Malaysia, Vietnam, Philippines) for bigger
   budgets, and closer to Tunis (Turkey, Egypt, Morocco, Jordan, Georgia) so smaller budgets get real trips too.
 - `src/lib/brain/engine.ts` (Safra Trip Brain v0.5): the best plan per country — skips places in their rainy season
@@ -173,7 +179,10 @@ to the previous question.
   and counted in `public.live_price_usage` against the monthly limit set in **/admin/brain**
   (`claim_live_price_search()`, atomic). Missing, failing or over-budget prices fall back to a recent cached
   price or SAFRA's estimates; food, transport and activities are always estimates. Cards say "prices checked
-  today" only when they are, and orders record what was live. **/admin/brain → Live prices** shows usage and
+  today" only when they are, and orders record what was live — with the **links**: the day's Google Flights
+  search (price, airline, dates) and, per place, the day's Google Hotels search plus the hotel each rate came from,
+  listed under "Price links" on the admin request page. Links are Google's own pages (never a SerpApi URL, which
+  could carry the key) and are never sent to the visitor's browser. **/admin/brain → Live prices** shows usage and
   has a "Test live prices" button.
 
 ```bash

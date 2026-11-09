@@ -8,6 +8,9 @@
 import type { ReactNode } from "react";
 import { WhatsAppIcon } from "@/components/icons";
 import { useI18n } from "@/i18n/client";
+import { fmt } from "@/i18n/fmt";
+import { formatDT } from "@/lib/budget";
+import { DEFAULT_ASSIST, type AssistOffer } from "@/lib/payments";
 
 const STAGE_ICONS: ReactNode[] = [
   // Before you leave: a chat
@@ -55,10 +58,11 @@ function LiveDot() {
   );
 }
 
-export function AssistJourney({ variant = "full" }: { variant?: "full" | "compact" }) {
-  const { t } = useI18n();
+export function AssistJourney({ variant = "full", offer = DEFAULT_ASSIST }: { variant?: "full" | "compact"; offer?: AssistOffer }) {
+  const { t, locale } = useI18n();
   const a = t.checkout.assist;
   const full = variant === "full";
+  const badge = offer.mode === "addon" ? fmt(a.addonBadge, { price: formatDT(offer.priceDT, locale) }) : a.badge;
 
   return (
     <section
@@ -79,7 +83,7 @@ export function AssistJourney({ variant = "full" }: { variant?: "full" | "compac
           </span>
         </span>
         <span className="rounded-full bg-orange px-2.5 py-1 text-[11px] font-black tracking-[.04em] text-ink uppercase rtl:tracking-normal">
-          {a.badge}
+          {badge}
         </span>
       </div>
 
@@ -135,6 +139,35 @@ export function AssistJourney({ variant = "full" }: { variant?: "full" | "compac
         {a.human}
       </p>
     </section>
+  );
+}
+
+/** Next to the order button when the assistance is a paid add-on: the customer ticks it (never ticked for them). */
+export function AssistToggle({ offer, checked, onChange }: { offer: AssistOffer; checked: boolean; onChange: (v: boolean) => void }) {
+  const { t, locale } = useI18n();
+  const a = t.checkout.assist;
+  return (
+    <label
+      className={`flex cursor-pointer items-start gap-3 rounded-2xl border-2 p-3.5 transition-colors ${
+        checked ? "border-[#25D366] bg-[#ECFDF3]" : "border-ink/12 bg-white hover:border-[#25D366]/60"
+      }`}
+    >
+      <input type="checkbox" checked={checked} onChange={(e) => onChange(e.target.checked)} className="mt-1 size-5 shrink-0 accent-[#16A34A]" />
+      <span className="grid min-w-0 flex-1 gap-1">
+        <span className="flex flex-wrap items-center gap-x-2.5 gap-y-1">
+          <span className="inline-flex items-center gap-2 text-[17px] leading-tight font-black">
+            <span className="grid size-7 shrink-0 place-items-center rounded-full bg-[#25D366] text-white">
+              <WhatsAppIcon size={15} />
+            </span>
+            {a.addTitle}
+          </span>
+          <span className={`rounded-full px-2.5 py-1 text-xs font-black ${checked ? "bg-[#25D366] text-white" : "bg-orange text-ink"}`}>
+            {checked ? `✓ ${a.added}` : `+${formatDT(offer.priceDT, locale)}`}
+          </span>
+        </span>
+        <span className="text-sm font-semibold opacity-80">{a.addBody}</span>
+      </span>
+    </label>
   );
 }
 

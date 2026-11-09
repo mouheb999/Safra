@@ -4,7 +4,7 @@ import Image from "next/image";
 import { useCallback, useEffect, useRef, useState, useTransition, type ReactNode } from "react";
 import { submitRequest } from "@/app/actions/submit-request";
 import { Field, FormError, HONEYPOT_FIELD, Honeypot, inputClass, str, useRequestForm } from "@/components/forms";
-import { AssistJourney, AssistLine } from "@/components/AssistJourney";
+import { AssistJourney, AssistLine, AssistToggle } from "@/components/AssistJourney";
 import { useI18n } from "@/i18n/client";
 import { fmt, label } from "@/i18n/fmt";
 import type { Messages } from "@/i18n/messages/en";
@@ -88,7 +88,9 @@ export function TripRequestForm({
   const [payMode, setPayMode] = useState<"cod" | "online">("cod");
   const [onlineMethod, setOnlineMethod] = useState<OnlineMethod | undefined>(onlineMethods[0]);
   const method: PaymentMethod = payMode === "online" && onlineMethod ? onlineMethod : "cod";
-  const total = orderTotal(checkout, method);
+  const assistAddon = checkout.assist.mode === "addon";
+  const [assistTaken, setAssistTaken] = useState(false);
+  const total = orderTotal(checkout, method, assistTaken);
 
   const [pending, startTransition] = useTransition();
   const [error, setError] = useState<string | null>(null);
@@ -153,6 +155,7 @@ export function TripRequestForm({
       paymentMethod: method,
       governorate: str(data, "governorate"),
       address: str(data, "address"),
+      assist: assistAddon ? (assistTaken ? "added" : "declined") : "included",
       ...(brainTrip ? { brain: { pick: brainTrip.pick, country: brainTrip.country }, itinerary: brainTrip.itinerary } : {}),
     };
     setError(null);
@@ -178,7 +181,9 @@ export function TripRequestForm({
     if (placed) window.scrollTo({ top: 0, behavior: "smooth" });
   }, [placed]);
 
-  const summary = <OrderSummary checkout={checkout} method={method} destination={destination} tripCostTND={brainTrip?.tripCostTND} />;
+  const summary = (
+    <OrderSummary checkout={checkout} method={method} assistTaken={assistTaken} destination={destination} tripCostTND={brainTrip?.tripCostTND} />
+  );
 
   return (
     <section className="@container px-[clamp(20px,3vw,32px)]">
@@ -311,7 +316,7 @@ export function TripRequestForm({
                       </div>
                     ) : null}
 
-                    <AssistLine />
+                    {assistAddon ? <AssistToggle offer={checkout.assist} checked={assistTaken} onChange={setAssistTaken} /> : <AssistLine />}
                     <Honeypot />
                     <FormError message={error} />
                     <button
@@ -498,11 +503,13 @@ function CopyButton({ value }: { value: string }) {
 function OrderSummary({
   checkout,
   method,
+  assistTaken,
   destination,
   tripCostTND,
 }: {
   checkout: CheckoutConfig;
   method: PaymentMethod;
+  assistTaken: boolean;
   destination?: CheckoutDestination;
   /** The trip brain's estimate for the trip itself (paid later, not part of this order). */
   tripCostTND?: number;
@@ -533,17 +540,21 @@ function OrderSummary({
         <dl className="m-0 grid gap-2 border-y border-cream/15 py-4">
           <SummaryRow label={c.planLine} value={formatDT(checkout.planPriceDT, locale)} />
           <SummaryRow label={c.delivery} value={fee ? formatDT(fee, locale) : c.free} />
-          <div className="flex items-baseline justify-between gap-3">
-            <dt className="opacity-85">{c.assist.row}</dt>
-            <dd className="m-0 font-black whitespace-nowrap text-[#7CF0A9]">{c.assist.included}</dd>
-          </div>
+          {checkout.assist.mode === "included" || assistTaken ? (
+            <div className="flex items-baseline justify-between gap-3">
+              <dt className="opacity-85">{c.assist.row}</dt>
+              <dd className="m-0 font-black whitespace-nowrap text-[#7CF0A9]">
+                {checkout.assist.mode === "included" ? c.assist.included : formatDT(checkout.assist.priceDT, locale)}
+              </dd>
+            </div>
+          ) : null}
           <div className="mt-1 flex items-baseline justify-between gap-3">
             <dt className="text-lg font-black">{c.total}</dt>
-            <dd className="m-0 text-[32px] leading-none font-black tracking-[-0.02em]">{formatDT(checkout.planPriceDT + fee, locale)}</dd>
+            <dd className="m-0 text-[32px] leading-none font-black tracking-[-0.02em]">{formatDT(orderTotal(checkout, method, assistTaken), locale)}</dd>
           </div>
         </dl>
 
-        <AssistJourney />
+        <AssistJourney offer={checkout.assist} />
 
         <div className="grid gap-2">
           <span className="font-black">{c.includesTitle}</span>

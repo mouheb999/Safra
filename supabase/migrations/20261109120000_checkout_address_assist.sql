@@ -1,6 +1,19 @@
--- Trip plan checkout in two pages: the visitor's details (page 2) now always include their governorate and
--- address, for cash on delivery and for online payments alike. submit_request() requires and stores them
--- for every order (previously cash on delivery only). Same signature, so the function is replaced in place.
+-- Trip plan checkout:
+-- 1. The visitor's details now always include their governorate and address, for cash on delivery and online
+--    payments alike: submit_request() requires and stores them for every order (before: cash on delivery only).
+-- 2. Live WhatsApp assistance, set in /admin/settings: 'included' in every plan (the default, as today), or a
+--    paid 'addon' the customer ticks at checkout. submit_request() charges it from the settings, never from the
+--    browser, and records what the customer got.
+-- Same signature, so the function is replaced in place.
+
+alter table public.site_settings
+  add column assist_mode text not null default 'included' check (assist_mode in ('included', 'addon')),
+  add column assist_price_dt integer not null default 49 check (assist_price_dt between 0 and 10000);
+
+-- Orders: 'included' (in the plan), 'added' (paid add-on) or 'declined'; null on requests that aren't orders.
+alter table public.requests
+  add column assist text check (assist in ('included', 'added', 'declined')),
+  add column assist_dt integer check (assist_dt >= 0);
 
 create or replace function public.submit_request(payload jsonb)
 returns table (id uuid, reference text, plan_price_dt integer, delivery_fee_dt integer, total_dt integer)
@@ -24,6 +37,8 @@ declare
   v_method text := nullif(payload ->> 'paymentMethod', '');
   v_plan integer;
   v_fee integer;
+  v_assist text;
+  v_assist_dt integer := 0;
 begin
   select * into v_settings from public.site_settings s where s.id = 1;
 
@@ -81,13 +96,19 @@ begin
     end if;
     v_plan := coalesce(v_settings.plan_price_dt, 79);
     v_fee := case when v_method = 'cod' then coalesce(v_settings.delivery_fee_dt, 7) else 0 end;
+    v_assist := case
+      when coalesce(v_settings.assist_mode, 'included') = 'included' then 'included'
+      when payload ->> 'assistance' = 'true' then 'added'
+      else 'declined'
+    end;
+    v_assist_dt := case when v_assist = 'added' then coalesce(v_settings.assist_price_dt, 0) else 0 end;
   end if;
 
   insert into public.requests (
     kind, source, channel, locale, full_name, whatsapp, travelers,
     destination_slug, destination_text, safari_slug, category,
     preferred_date, duration_days, duration_text, budget_dt, notes, quiz_answers,
-    payment_method, plan_price_dt, delivery_fee_dt, total_dt, delivery_governorate, delivery_address
+    payment_method, plan_price_dt, delivery_fee_dt, total_dt, delivery_governorate, delivery_address, assist, assist_dt
   )
   values (
     v_kind,
@@ -110,9 +131,11 @@ begin
     v_method,
     v_plan,
     v_fee,
-    v_plan + v_fee,
+    v_plan + v_fee + v_assist_dt,
     case when v_method is not null then btrim(payload ->> 'governorate') end,
-    case when v_method is not null then btrim(payload ->> 'address') end
+    case when v_method is not null then btrim(payload ->> 'address') end,
+    v_assist,
+    case when v_method is not null then v_assist_dt end
   )
   returning * into v_request;
 

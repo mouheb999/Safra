@@ -43,15 +43,29 @@ export const EMPTY_ACCOUNTS: PaymentAccounts = {
   bankRib: "",
 };
 
-/** What the checkout shows: the price, the delivery fee and the accounts it can offer. */
+/**
+ * Live WhatsApp assistance (/admin/settings): 'included' in every plan, or a paid 'addon' the customer ticks
+ * at checkout for `priceDT`.
+ */
+export interface AssistOffer {
+  mode: "included" | "addon";
+  priceDT: number;
+}
+
+/** What the checkout shows: the price, the delivery fee, the assistance offer and the accounts it can offer. */
 export interface CheckoutConfig {
   planPriceDT: number;
   deliveryFeeDT: number;
+  assist: AssistOffer;
   accounts: PaymentAccounts;
 }
 
 export const DEFAULT_PLAN_PRICE_DT = 79;
 export const DEFAULT_DELIVERY_FEE_DT = 7;
+export const DEFAULT_ASSIST: AssistOffer = { mode: "included", priceDT: 49 };
+
+/** The assistance's cost on an order: nothing when it's included or not taken. */
+export const assistCost = (offer: AssistOffer, taken: boolean) => (offer.mode === "addon" && taken ? offer.priceDT : 0);
 
 /** Same rule as submit_request(): a method is offered only once its account details are filled in. */
 export function isMethodAvailable(method: PaymentMethod, a: PaymentAccounts): boolean {
@@ -72,8 +86,9 @@ export function isMethodAvailable(method: PaymentMethod, a: PaymentAccounts): bo
 export const availableOnlineMethods = (a: PaymentAccounts): OnlineMethod[] =>
   ONLINE_METHODS.filter((m) => isMethodAvailable(m, a));
 
-export const orderTotal = (config: CheckoutConfig, method: PaymentMethod) =>
-  config.planPriceDT + (method === "cod" ? config.deliveryFeeDT : 0);
+/** Same sum as submit_request(): plan + delivery (cash on delivery) + the assistance add-on when taken. */
+export const orderTotal = (config: CheckoutConfig, method: PaymentMethod, assistTaken = false) =>
+  config.planPriceDT + (method === "cod" ? config.deliveryFeeDT : 0) + assistCost(config.assist, assistTaken);
 
 /** Account details to show for a method, as [label key, value] pairs (labels live in t.checkout.fields). */
 export type AccountField = "phone" | "recipient" | "bank" | "holder" | "rib";

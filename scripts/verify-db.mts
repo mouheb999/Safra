@@ -446,6 +446,23 @@ await check("online payment: no delivery fee, the address is kept", async () => 
   await rows(`update site_settings set d17_number = '', plan_price_dt = 79 where id = 1`);
 });
 
+await check("WhatsApp assistance: included by default, or a paid add-on priced from the settings", async () => {
+  const [inc] = await as("service_role", () => submit(cod));
+  const [incRow] = await rows(`select assist, assist_dt, total_dt from requests where id = $1`, [inc.id]);
+  assertEqual(incRow, { assist: "included", assist_dt: 0, total_dt: 86 });
+
+  await rows(`update site_settings set assist_mode = 'addon', assist_price_dt = 49 where id = 1`);
+  const [added] = await as("service_role", () => submit({ ...cod, assistance: true, assistDT: "1" }));
+  assertEqual([added.total_dt], [86 + 49]);
+  const [addedRow] = await rows(`select assist, assist_dt from requests where id = $1`, [added.id]);
+  assertEqual(addedRow, { assist: "added", assist_dt: 49 });
+  const [declined] = await as("service_role", () => submit(cod));
+  const [declinedRow] = await rows(`select assist, assist_dt, total_dt from requests where id = $1`, [declined.id]);
+  assertEqual(declinedRow, { assist: "declined", assist_dt: 0, total_dt: 86 });
+  await expectError(rows(`update site_settings set assist_mode = 'sometimes' where id = 1`), /check constraint/);
+  await rows(`update site_settings set assist_mode = 'included' where id = 1`);
+});
+
 await check("only trip plans can be ordered", async () => {
   await expectError(as("service_role", () => submit({ ...safariPayload, paymentMethod: "cod", governorate: "Tunis", address: "x" })), /Only trip plans/);
 });

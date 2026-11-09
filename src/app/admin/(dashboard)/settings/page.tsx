@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
 import { requireAdmin } from "@/lib/admin/session";
-import { DEFAULT_DELIVERY_FEE_DT, DEFAULT_PLAN_PRICE_DT } from "@/lib/payments";
+import { DEFAULT_ASSIST, DEFAULT_DELIVERY_FEE_DT, DEFAULT_PLAN_PRICE_DT } from "@/lib/payments";
 import { Notice } from "../../ui";
 import { SettingsForm } from "./SettingsForm";
 
@@ -21,6 +21,8 @@ export default async function SettingsPage({ searchParams }: { searchParams: Pro
         checkout={{
           plan_price_dt: data?.plan_price_dt ?? DEFAULT_PLAN_PRICE_DT,
           delivery_fee_dt: data?.delivery_fee_dt ?? DEFAULT_DELIVERY_FEE_DT,
+          assist_mode: data?.assist_mode ?? DEFAULT_ASSIST.mode,
+          assist_price_dt: data?.assist_price_dt ?? DEFAULT_ASSIST.priceDT,
           d17_number: data?.d17_number ?? "",
           flouci_number: data?.flouci_number ?? "",
           wafacash_name: data?.wafacash_name ?? "",

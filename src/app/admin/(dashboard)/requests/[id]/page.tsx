@@ -123,8 +123,21 @@ export default async function RequestPage({ params }: Props) {
                   ],
                   ["Plan price", formatDT(r.plan_price_dt)],
                   ["Delivery fee", r.payment_method === "cod" ? formatDT(r.delivery_fee_dt) : "— (online)"],
+                  ...(r.assist
+                    ? ([
+                        [
+                          "WhatsApp assistance",
+                          r.assist === "included"
+                            ? "Included in the plan — assist from departure to return"
+                            : r.assist === "added"
+                              ? `Paid add-on, ${formatDT(r.assist_dt ?? 0)} — assist from departure to return`
+                              : "Not taken (add-on declined)",
+                        ],
+                      ] as [string, React.ReactNode][])
+                    : []),
                   ["Total", <strong>{formatDT(r.total_dt)}</strong>],
-                  ...(r.payment_method === "cod"
+                  // Every order since the two-page checkout has an address; older online orders don't.
+                  ...(r.delivery_governorate || r.delivery_address
                     ? ([
                         ["Governorate", r.delivery_governorate ?? "—"],
                         ["Address", r.delivery_address ?? "—"],

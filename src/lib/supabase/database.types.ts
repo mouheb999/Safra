@@ -404,6 +404,8 @@ export type Database = {
           category: string | null
           channel: string
           created_at: string
+          assist: string | null
+          assist_dt: number | null
           delivery_address: string | null
           delivery_fee_dt: number | null
           delivery_governorate: string | null
@@ -435,6 +437,8 @@ export type Database = {
           category?: string | null
           channel?: string
           created_at?: string
+          assist?: string | null
+          assist_dt?: number | null
           delivery_address?: string | null
           delivery_fee_dt?: number | null
           delivery_governorate?: string | null
@@ -466,6 +470,8 @@ export type Database = {
           category?: string | null
           channel?: string
           created_at?: string
+          assist?: string | null
+          assist_dt?: number | null
           delivery_address?: string | null
           delivery_fee_dt?: number | null
           delivery_governorate?: string | null
@@ -613,6 +619,8 @@ export type Database = {
           brain_max_flight_share: number
           brain_min_pocket_tnd: number
           d17_number: string
+          assist_mode: string
+          assist_price_dt: number
           delivery_fee_dt: number
           flouci_number: string
           id: number
@@ -635,6 +643,8 @@ export type Database = {
           brain_max_flight_share?: number
           brain_min_pocket_tnd?: number
           d17_number?: string
+          assist_mode?: string
+          assist_price_dt?: number
           delivery_fee_dt?: number
           flouci_number?: string
           id?: number
@@ -657,6 +667,8 @@ export type Database = {
           brain_max_flight_share?: number
           brain_min_pocket_tnd?: number
           d17_number?: string
+          assist_mode?: string
+          assist_price_dt?: number
           delivery_fee_dt?: number
           flouci_number?: string
           id?: number

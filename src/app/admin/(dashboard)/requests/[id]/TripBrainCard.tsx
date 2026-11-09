@@ -50,6 +50,9 @@ export function TripBrainCard({ snapshot: s }: { snapshot: TripBrainSnapshot }) 
   const party = [`${i.adults} adult${i.adults === 1 ? "" : "s"}`, ...(i.children ? [`${i.children} child${i.children === 1 ? "" : "ren"} (${i.childAges.join(", ")})`] : [])];
   const place = (slug: string) => s.stops.find((x) => x.slug === slug)?.place ?? slug;
   const flags = s.tips.map((t) => tipText(t, place)).filter((t): t is string => t !== null);
+  // Shares of the whole (the budget, or the trip cost when it goes over), so they add up to 100%.
+  const overBy = Math.max(0, -s.budget.pocket_money);
+  const shareBase = Math.max(s.totalBudgetTND, s.tripCostTND);
 
   return (
     <Card title={`Find my trip · ${s.countryName}`}>
@@ -65,6 +68,7 @@ export function TripBrainCard({ snapshot: s }: { snapshot: TripBrainSnapshot }) 
             Starter price estimates — check flights and stays before you send the plan.
           </p>
         ) : null}
+        <LiveLinks snapshot={s} />
         {flags.length ? (
           <ul className="m-0 grid gap-1 rounded-xl bg-red-50 px-3 py-2 ps-7 text-sm font-bold text-red-800">
             {flags.map((f) => (
@@ -115,19 +119,31 @@ export function TripBrainCard({ snapshot: s }: { snapshot: TripBrainSnapshot }) 
           <h3 className="m-0 text-base font-black">Budget split (exact)</h3>
           <table className="w-full border-collapse text-sm">
             <tbody>
-              {CATEGORIES.map((c) => (
-                <tr key={c} className="border-b border-ink/8">
-                  <td className="py-1.5">{CATEGORY_LABEL[c]}</td>
-                  <td className={`py-1.5 text-end font-bold whitespace-nowrap ${s.budget[c] < 0 ? "text-red-700" : ""}`}>{formatDT(s.budget[c])}</td>
-                  <td className="w-14 py-1.5 text-end opacity-60">{s.totalBudgetTND ? `${Math.round((s.budget[c] / s.totalBudgetTND) * 100)}%` : ""}</td>
+              {CATEGORIES.map((c) => {
+                // Over budget, the "pocket money" left is negative: show 0 and say how much is missing instead.
+                const value = c === "pocket_money" ? Math.max(0, s.budget[c]) : s.budget[c];
+                return (
+                  <tr key={c} className="border-b border-ink/8">
+                    <td className="py-1.5">{CATEGORY_LABEL[c]}</td>
+                    <td className="py-1.5 text-end font-bold whitespace-nowrap">{formatDT(value)}</td>
+                    <td className="w-14 py-1.5 text-end opacity-60">{shareBase ? `${Math.round((value / shareBase) * 100)}%` : ""}</td>
+                  </tr>
+                );
+              })}
+              {overBy > 0 ? (
+                <tr className="bg-red-50 text-red-800">
+                  <td className="px-1 py-1.5 font-black">Over the budget by</td>
+                  <td className="py-1.5 text-end font-black whitespace-nowrap">{formatDT(overBy)}</td>
+                  <td className="w-14 py-1.5 text-end text-xs font-bold">of {formatDT(s.totalBudgetTND)}</td>
                 </tr>
-              ))}
+              ) : null}
             </tbody>
           </table>
           <Facts
             rows={[
               ["Trip cost", <strong key="cost">{formatDT(s.tripCostTND)}</strong>],
-              ["Pocket money", `${formatDT(s.pocketPerPersonPerDay)} per person per day`],
+              ["Customer’s budget", formatDT(s.totalBudgetTND)],
+              ["Pocket money", overBy > 0 ? "None left (over budget)" : `${formatDT(s.pocketPerPersonPerDay)} per person per day`],
               ["Margin", s.marginTND >= 0 ? `${formatDT(s.marginTND)} above the minimum pocket money` : `Short by ${formatDT(-s.marginTND)}`],
             ]}
           />
@@ -135,5 +151,59 @@ export function TripBrainCard({ snapshot: s }: { snapshot: TripBrainSnapshot }) 
         <p className="m-0 text-xs opacity-60">Priced {new Date(s.computedAt).toLocaleString("en-GB", { timeZone: "Africa/Tunis" })}</p>
       </div>
     </Card>
+  );
+}
+
+const link = "font-bold text-sea underline underline-offset-2 hover:no-underline";
+
+/** The day's Google Flights / Google Hotels searches behind the live prices, to check or book from. */
+function LiveLinks({ snapshot: s }: { snapshot: TripBrainSnapshot }) {
+  const flight = s.live?.flightLink;
+  const hotels = s.stops.flatMap((b) => (s.live?.hotelLinks?.[b.slug] ? [{ place: b.place, stay: b.stay, link: s.live.hotelLinks[b.slug] }] : []));
+  if (!flight && hotels.length === 0) return null;
+  const day = s.live?.checkedAt ? new Date(s.live.checkedAt).toLocaleDateString("en-GB", { timeZone: "Africa/Tunis", day: "numeric", month: "short", year: "numeric" }) : null;
+  return (
+    <div className="grid gap-2 rounded-xl border border-[#16A34A]/30 bg-[#F0FDF4] p-3 text-sm">
+      <h3 className="m-0 text-base font-black">Price links{day ? ` · checked ${day}` : ""}</h3>
+      <ul className="m-0 grid list-none gap-2 p-0">
+        {flight ? (
+          <li className="grid gap-0.5">
+            <span>
+              <strong>Flights</strong> TUN ⇄ {s.countryName} · {formatDate(flight.depart)} → {formatDate(flight.ret)} ·{" "}
+              {formatDT(flight.priceTND)} pp{flight.airline ? ` · ${flight.airline}` : ""}
+            </span>
+            <a href={flight.url} target="_blank" rel="noopener noreferrer" className={link}>
+              Open on Google Flights ↗
+            </a>
+          </li>
+        ) : null}
+        {hotels.map(({ place, stay, link: h }) => (
+          <li key={place} className="grid gap-0.5">
+            <span>
+              <strong>Hotels in {place}</strong> · {formatDate(h.checkIn)} → {formatDate(h.checkOut)}
+            </span>
+            <a href={h.url} target="_blank" rel="noopener noreferrer" className={link}>
+              Open on Google Hotels ↗
+            </a>
+            {h.examples.length ? (
+              <ul className="m-0 grid gap-0.5 ps-4">
+                {h.examples.map((e) => (
+                  <li key={e.stay} className={e.stay === stay ? "font-bold" : "opacity-75"}>
+                    {STAY[e.stay]}: {e.url ? (
+                      <a href={e.url} target="_blank" rel="noopener noreferrer" className={link}>
+                        {e.name}
+                      </a>
+                    ) : (
+                      e.name
+                    )}{" "}
+                    · {formatDT(e.nightTND)} / night{e.stay === stay ? " (the level picked)" : ""}
+                  </li>
+                ))}
+              </ul>
+            ) : null}
+          </li>
+        ))}
+      </ul>
+    </div>
   );
 }

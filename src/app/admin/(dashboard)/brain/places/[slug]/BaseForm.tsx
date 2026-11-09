@@ -67,7 +67,7 @@ export function BaseForm({ base: b, countries, defaultCountry }: { base: Base | 
               OK for families with children under 12
             </label>
           </div>
-          <Field label="Strong in" hint="Visitors pick up to 3 vibes; a place is only suggested if it shares one." wide>
+          <Field label="Strong in" hint="Visitors pick up to 5 vibes; a place is only suggested if it shares one." wide>
             <Checkboxes name="strengths" options={VIBES} checked={b?.strengths ?? []} />
           </Field>
           <Field label="Areas to stay in" hint="One per line, best first. Shown only in the paid plan." wide>

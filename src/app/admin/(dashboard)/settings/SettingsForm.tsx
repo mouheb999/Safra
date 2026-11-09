@@ -17,10 +17,25 @@ const MODES = [
   },
 ] as const;
 
+const ASSIST_MODES = [
+  {
+    value: "included",
+    title: "Included in every plan",
+    body: "Every trip plan comes with live WhatsApp assistance, from before departure until the customer is back home. Shown as “Included · no extra cost”.",
+  },
+  {
+    value: "addon",
+    title: "Paid add-on",
+    body: "The plan is sold without it; at checkout the customer can tick “Add live WhatsApp assistance” for the price below. It’s added to their order total.",
+  },
+] as const;
+
 /** Trip plan checkout settings, named like their site_settings columns. */
 export interface CheckoutSettings {
   plan_price_dt: number;
   delivery_fee_dt: number;
+  assist_mode: string;
+  assist_price_dt: number;
   d17_number: string;
   flouci_number: string;
   wafacash_name: string;
@@ -81,6 +96,30 @@ export function SettingsForm({
           </SettingField>
           <SettingField label="Delivery fee (DT)" hint="Added for cash on delivery: the order is delivered to the customer’s home, anywhere in Tunisia.">
             <input name="delivery_fee_dt" type="number" min={0} max={1000} step={1} required defaultValue={checkout.delivery_fee_dt} className={adminInput} />
+          </SettingField>
+        </div>
+
+        <div className="grid gap-3 rounded-xl bg-[#F0FDF4] p-3 ring-1 ring-[#16A34A]/25">
+          <div className="grid gap-0.5">
+            <span className="font-extrabold">Live WhatsApp assistance</span>
+            <span className="text-sm opacity-75">How the door-to-door WhatsApp assistance is sold with the trip plan.</span>
+          </div>
+          <div className="grid gap-2 sm:grid-cols-2">
+            {ASSIST_MODES.map((m) => (
+              <label
+                key={m.value}
+                className="flex cursor-pointer gap-3 rounded-xl border border-ink/12 bg-white p-3 has-checked:border-orange has-checked:bg-orange/10"
+              >
+                <input type="radio" name="assist_mode" value={m.value} defaultChecked={checkout.assist_mode === m.value} className="mt-1 size-4 accent-orange" />
+                <span className="grid gap-0.5">
+                  <span className="font-extrabold">{m.title}</span>
+                  <span className="text-sm opacity-75">{m.body}</span>
+                </span>
+              </label>
+            ))}
+          </div>
+          <SettingField label="Add-on price (DT)" hint="Charged only when it’s a paid add-on and the customer ticks it.">
+            <input name="assist_price_dt" type="number" min={0} max={10000} step={1} required defaultValue={checkout.assist_price_dt} className={`${adminInput} max-w-[200px]`} />
           </SettingField>
         </div>
 
