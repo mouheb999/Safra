@@ -2,6 +2,7 @@ import { CATEGORIES, type Category } from "@/lib/brain/pricing";
 import type { TripBrainSnapshot } from "@/lib/brain/snapshot";
 import type { Tip } from "@/lib/brain/builder";
 import { formatDate, formatDT } from "@/lib/admin/format";
+import { MIN_LEAD_DAYS, searchDates } from "@/lib/live/prices";
 import { Card, Facts } from "../../../ui";
 
 const CATEGORY_LABEL: Record<Category, string> = {
@@ -62,10 +63,6 @@ export function TripBrainCard({ snapshot: s }: { snapshot: TripBrainSnapshot }) 
             Live prices when ordered: flights {s.live.flights ? "✓" : "— estimate"} · hotels{" "}
             {s.stops.map((b) => `${b.place} ${s.live!.hotels.includes(b.slug) ? "✓" : "— estimate"}`).join(", ")}
             {s.live.eurTnd ? ` · 1 EUR = ${s.live.eurTnd.toFixed(3)} DT` : ""}. Food, transport and activities are estimates.
-          </p>
-        ) : s.estimated ? (
-          <p className="m-0 rounded-xl bg-orange/15 px-3 py-2 text-sm font-bold">
-            Starter price estimates — check flights and stays before you send the plan.
           </p>
         ) : null}
         <LiveLinks snapshot={s} />
@@ -159,47 +156,104 @@ export function TripBrainCard({ snapshot: s }: { snapshot: TripBrainSnapshot }) 
 
 const link = "font-bold text-sea underline underline-offset-2 hover:no-underline";
 
-/** The day's Google Flights / Google Hotels searches behind the live prices, to check or book from. */
+const enc = encodeURIComponent;
+const DAY_MS = 86_400_000;
+const addDays = (iso: string, n: number) => new Date(Date.parse(`${iso}T00:00:00Z`) + n * DAY_MS).toISOString().slice(0, 10);
+/** A Google Flights search for the order's dates, to check prices by hand (no API, nothing stored). */
+const flightsSearch = (country: string, depart: string, ret: string) =>
+  `https://www.google.com/travel/flights?hl=en&q=${enc(`Flights from Tunis to ${country} on ${depart} through ${ret}`)}`;
+/** A Google Hotels search for a place and its nights. */
+const hotelsSearch = (place: string, country: string, checkIn: string, checkOut: string) =>
+  `https://www.google.com/travel/search?hl=en&q=${enc(`hotels in ${place}, ${country} from ${checkIn} to ${checkOut}`)}`;
+
+/**
+ * Where the flight and hotel prices came from, always with links: the day's Google Flights / Google Hotels
+ * searches when the prices were live, otherwise why they're SAFRA's estimates and the same searches ready for
+ * the order's dates, to check by hand.
+ */
 function LiveLinks({ snapshot: s }: { snapshot: TripBrainSnapshot }) {
-  const flight = s.live?.flightLink;
-  const hotels = s.stops.flatMap((b) => (s.live?.hotelLinks?.[b.slug] ? [{ place: b.place, stay: b.stay, link: s.live.hotelLinks[b.slug] }] : []));
-  if (!flight && hotels.length === 0) return null;
-  const day = s.live?.checkedAt ? new Date(s.live.checkedAt).toLocaleDateString("en-GB", { timeZone: "Africa/Tunis", day: "numeric", month: "short", year: "numeric" }) : null;
+  const ordered = new Date(s.computedAt);
+  const dates = searchDates(s.input, ordered);
+  const live = s.live;
+  const day = (iso: string) => new Date(iso).toLocaleDateString("en-GB", { timeZone: "Africa/Tunis", day: "numeric", month: "short", year: "numeric" });
+  const anyLive = Boolean(live?.flights || live?.hotels.length);
+  const tooClose = dates ? Date.parse(`${dates.depart}T00:00:00Z`) - ordered.getTime() < MIN_LEAD_DAYS * DAY_MS : false;
+  const why = anyLive
+    ? null
+    : tooClose
+      ? `Departure ${formatDate(dates!.depart)} was less than ${MIN_LEAD_DAYS} days after the order, so no live search was made (Google has almost no fares this close).`
+      : "No live price was found for this order (live prices off, no key, monthly limit reached, or nothing on Google for these dates).";
+  const flight = live?.flightLink;
+  let offset = 0;
+  const stays = s.stops.map((b) => {
+    const checkIn = dates ? addDays(dates.depart, offset) : null;
+    offset += b.nights;
+    const checkOut = checkIn ? addDays(checkIn, b.nights) : null;
+    return { b, checkIn, checkOut, link: live?.hotelLinks?.[b.slug], isLive: Boolean(live?.hotels.includes(b.slug)) };
+  });
+
   return (
-    <div className="grid gap-2 rounded-xl border border-[#16A34A]/30 bg-[#F0FDF4] p-3 text-sm">
-      <h3 className="m-0 text-base font-black">Price links{day ? ` · checked ${day}` : ""}</h3>
+    <div className={`grid gap-2 rounded-xl border p-3 text-sm ${anyLive ? "border-[#16A34A]/30 bg-[#F0FDF4]" : "border-orange/40 bg-orange/8"}`}>
+      <h3 className="m-0 text-base font-black">
+        Price sources &amp; links{anyLive && live?.checkedAt ? ` · live prices checked ${day(live.checkedAt)}` : " · SAFRA estimates"}
+      </h3>
+      {why ? <p className="m-0 font-bold">{why} Use the links to check today’s prices before sending the plan.</p> : null}
       <ul className="m-0 grid list-none gap-2 p-0">
-        {flight ? (
-          <li className="grid gap-0.5">
+        <li className="grid gap-0.5">
+          {flight ? (
+            <>
+              <span>
+                <strong>Flights · live</strong> TUN ⇄ {s.countryName} · {formatDate(flight.depart)} → {formatDate(flight.ret)} ·{" "}
+                {formatDT(flight.priceTND)} pp{flight.airline ? ` · ${flight.airline}` : ""}
+              </span>
+              <a href={flight.url} target="_blank" rel="noopener noreferrer" className={link}>
+                Open the search behind this price on Google Flights ↗
+              </a>
+            </>
+          ) : (
+            <>
+              <span>
+                <strong>Flights · {live?.flights ? "live (link not kept on this older order)" : "SAFRA estimate"}</strong> TUN ⇄ {s.countryName}
+                {dates ? ` · ${formatDate(dates.depart)} → ${formatDate(dates.ret)}` : ""} · {formatDT(s.budget.flights)} for {s.travelers}
+              </span>
+              {dates ? (
+                <a href={flightsSearch(s.countryName, dates.depart, dates.ret)} target="_blank" rel="noopener noreferrer" className={link}>
+                  Check on Google Flights ↗
+                </a>
+              ) : null}
+            </>
+          )}
+        </li>
+        {stays.map(({ b, checkIn, checkOut, link: h, isLive }) => (
+          <li key={b.slug} className="grid gap-0.5">
             <span>
-              <strong>Flights</strong> TUN ⇄ {s.countryName} · {formatDate(flight.depart)} → {formatDate(flight.ret)} ·{" "}
-              {formatDT(flight.priceTND)} pp{flight.airline ? ` · ${flight.airline}` : ""}
+              <strong>
+                Hotels in {b.place} · {h ? "live" : isLive ? "live (link not kept on this older order)" : "SAFRA estimate"}
+              </strong>
+              {checkIn && checkOut ? ` · ${formatDate(checkIn)} → ${formatDate(checkOut)}` : ""} · {STAY[b.stay]}
             </span>
-            <a href={flight.url} target="_blank" rel="noopener noreferrer" className={link}>
-              Open on Google Flights ↗
-            </a>
-          </li>
-        ) : null}
-        {hotels.map(({ place, stay, link: h }) => (
-          <li key={place} className="grid gap-0.5">
-            <span>
-              <strong>Hotels in {place}</strong> · {formatDate(h.checkIn)} → {formatDate(h.checkOut)}
-            </span>
-            <a href={h.url} target="_blank" rel="noopener noreferrer" className={link}>
-              Open on Google Hotels ↗
-            </a>
-            {h.examples.length ? (
+            {h ? (
+              <a href={h.url} target="_blank" rel="noopener noreferrer" className={link}>
+                Open the search behind these prices on Google Hotels ↗
+              </a>
+            ) : checkIn && checkOut ? (
+              <a href={hotelsSearch(b.place, s.countryName, checkIn, checkOut)} target="_blank" rel="noopener noreferrer" className={link}>
+                Check on Google Hotels ↗
+              </a>
+            ) : null}
+            {h?.examples.length ? (
               <ul className="m-0 grid gap-0.5 ps-4">
                 {h.examples.map((e) => (
-                  <li key={e.stay} className={e.stay === stay ? "font-bold" : "opacity-75"}>
-                    {STAY[e.stay]}: {e.url ? (
+                  <li key={e.stay} className={e.stay === b.stay ? "font-bold" : "opacity-75"}>
+                    {STAY[e.stay]}:{" "}
+                    {e.url ? (
                       <a href={e.url} target="_blank" rel="noopener noreferrer" className={link}>
                         {e.name}
                       </a>
                     ) : (
                       e.name
                     )}{" "}
-                    · {formatDT(e.nightTND)} / night{e.stay === stay ? " (the level picked)" : ""}
+                    · {formatDT(e.nightTND)} / night{e.stay === b.stay ? " (the level picked)" : ""}
                   </li>
                 ))}
               </ul>
