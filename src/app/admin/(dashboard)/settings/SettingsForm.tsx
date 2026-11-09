@@ -2,7 +2,7 @@
 
 import { useActionState } from "react";
 import { saveSettings, type SettingsState } from "../../actions/settings";
-import { Notice, adminInput, adminPrimaryButton } from "../../ui";
+import { Notice, adminInput, adminPrimaryButton, adminSaveBar } from "../../ui";
 
 const MODES = [
   {
@@ -58,7 +58,7 @@ export function SettingsForm({
 
   return (
     <form action={action} className="grid gap-4">
-      <fieldset className="grid gap-3 rounded-2xl border border-ink/10 bg-white p-4 sm:p-5">
+      <fieldset className="grid gap-3 rounded-2xl border border-ink/8 bg-white p-4 shadow-[0_1px_2px_rgba(32,61,53,.05)] sm:p-5">
         <legend className="px-1 text-lg font-black">How visitors send requests</legend>
         {MODES.map((m) => (
           <label
@@ -79,7 +79,7 @@ export function SettingsForm({
         </p>
       </fieldset>
 
-      <fieldset className="grid gap-2 rounded-2xl border border-ink/10 bg-white p-4 sm:p-5">
+      <fieldset className="grid gap-2 rounded-2xl border border-ink/8 bg-white p-4 shadow-[0_1px_2px_rgba(32,61,53,.05)] sm:p-5">
         <legend className="px-1 text-lg font-black">SAFRA’s WhatsApp number</legend>
         <label className="grid max-w-[320px] gap-1.5 text-sm font-bold">
           Number with country code
@@ -88,7 +88,7 @@ export function SettingsForm({
         <p className="m-0 text-xs opacity-70">Every “Message on WhatsApp” link and prepared message goes to this number.</p>
       </fieldset>
 
-      <fieldset className="grid gap-4 rounded-2xl border border-ink/10 bg-white p-4 sm:p-5">
+      <fieldset className="grid gap-4 rounded-2xl border border-ink/8 bg-white p-4 shadow-[0_1px_2px_rgba(32,61,53,.05)] sm:p-5">
         <legend className="px-1 text-lg font-black">Trip plan &amp; payments</legend>
         <div className="grid gap-3 sm:grid-cols-2">
           <SettingField label="Trip plan price (DT)" hint="What a complete trip plan costs, whatever the destination.">
@@ -156,9 +156,11 @@ export function SettingsForm({
       </fieldset>
 
       {state.error ? <Notice tone="error">{state.error}</Notice> : null}
-      <button disabled={pending} className={`${adminPrimaryButton} justify-self-start`}>
-        {pending ? "Saving…" : "Save settings"}
-      </button>
+      <div className={adminSaveBar}>
+        <button disabled={pending} className={adminPrimaryButton}>
+          {pending ? "Saving…" : "Save settings"}
+        </button>
+      </div>
     </form>
   );
 }

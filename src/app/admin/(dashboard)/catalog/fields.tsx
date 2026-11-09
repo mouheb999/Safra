@@ -29,7 +29,7 @@ export function TextArea(props: React.TextareaHTMLAttributes<HTMLTextAreaElement
 
 export function Fieldset({ legend, children }: { legend: string; children: ReactNode }) {
   return (
-    <fieldset className="grid gap-4 rounded-2xl border border-ink/10 bg-white p-4 sm:grid-cols-2 sm:p-5">
+    <fieldset className="grid gap-4 rounded-2xl border border-ink/8 bg-white p-4 shadow-[0_1px_2px_rgba(32,61,53,.05)] sm:grid-cols-2 sm:p-5">
       <legend className="px-1 text-lg font-black">{legend}</legend>
       {children}
     </fieldset>
@@ -52,7 +52,7 @@ export function Checkboxes({ name, options, checked }: { name: string; options: 
 /** One collapsible block per extra language; anything left empty shows the English text. */
 export function TranslationFields({ fields, stored }: { fields: TranslatedField[]; stored: unknown }) {
   return (
-    <fieldset className="grid gap-3 rounded-2xl border border-ink/10 bg-white p-4 sm:p-5">
+    <fieldset className="grid gap-3 rounded-2xl border border-ink/8 bg-white p-4 shadow-[0_1px_2px_rgba(32,61,53,.05)] sm:p-5">
       <legend className="px-1 text-lg font-black">Translations</legend>
       <p className="m-0 text-sm opacity-70">
         French and Arabic versions of the text above. Leave a field empty to show the English text on that language.

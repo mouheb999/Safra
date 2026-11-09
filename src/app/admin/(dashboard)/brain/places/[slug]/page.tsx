@@ -20,7 +20,7 @@ export default async function BrainPlacePage({ params, searchParams }: Props) {
   return (
     <div className="grid max-w-[900px] gap-4">
       <BackLink href="/admin/brain">Trip brain</BackLink>
-      <h1 className="m-0 text-3xl font-black tracking-[-0.02em]">{base ? base.place : "New place"}</h1>
+      <h1 className="m-0 text-2xl font-black tracking-[-0.02em] sm:text-3xl">{base ? base.place : "New place"}</h1>
       <BaseForm base={base} countries={countries ?? []} defaultCountry={country} />
     </div>
   );

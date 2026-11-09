@@ -4,7 +4,7 @@ import { useActionState } from "react";
 import { BRAIN_COUNTRY_FIELDS } from "@/lib/admin/translations";
 import type { Tables } from "@/lib/supabase/database.types";
 import { saveBrainCountry, type FormState } from "../../../../actions/brain";
-import { Notice, adminPrimaryButton } from "../../../../ui";
+import { adminPrimaryButton, adminSaveBar, Notice } from "../../../../ui";
 import { Field, Fieldset, TextInput, TranslationFields } from "../../../catalog/fields";
 import { ImageField } from "../../../catalog/ImageField";
 
@@ -73,7 +73,7 @@ export function CountryForm({ country: c }: { country: Tables<"brain_countries">
       <TranslationFields fields={BRAIN_COUNTRY_FIELDS} stored={c?.translations} />
 
       {state.error ? <Notice tone="error">{state.error}</Notice> : null}
-      <div className="sticky bottom-0 -mx-4 flex gap-3 border-t border-ink/10 bg-[#F3EEE2]/95 px-4 py-3 backdrop-blur">
+      <div className={adminSaveBar}>
         <button disabled={pending} className={adminPrimaryButton}>
           {pending ? "Saving…" : c ? "Save changes" : "Create country"}
         </button>

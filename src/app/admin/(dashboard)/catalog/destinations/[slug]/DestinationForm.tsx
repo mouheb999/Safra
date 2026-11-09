@@ -3,7 +3,7 @@
 import { useActionState } from "react";
 import type { Tables } from "@/lib/supabase/database.types";
 import { saveDestination, type FormState } from "../../../../actions/catalog";
-import { Notice, adminPrimaryButton } from "../../../../ui";
+import { adminPrimaryButton, adminSaveBar, Notice } from "../../../../ui";
 import { DESTINATION_FIELDS } from "@/lib/admin/translations";
 import { Checkboxes, Field, Fieldset, TextArea, TextInput, TranslationFields } from "../../fields";
 import { ImageField } from "../../ImageField";
@@ -123,7 +123,7 @@ export function DestinationForm({ destination }: { destination: Destination | nu
       <TranslationFields fields={DESTINATION_FIELDS} stored={d?.translations} />
 
       {state.error ? <Notice tone="error">{state.error}</Notice> : null}
-      <div className="sticky bottom-0 -mx-4 flex gap-3 border-t border-ink/10 bg-[#F3EEE2]/95 px-4 py-3 backdrop-blur">
+      <div className={adminSaveBar}>
         <button disabled={pending} className={adminPrimaryButton}>
           {pending ? "Saving…" : d ? "Save changes" : "Create destination"}
         </button>

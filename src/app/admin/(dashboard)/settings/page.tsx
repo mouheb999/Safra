@@ -13,7 +13,7 @@ export default async function SettingsPage({ searchParams }: { searchParams: Pro
 
   return (
     <div className="grid max-w-[760px] gap-4">
-      <h1 className="m-0 text-3xl font-black tracking-[-0.02em]">Settings</h1>
+      <h1 className="m-0 text-2xl font-black tracking-[-0.02em] sm:text-3xl">Settings</h1>
       {saved ? <Notice>Settings saved — the public site uses them now.</Notice> : null}
       <SettingsForm
         bookingMode={data?.booking_mode ?? "whatsapp"}

@@ -17,7 +17,7 @@ export default async function BrainCountryPage({ params }: Props) {
   return (
     <div className="grid max-w-[900px] gap-4">
       <BackLink href="/admin/brain">Trip brain</BackLink>
-      <h1 className="m-0 text-3xl font-black tracking-[-0.02em]">{country ? country.name : "New country"}</h1>
+      <h1 className="m-0 text-2xl font-black tracking-[-0.02em] sm:text-3xl">{country ? country.name : "New country"}</h1>
       <CountryForm country={country} />
     </div>
   );

@@ -5,7 +5,7 @@ import type { Tables } from "@/lib/supabase/database.types";
 import { PACK_FIELDS } from "@/lib/admin/translations";
 import { VIBE_OPTIONS } from "@/lib/quiz";
 import { deletePack, savePack, type FormState } from "../../../../actions/catalog";
-import { Notice, adminInput, adminPrimaryButton, adminSecondaryButton } from "../../../../ui";
+import { adminInput, adminPrimaryButton, adminSaveBar, adminSecondaryButton, Notice } from "../../../../ui";
 import { Checkboxes, Field, Fieldset, TextArea, TextInput, TranslationFields } from "../../fields";
 import { ImageField } from "../../ImageField";
 
@@ -88,7 +88,7 @@ export function PackForm({ pack, destinations }: { pack: Pack | null; destinatio
         <TranslationFields fields={PACK_FIELDS} stored={p?.translations} />
 
         {state.error ? <Notice tone="error">{state.error}</Notice> : null}
-        <div className="sticky bottom-0 -mx-4 flex gap-3 border-t border-ink/10 bg-[#F3EEE2]/95 px-4 py-3 backdrop-blur">
+        <div className={adminSaveBar}>
           <button disabled={pending} className={adminPrimaryButton}>
             {pending ? "Saving…" : p ? "Save changes" : "Create pack"}
           </button>
