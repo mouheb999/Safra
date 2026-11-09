@@ -124,7 +124,8 @@ Pages and server actions check admin membership on the server, and RLS checks it
 "Find my trip", the packs and `/trip`'s "Get my complete trip plan" open the checkout at
 `/trip-request`, in two pages (each a browser history entry, so Back returns to page 1):
 
-1. **The trip**, answered like "Find my trip" (`TripChoices.tsx`): where (when not already chosen), who
+1. **The trip**, answered like "Find my trip" (`TripChoices.tsx`): where (a dropdown of SAFRA's destinations — the
+   active Trip brain countries — when not already chosen), who
    (group cards + travelers), when (date or "not sure yet"), how long, total budget, notes.
 2. **The customer**: name, WhatsApp, governorate and address (required for every order), then payment.
 

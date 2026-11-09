@@ -280,6 +280,7 @@ const ar: Messages = {
     stepDetails: "المعطيات متاعك",
     tripLead: "شوية اختيارات سريعة، ومن بعد المعطيات متاعك.",
     qWhere: "وين تحب تمشي؟",
+    pickDestination: "اختار البلاصة",
     qWho: "شكون ماشي؟",
     travelers: "المسافرين",
     oneTraveler: "مسافر واحد",

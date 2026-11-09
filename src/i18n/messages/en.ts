@@ -279,6 +279,7 @@ const en = {
     stepDetails: "Your details",
     tripLead: "A few quick choices, then your details.",
     qWhere: "Where do you want to go?",
+    pickDestination: "Choose your destination",
     qWho: "Who’s going?",
     travelers: "Travelers",
     oneTraveler: "1 traveler",

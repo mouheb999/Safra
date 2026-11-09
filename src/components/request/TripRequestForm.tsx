@@ -23,7 +23,7 @@ import {
 import { requestMessage, whatsappUrl, type BookingConfig, type TripRequest } from "@/lib/requests";
 import type { TripRequestPrefill } from "@/lib/search-params";
 import { cardClass, chipClass } from "./RequestHeader";
-import { MAX_TRAVELERS, TripChoices, durationLabel, travelersLabel, type TripAnswers } from "./TripChoices";
+import { MAX_TRAVELERS, TripChoices, durationLabel, matchDestination, travelersLabel, type DestinationOption, type TripAnswers } from "./TripChoices";
 
 /** The destination being ordered, when it came from the catalog. */
 export interface CheckoutDestination {
@@ -69,6 +69,7 @@ export function TripRequestForm({
   destination,
   packTitle,
   brainTrip,
+  destinationOptions,
 }: {
   prefill: TripRequestPrefill;
   booking: BookingConfig;
@@ -78,6 +79,8 @@ export function TripRequestForm({
   packTitle?: string;
   /** Set when the visitor chose a trip on "Find my trip"; the server stores its full breakdown. */
   brainTrip?: BrainCheckoutTrip;
+  /** What "Where do you want to go?" offers: SAFRA's destinations, in the visitor's language. */
+  destinationOptions: DestinationOption[];
 }) {
   const { t, locale } = useI18n();
   const c = t.checkout;
@@ -98,7 +101,8 @@ export function TripRequestForm({
 
   const [page, setPage] = useState<Page>("trip");
   const [trip, setTrip] = useState<TripAnswers>(() => ({
-    destination: prefill.desiredDestination,
+    // A destination from the link is kept only when it's one of SAFRA's (then shown in the visitor's language).
+    destination: matchDestination(prefill.desiredDestination, destinationOptions)?.name ?? "",
     group: "",
     travelers: Math.min(MAX_TRAVELERS, Math.max(1, Number(prefill.travelers) || 2)),
     date: prefill.preferredDate,
@@ -221,6 +225,7 @@ export function TripRequestForm({
                     setAnswers={setTrip}
                     askDestination={askDestination}
                     destinationRequired={askDestination && !hasSelection}
+                    destinations={destinationOptions}
                     onNext={toDetails}
                   />
                 </div>

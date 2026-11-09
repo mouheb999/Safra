@@ -7,7 +7,7 @@ import { fmt } from "@/i18n/fmt";
 import { routeLocale, type LocaleParams } from "@/i18n/server";
 import { pick } from "@/data/translations";
 import { decodeInput } from "@/lib/brain/input";
-import { getBookingConfig, getCheckoutConfig, getDestinations, getPacks, getVisaServices } from "@/lib/catalog";
+import { getBookingConfig, getBrainData, getCheckoutConfig, getDestinations, getPacks, getVisaServices } from "@/lib/catalog";
 import { pickTwoWithLivePrices } from "@/lib/live/server";
 import { parseTripRequestParams, type SearchParams } from "@/lib/search-params";
 import { pageMetadata } from "@/lib/site";
@@ -50,12 +50,15 @@ async function pickedTrip(sp: SearchParams, locale: Locale): Promise<BrainChecko
 // Supports ?mode=direct (destination typed in) and ?mode=visa (&service=slug), plus the answers carried from the quiz.
 export default async function TripRequestPage({ params, searchParams }: Props) {
   const locale = await routeLocale(params);
-  const [sp, destinations, booking, checkout] = await Promise.all([
+  const [sp, destinations, booking, checkout, brain] = await Promise.all([
     searchParams,
     getDestinations(locale),
     getBookingConfig(),
     getCheckoutConfig(),
+    getBrainData(),
   ]);
+  // "Where do you want to go?" offers SAFRA's destinations only (the Trip brain countries, in /admin/brain order).
+  const destinationOptions = brain.countries.map((c) => ({ code: c.code, name: pick(c.translations, locale, "name", c.name), english: c.name }));
   const prefill = parseTripRequestParams(sp, "trip", destinations);
   const selected = destinations.find((d) => d.slug === prefill.selectedSlug);
   // ?pack= from "Our packs": the summary shows the pack, and its name is noted on the request.
@@ -74,7 +77,7 @@ export default async function TripRequestPage({ params, searchParams }: Props) {
       {prefill.mode === "visa" ? (
         <VisaRequest services={await getVisaServices(locale)} booking={booking} category={prefill.category} initialSlug={service} />
       ) : (
-        <TripRequestForm prefill={prefill} booking={booking} checkout={checkout} destination={destination} packTitle={pack?.title} brainTrip={brainTrip} />
+        <TripRequestForm prefill={prefill} booking={booking} checkout={checkout} destination={destination} packTitle={pack?.title} brainTrip={brainTrip} destinationOptions={destinationOptions} />
       )}
     </main>
   );

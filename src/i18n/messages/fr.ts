@@ -279,6 +279,7 @@ const fr: Messages = {
     stepDetails: "Vos coordonnées",
     tripLead: "Quelques choix rapides, puis vos coordonnées.",
     qWhere: "Où voulez-vous partir ?",
+    pickDestination: "Choisissez votre destination",
     qWho: "Qui part ?",
     travelers: "Voyageurs",
     oneTraveler: "1 voyageur",

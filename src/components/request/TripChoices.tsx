@@ -52,17 +52,44 @@ export function tripComplete(a: TripAnswers, destinationRequired: boolean, today
   );
 }
 
+/** One of SAFRA's destinations (the Trip brain countries), named in the visitor's language. */
+export interface DestinationOption {
+  code: string;
+  name: string;
+  /** English name, to recognise a destination passed in the URL whatever its language. */
+  english: string;
+}
+
+const norm = (s: string) =>
+  s
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .toLowerCase()
+    .replace(/[^a-z\u0600-\u06ff]/g, "");
+// Names a link may use for a destination listed under another one.
+const ALIASES: Record<string, string> = { turkiye: "turkey", indonesia: "bali" };
+
+/** The destination a link asked for (?desiredDestination=Thailand, a pack's country…), if SAFRA offers it. */
+export function matchDestination(value: string, options: DestinationOption[]): DestinationOption | undefined {
+  const key = norm(value);
+  if (!key) return undefined;
+  const wanted = ALIASES[key] ?? key;
+  return options.find((o) => [o.code, o.name, o.english].some((n) => norm(n) === wanted));
+}
+
 export function TripChoices({
   answers: a,
   setAnswers,
   askDestination,
   destinationRequired,
+  destinations,
   onNext,
 }: {
   answers: TripAnswers;
   setAnswers: React.Dispatch<React.SetStateAction<TripAnswers>>;
   askDestination: boolean;
   destinationRequired: boolean;
+  destinations: DestinationOption[];
   onNext: () => void;
 }) {
   const { t, locale } = useI18n();
@@ -75,15 +102,38 @@ export function TripChoices({
     <section className={`${cardClass} gap-7 p-6 @max-[560px]:p-5`}>
       {askDestination ? (
         <Question title={`${c.qWhere}${destinationRequired ? " *" : ""}`} id="q-where">
-          <input
-            aria-labelledby="q-where"
-            type="text"
-            maxLength={120}
-            value={a.destination}
-            onChange={(e) => set("destination", e.target.value)}
-            placeholder={t.request.desiredPlaceholder}
-            className="w-full min-w-0 rounded-[20px] border border-ink/16 bg-white/80 px-4 py-4 text-lg font-extrabold placeholder:font-bold placeholder:opacity-60"
-          />
+          {/* Only SAFRA's destinations: the visitor picks one. */}
+          <div className="relative">
+            <select
+              aria-labelledby="q-where"
+              value={a.destination}
+              onChange={(e) => set("destination", e.target.value)}
+              className={`w-full min-w-0 cursor-pointer appearance-none rounded-[20px] border bg-white/80 py-4 ps-4 pe-12 text-lg font-extrabold ${
+                a.destination ? "border-orange ring-1 ring-orange" : "border-ink/16 text-ink/60"
+              }`}
+            >
+              <option value="">{c.pickDestination}</option>
+              {destinations.map((d) => (
+                <option key={d.code} value={d.name}>
+                  {d.name}
+                </option>
+              ))}
+            </select>
+            <svg
+              aria-hidden
+              width="18"
+              height="18"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="2.4"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              className="pointer-events-none absolute end-4 top-1/2 -translate-y-1/2"
+            >
+              <path d="m6 9 6 6 6-6" />
+            </svg>
+          </div>
         </Question>
       ) : null}
 
