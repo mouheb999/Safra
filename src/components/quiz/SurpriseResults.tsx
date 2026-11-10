@@ -38,6 +38,7 @@ export function SurpriseResults({
   onOther,
   onBest,
   onRestart,
+  onChangeBudget,
   headingRef,
 }: {
   preview: SurprisePreview | null;
@@ -53,6 +54,8 @@ export function SurpriseResults({
   /** Set once other destinations were asked for: back to the 2 best matches. */
   onBest?: () => void;
   onRestart: () => void;
+  /** Back to the budget question, answers kept. */
+  onChangeBudget: () => void;
   headingRef: RefObject<HTMLHeadingElement | null>;
 }) {
   const { t, locale } = useI18n();
@@ -62,6 +65,26 @@ export function SurpriseResults({
       {b.startAgain}
     </button>
   );
+
+  // Nothing within 150 DT per person of the budget: say it plainly, with the budget that works.
+  if (preview?.status === "too_tight") {
+    return (
+      <div className="grid max-w-[760px] gap-5 pt-2">
+        <h2 ref={headingRef} tabIndex={-1} className={headingClass}>
+          {b.tightTitle}
+        </h2>
+        <p className="m-0 text-lg font-bold opacity-85">{fmt(b.tightBody, { min: formatDT(preview.minPerPersonTND, locale) })}</p>
+        <div className="flex flex-wrap gap-3">
+          <button type="button" onClick={onChangeBudget} className="cursor-pointer rounded-full bg-orange px-6 py-3.5 font-black hover:brightness-95">
+            {b.changeBudget}
+          </button>
+          <a href={whatsappUrl(t.whatsapp.hi, whatsappNumber)} className="rounded-full border border-ink/15 bg-white/70 px-6 py-3.5 font-extrabold hover:bg-white">
+            {b.talk}
+          </a>
+        </div>
+      </div>
+    );
+  }
 
   if (!preview || preview.status !== "ok") {
     return (
@@ -83,13 +106,14 @@ export function SurpriseResults({
     <div className="grid gap-6">
       <div className="grid max-w-[820px] gap-3">
         <h2 ref={headingRef} tabIndex={-1} className={headingClass}>
-          {input.exclude?.length ? b.resultsTitleOther : b.resultsTitle}
+          {preview.options.length === 1 ? b.resultsTitleOne : input.exclude?.length ? b.resultsTitleOther : b.resultsTitle}
         </h2>
         <p className="m-0 text-lg font-bold opacity-85">
           {fmt(b.resultsLead, { travelers, when: whenLabel, budget: formatDT(preview.totalBudgetTND, locale) })}
         </p>
       </div>
 
+      {preview.options.length === 1 ? <p className="m-0 -mt-2 font-bold text-[#9A3412]">{b.onlyOne}</p> : null}
       <div className="grid gap-5 @min-[760px]:grid-cols-2">
         {preview.options.map((o, i) => (
           <OptionCard
@@ -198,7 +222,7 @@ function OptionCard({
           <div className="flex flex-wrap items-baseline justify-between gap-2">
             <span className="text-[30px] leading-none font-black tracking-[-0.02em] tabular-nums rtl:tracking-normal">≈ {formatDT(o.tripCostTND, locale)}</span>
             <span className={`rounded-full px-2.5 py-1 text-xs font-black ${o.fits ? "bg-white" : "bg-[#FEF3C7] text-[#92400E]"}`}>
-              {o.fits ? b.within : fmt(b.needs, { amount: formatDT(o.missingTND, locale) })}
+              {o.fits ? b.within : fmt(b.needs, { amount: formatDT(o.missingPerPersonTND, locale) })}
             </span>
           </div>
           {o.fits ? <span className="text-sm font-bold">{fmt(b.pocket, { amount: formatDT(o.pocketPerPersonPerDay, locale) })}</span> : null}

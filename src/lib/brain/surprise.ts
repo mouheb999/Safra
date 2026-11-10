@@ -17,11 +17,15 @@ export interface Pick {
   season: Season;
   vibesMatched: string[];
   fits: boolean;
-  /** Extra budget needed (whole trip) when it doesn't fit; 0 otherwise. */
+  /** Extra budget needed (whole trip, rounded up to 50 DT) when it doesn't fit; 0 otherwise. Never over 150 DT per person. */
   missingTND: number;
 }
 
-export type PickResult = { status: "need_info"; missing: string[] } | { status: "ok"; picks: Pick[] };
+export type PickResult =
+  | { status: "need_info"; missing: string[] }
+  | { status: "ok"; picks: Pick[] }
+  /** Trips exist for these answers, but none within MAX_STRETCH_PER_PERSON_TND of the budget. */
+  | { status: "too_tight"; minPerPersonTND: number };
 
 interface Candidate {
   country: string;
@@ -75,61 +79,89 @@ function rankCandidates(input: BrainInput, data: BuilderData): Candidate[] {
     .sort((a, b) => Number(b.fits) - Number(a.fits) || b.score - a.score);
 }
 
-/** A focus trip this close to the budget (share of the total) is still suggested, with what it needs. */
-export const NEAR_BUDGET_SHARE = 0.2;
-
 /**
- * The 2 trips to show, focus destinations first:
- * - 2 focus trips that fit → both;
- * - 1 fits → it, then the next focus trip if it's within reach (≤ 20% over), else the best backup that fits;
- * - none fits → the closest focus trip (with what it needs), then the best backup that fits (or nearly fits).
- * Without focus destinations (none ticked), simply the 2 best.
+ * The most a shown trip may ask on top of the visitor's budget, per person. Anything further is never shown:
+ * when nothing fits within it, the visitor is told the budget is too tight (status "too_tight").
  */
-function chooseTwo(ranked: Candidate[], featured: Set<string>, totalBudgetTND: number): Candidate[] {
-  const focus = ranked.filter((c) => featured.has(c.country));
-  const backup = ranked.filter((c) => !featured.has(c.country));
-  if (focus.length === 0) return ranked.slice(0, 2);
-  const focusFits = focus.filter((c) => c.fits);
-  const near = (c: Candidate) => !c.fits && -c.score <= totalBudgetTND * NEAR_BUDGET_SHARE;
-  const backupFit = backup.find((c) => c.fits) ?? backup.find(near);
-  const first = focusFits[0] ?? focus[0];
-  const second = focusFits[1] ?? (focusFits.length ? focus.find(near) : undefined) ?? backupFit ?? focus.find((c) => c !== first) ?? backup[0];
-  return [first, second].filter((c, i, all): c is Candidate => c !== undefined && all.indexOf(c) === i);
+export const MAX_STRETCH_PER_PERSON_TND = 150;
+
+const travelersOf = (input: BrainInput) => input.adults + input.children;
+const totalBudget = (input: BrainInput) => (input.budgetScope === "per_person" ? input.budgetTND * travelersOf(input) : input.budgetTND);
+const ceil50 = (n: number) => Math.ceil(n / 50) * 50;
+
+interface Priced extends Candidate {
+  priced: PricedTrip;
+  /** Exact amount missing for the whole trip (0 when it fits). */
+  shortTND: number;
 }
 
-const totalBudget = (input: BrainInput) => (input.budgetScope === "per_person" ? input.budgetTND * (input.adults + input.children) : input.budgetTND);
+/** Every country's trip, priced exactly, best first. */
+function pricedCandidates(input: BrainInput, data: BuilderData): Priced[] {
+  return rankCandidates(input, data).flatMap((c) => {
+    const priced = priceTrip(input, c.trip, data);
+    return priced ? [{ ...c, priced, shortTND: c.fits ? 0 : Math.max(0, -priced.marginTND) }] : [];
+  });
+}
+
+/** Within the budget, or at most MAX_STRETCH_PER_PERSON_TND more per person. */
+const inReach = (c: Priced, input: BrainInput) => c.fits || c.shortTND / travelersOf(input) <= MAX_STRETCH_PER_PERSON_TND;
 
 /**
- * Country codes in pick order: the 2 picks, then the other focus destinations, then the backups (used to spend
- * live searches on the countries that can actually be picked).
+ * The 2 trips to show, only from trips in reach of the budget: the ones that fit first, then the ones a little over
+ * (≤ 150 DT per person); in each group focus destinations (Southeast Asia) first, then the best score.
+ */
+function chooseTwo(list: Priced[], featured: Set<string>, input: BrainInput): Priced[] {
+  const rank = (c: Priced) => (c.fits ? 0 : 2) + (featured.has(c.country) ? 0 : 1);
+  return list
+    .filter((c) => inReach(c, input))
+    .sort((a, b) => rank(a) - rank(b) || (a.fits ? b.score - a.score : a.shortTND - b.shortTND))
+    .slice(0, 2);
+}
+
+/** The budget per person (rounded up to 50 DT) the cheapest trip for these answers needs. */
+function smallestBudgetPerPerson(list: Priced[], input: BrainInput): number {
+  const needed = list.map((c) => (totalBudget(input) + c.shortTND) / travelersOf(input));
+  return ceil50(Math.min(...needed));
+}
+
+const featuredOf = (data: BuilderData) => new Set(data.countries.filter((c) => c.featured).map((c) => c.code));
+
+/**
+ * Country codes in pick order: the 2 picks, then the others closest to the budget (used to spend live searches
+ * on the countries that can actually be picked — a live fare can bring a country within reach).
  */
 export function rankCountries(input: BrainInput, data: BuilderData): string[] {
-  const ranked = rankCandidates(input, data);
-  const featured = new Set(data.countries.filter((c) => c.featured).map((c) => c.code));
-  const chosen = chooseTwo(ranked, featured, totalBudget(input)).map((c) => c.country);
-  const rest = [...ranked.filter((c) => featured.has(c.country)), ...ranked.filter((c) => !featured.has(c.country))].map((c) => c.country);
+  const list = pricedCandidates(input, data);
+  const chosen = chooseTwo(list, featuredOf(data), input).map((c) => c.country);
+  const rest = [...list].sort((a, b) => a.shortTND - b.shortTND).map((c) => c.country);
   return [...new Set([...chosen, ...rest])];
 }
 
-/** Whether "Show me 2 other destinations" has anything left once these countries are skipped too. */
+/** Whether "Show me 2 other destinations" has anything in reach once these countries are skipped too. */
 export function hasMoreDestinations(input: BrainInput, data: BuilderData, shown: string[]): boolean {
-  return rankCandidates({ ...input, exclude: [...(input.exclude ?? []), ...shown] }, data).length > 0;
+  const next = { ...input, exclude: [...(input.exclude ?? []), ...shown] };
+  return pricedCandidates(next, data).some((c) => inReach(c, next));
 }
 
 export function pickTwo(input: BrainInput, data: BuilderData): PickResult {
   const probe = suggestTrips(input, [], data.bases, data.settings);
   if (probe.status === "need_info") return probe;
 
-  const featured = new Set(data.countries.filter((c) => c.featured).map((c) => c.code));
-  const ranked = chooseTwo(rankCandidates(input, data), featured, totalBudget(input));
+  const list = pricedCandidates(input, data);
+  const chosen = chooseTwo(list, featuredOf(data), input);
+  // Nothing in reach (but trips exist): say so, with the budget that would work, instead of showing trips far over it.
+  if (chosen.length === 0 && list.length > 0) return { status: "too_tight", minPerPersonTND: smallestBudgetPerPerson(list, input) };
 
-  const picks = ranked.flatMap((c) => {
-    const priced = priceTrip(input, c.trip, data);
-    if (!priced) return [];
-    return [{ ...c, priced, missingTND: c.fits ? 0 : Math.ceil(Math.max(0, -priced.marginTND) / 50) * 50 }];
-  });
+  const picks = chosen.map(({ score: _score, shortTND, ...c }) => ({ ...c, missingTND: c.fits ? 0 : ceil50(shortTND), label: "best_match" as PickLabel }));
+  return { status: "ok", picks: labelPicks(picks) };
+}
 
-  return { status: "ok", picks: labelPicks(picks.map(({ score: _score, ...p }) => ({ ...p, label: "best_match" as PickLabel }))) };
+/** Re-checks picks after live prices: drops any now beyond reach; none left → too tight (with what would work). */
+export function keepInReach<T extends Pick>(input: BrainInput, picks: T[]): PickResult {
+  const kept = picks.filter((p) => p.fits || p.missingTND / travelersOf(input) <= MAX_STRETCH_PER_PERSON_TND);
+  if (kept.length) return { status: "ok", picks: labelPicks(kept) };
+  const needed = picks.map((p) => (totalBudget(input) + p.missingTND) / travelersOf(input));
+  return { status: "too_tight", minPerPersonTND: ceil50(Math.min(...needed)) };
 }
 
 /** The first is the best match; the second says what it's better at (or that it needs a bigger budget). */

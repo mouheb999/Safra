@@ -27,6 +27,8 @@ export interface SurpriseOption {
   pocketPerPersonPerDay: number;
   fits: boolean;
   missingTND: number;
+  /** What it needs on top of the budget, per person (≤ 150 DT: trips further over are never shown). */
+  missingPerPersonTND: number;
   activityCount: number;
   days: ProgramDay[];
   /** Which prices are the day's (SerpApi) rather than SAFRA's estimates. */
@@ -35,6 +37,8 @@ export interface SurpriseOption {
 
 export type SurprisePreview =
   | { status: "need_info" }
+  /** Nothing within 150 DT per person of the budget: the budget per person the cheapest trip needs. */
+  | { status: "too_tight"; minPerPersonTND: number }
   | {
       status: "ok";
       options: SurpriseOption[];
@@ -66,6 +70,7 @@ export function buildPreview(input: BrainInput, data: BuilderData, locale: Local
 
 /** The preview of picks already made (e.g. with live prices: pass the data they were priced with). */
 export function previewFromPicks(input: BrainInput, result: PickResult, data: BuilderData, locale: Locale, live: LiveInfo): SurprisePreview {
+  if (result.status === "too_tight") return { status: "too_tight", minPerPersonTND: result.minPerPersonTND };
   if (result.status === "need_info" || result.picks.length === 0) return { status: "need_info" };
   const first = result.picks[0].priced;
   return {
@@ -92,6 +97,7 @@ export function previewFromPicks(input: BrainInput, result: PickResult, data: Bu
         pocketPerPersonPerDay: Math.max(0, Math.floor(p.priced.pocketPerPersonPerDay / 5) * 5),
         fits: p.fits,
         missingTND: p.missingTND,
+        missingPerPersonTND: p.fits ? 0 : Math.ceil(p.missingTND / p.priced.travelers / 10) * 10,
         activityCount: p.trip.stops.reduce((n, s) => n + s.activities.length, 0),
         days: programDays(stops),
         live: {

@@ -8,7 +8,7 @@
 import type { BrainBase, BrainCountry, StayType } from "../../data/brain";
 import { priceTrip, type BuilderData } from "../brain/builder.ts";
 import { tripNights, type BrainInput } from "../brain/engine.ts";
-import { labelPicks, pickTwo, rankCountries, type PickResult } from "../brain/surprise.ts";
+import { keepInReach, pickTwo, rankCountries, type PickResult } from "../brain/surprise.ts";
 
 export const SERPAPI_URL = "https://serpapi.com/search.json";
 export const FX_URL = "https://open.er-api.com/v6/latest/EUR";
@@ -348,6 +348,12 @@ export async function pickTwoLive(input: BrainInput, data: BuilderData, settings
     countries: data.countries.map((c, i) => (flights[i] ? { ...c, flightTND: flights[i]!.priceTND } : c)),
   };
   const result = pickTwo(input, withFlights);
+  const flightLinks = Object.fromEntries(data.countries.flatMap((c, i) => (flights[i] ? [[c.code, flights[i]!] as const] : [])));
+  const liveFlightCodes = data.countries.filter((_, i) => flights[i] !== null).map((c) => c.code);
+  // With the day's fares nothing is in reach of the budget: say so (never fall back to estimates that would show it).
+  if (result.status === "too_tight" && liveFlightCodes.length) {
+    return { result, data: withFlights, live: { ...NO_LIVE, flights: liveFlightCodes, eurTnd: fx, checkedAt: deps.now().toISOString(), flightLinks } };
+  }
   if (result.status !== "ok") return offline;
 
   // Hotels for the picked places, each searched for its own nights within the trip.
@@ -378,16 +384,17 @@ export async function pickTwoLive(input: BrainInput, data: BuilderData, settings
     const fits = re.marginTND >= 0;
     return { ...p, priced: re, fits, missingTND: fits ? 0 : Math.ceil(Math.max(0, -re.marginTND) / 50) * 50 };
   });
-  const liveFlights = data.countries.filter((_, i) => flights[i] !== null).map((c) => c.code);
+  const liveFlights = liveFlightCodes;
   return {
-    result: { status: "ok", picks: labelPicks(picks) },
+    // The day's hotel rates can push a pick beyond reach: it's dropped then (none left → too tight).
+    result: keepInReach(input, picks),
     data: priced,
     live: {
       flights: liveFlights,
       hotels: [...liveRates.keys()],
       eurTnd: liveFlights.length || liveRates.size ? fx : null,
       checkedAt: liveFlights.length || liveRates.size ? deps.now().toISOString() : null,
-      flightLinks: Object.fromEntries(data.countries.flatMap((c, i) => (flights[i] ? [[c.code, flights[i]!] as const] : []))),
+      flightLinks,
       hotelLinks,
     },
   };
