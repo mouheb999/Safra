@@ -97,17 +97,25 @@ const fr: Messages = {
 
   brain: {
     headings: {
+      Style: "Quel genre de voyage ?",
       Budget: "Quel est votre budget ?",
       When: "Vous partez quand ?",
       Who: "Qui vient ?",
       Vibe: "Qu’est-ce qui vous plaît ?",
     },
     visuals: {
+      Style: { label: "Votre façon de voyager", detail: "On en déduit le début de votre budget et les hôtels choisis." },
       Budget: { label: "Chaque dinar compté", detail: "Vols, hébergement, repas, visa et argent de poche, tout est dedans." },
       When: { label: "La bonne saison", detail: "Le cerveau signale les lieux pluvieux à vos dates." },
       Who: { label: "Plus belles histoires, ensemble", detail: "Chambres, repas et activités chiffrés pour votre groupe." },
       Vibe: { label: "Suivez vos envies", detail: "Votre premier itinéraire part des lieux forts dans ce que vous aimez." },
     },
+    styleLead: "On démarre votre budget à partir de là, et on choisit les hôtels en conséquence.",
+    styles: {
+      standard: { title: "Standard", body: "Hôtels confortables, journées bien organisées, bon rapport qualité-prix." },
+      luxury: { title: "Luxe", body: "Hôtels 4–5 étoiles, les meilleurs endroits et un rythme plus détendu." },
+    },
+    styleFrom: "À partir de {amount} par personne",
     budgetLead: "Par personne, tout compris : vols depuis Tunis, hébergement, repas, visa, assurance et argent de poche.",
     whenDates: "Dates précises",
     whenMonth: "Juste un mois",

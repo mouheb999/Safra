@@ -5,6 +5,9 @@ export const MAX_BUDGET = 10000;
 export const BUDGET_STEP = 100;
 export const DEFAULT_BUDGET = 3000;
 
+/** "Find my trip": where the budget slider starts for each kind of trip (per person). */
+export const STYLE_MIN_BUDGET = { standard: 2000, luxury: 4000 } as const;
+
 /** sessionStorage key: the home page slider hands its value to the quiz. */
 export const DISCOVERY_BUDGET_KEY = "safra-discovery-budget";
 
@@ -35,6 +38,6 @@ export function formatRange(min: number, max: number, locale: Locale = "en"): st
   return `${formatNumber(min, locale)}–${formatNumber(max, locale)} ${CURRENCY[locale]}`;
 }
 
-export function budgetPercent(value: number): number {
-  return ((value - MIN_BUDGET) / (MAX_BUDGET - MIN_BUDGET)) * 100;
+export function budgetPercent(value: number, min: number = MIN_BUDGET): number {
+  return ((value - min) / (MAX_BUDGET - min)) * 100;
 }

@@ -97,17 +97,25 @@ const en = {
 
   brain: {
     headings: {
+      Style: "What kind of trip?",
       Budget: "What’s your budget?",
       When: "When are you going?",
       Who: "Who’s coming?",
       Vibe: "What are you into?",
     },
     visuals: {
+      Style: { label: "Your kind of escape", detail: "It sets where your budget starts and the hotels we pick." },
       Budget: { label: "Every dinar counted", detail: "Flights, stays, food, visa and pocket money, all inside it." },
       When: { label: "Chase the right season", detail: "The brain flags places that are rainy on your dates." },
       Who: { label: "Better stories, together", detail: "Rooms, meals and activities are priced for your group." },
       Vibe: { label: "Follow your kind of feeling", detail: "Your first route starts from places strong in what you love." },
     },
+    styleLead: "We start your budget from it, and pick the hotels to match.",
+    styles: {
+      standard: { title: "Standard", body: "Comfortable hotels, well-planned days, great value." },
+      luxury: { title: "Luxury", body: "4–5 star hotels, the best spots and a more relaxed pace." },
+    },
+    styleFrom: "From {amount} per person",
     budgetLead: "Per person, everything included: flights from Tunis, stays, food, visa, insurance and pocket money.",
     whenDates: "Exact dates",
     whenMonth: "Just a month",

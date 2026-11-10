@@ -500,6 +500,23 @@ check("too tight: one-tap fixes only when they lead to a trip", () => {
   assert(budgetFixes(solo, data, 12_000, 10_000).budgetTND === undefined, "no budget fix beyond the slider");
 });
 
+check("luxury: good hotels only, a higher starting budget, and it survives the URL", () => {
+  const lux: BrainInput = { ...couple, budgetTND: 7000, style: "luxury" };
+  const r = pickTwo(lux, data);
+  assert(r.status === "ok", r.status);
+  for (const p of r.status === "ok" ? r.picks : []) assert(p.trip.stops.every((s) => s.stay === "good_hotel"), `${p.country}: ${p.trip.stops.map((s) => s.stay)}`);
+  // Too small for luxury → too tight (never a budget hotel instead).
+  const small = pickTwo({ ...lux, budgetTND: 2000 }, data);
+  assert(small.status === "too_tight" || (small.status === "ok" && small.picks.every((p) => p.trip.stops.every((s) => s.stay === "good_hotel"))), small.status);
+  const today = new Date("2026-11-10T00:00:00Z");
+  const standard = new Map(budgetGuide(data, today, "standard").map((g) => [g.code, g.minPerPersonTND]));
+  const luxury = budgetGuide(data, today, "luxury");
+  assert(luxury.every((g) => g.minPerPersonTND >= (standard.get(g.code) ?? 0)), "luxury never cheaper than standard");
+  console.log(`      luxury week for two from: ${luxury.slice(0, 4).map((g) => `${g.code} ${g.minPerPersonTND}`).join(" · ")}`);
+  assert(decodeInput(encodeInput(lux))?.style === "luxury", "style survives the URL");
+  assert(decodeInput(encodeInput({ ...lux, style: "royal" as never })) === null, "unknown style refused");
+});
+
 for (const [name, fn] of queue) {
   try {
     await fn();

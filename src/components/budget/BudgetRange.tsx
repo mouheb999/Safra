@@ -3,21 +3,24 @@
 import { useI18n } from "@/i18n/client";
 import { BUDGET_STEP, MAX_BUDGET, MIN_BUDGET, budgetPercent, clampBudget, formatBudget } from "@/lib/budget";
 
-const pct = (v: number) => Math.min(100, Math.max(0, budgetPercent(v)));
 
 /** Styled range track (filled bar + round knob over an invisible native input) with min/max labels. Mirrors in RTL. */
 export function BudgetRange({
   value,
   onChange,
   zones,
+  min = MIN_BUDGET,
 }: {
   value: number;
   onChange: (value: number) => void;
+  /** Where the slider starts (the home page: 1,000 DT; "Find my trip": by kind of trip). */
+  min?: number;
   /** Optional colour strip under the track: red below `amberFrom`, amber up to `greenFrom`, green beyond. */
   zones?: { amberFrom: number; greenFrom: number };
 }) {
   const { t, locale } = useI18n();
-  const percent = budgetPercent(value);
+  const percent = Math.min(100, Math.max(0, budgetPercent(value, min)));
+  const pct = (v: number) => Math.min(100, Math.max(0, budgetPercent(v, min)));
   return (
     <div>
       <div className="relative rounded-2xl px-1 pt-2.5 outline-2 outline-offset-4 outline-transparent transition-[outline-color] focus-within:outline-orange">
@@ -33,11 +36,11 @@ export function BudgetRange({
           type="range"
           aria-label={t.budget.aria}
           aria-valuetext={formatBudget(value, locale)}
-          min={MIN_BUDGET}
+          min={min}
           max={MAX_BUDGET}
           step={BUDGET_STEP}
           value={value}
-          onChange={(e) => onChange(clampBudget(Number(e.target.value)))}
+          onChange={(e) => onChange(Math.max(min, clampBudget(Number(e.target.value))))}
           className="absolute inset-x-0 top-[5px] m-0 h-[30px] w-full cursor-pointer opacity-0"
         />
       </div>
@@ -51,7 +54,7 @@ export function BudgetRange({
         </div>
       ) : null}
       <div className="mt-4 flex justify-between px-0.5 text-sm leading-none font-bold opacity-90">
-        <span>{formatBudget(MIN_BUDGET, locale)}</span>
+        <span>{formatBudget(min, locale)}</span>
         <span>{formatBudget(MAX_BUDGET, locale)}</span>
       </div>
     </div>

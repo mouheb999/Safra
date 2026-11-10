@@ -26,7 +26,11 @@ export interface BrainInput {
   stay: StayType;
   /** Countries the visitor already saw and asked to replace ("Show me 2 other destinations"). */
   exclude?: string[];
+  /** "Find my trip"'s first question: luxury trips stay in good hotels only (missing = standard). */
+  style?: TripStyle;
 }
+
+export type TripStyle = "standard" | "luxury";
 
 export type Season = "best" | "ok";
 export type Label = "best_value" | "best_experience" | "easiest";

@@ -5,7 +5,7 @@
 
 import type { StayType } from "../../data/brain";
 import { priceTrip, type BuilderData, type BuiltTrip, type PricedTrip } from "./builder.ts";
-import { suggestTrips, tripNights, type BrainInput, type BrainOption, type Season } from "./engine.ts";
+import { suggestTrips, tripNights, type BrainInput, type BrainOption, type Season, type TripStyle } from "./engine.ts";
 
 export type PickLabel = "best_match" | "best_value" | "best_experience" | "stretch";
 
@@ -44,20 +44,23 @@ const toTrip = (country: string, stay: StayType, bases: BrainOption["bases"]): B
 function candidate(input: BrainInput, countryCode: string, data: BuilderData): Candidate | null {
   const country = data.countries.find((c) => c.code === countryCode);
   if (!country) return null;
-  for (const stay of ["good_hotel", "budget_hotel"] as const) {
+  // Luxury trips stay in good hotels only; standard ones take a good hotel when it fits, else a budget hotel.
+  const stays = input.style === "luxury" ? (["good_hotel"] as const) : (["good_hotel", "budget_hotel"] as const);
+  const fallback = stays[stays.length - 1];
+  for (const stay of stays) {
     const r = suggestTrips({ ...input, stay }, [country], data.bases, data.settings);
     if (r.status === "ok") {
       const o = r.options[0];
       return { country: countryCode, trip: toTrip(countryCode, stay, o.bases), fits: true, score: o.score, season: o.season, vibesMatched: o.vibesMatched };
     }
   }
-  const r = suggestTrips({ ...input, stay: "budget_hotel" }, [country], data.bases, data.settings);
+  const r = suggestTrips({ ...input, stay: fallback }, [country], data.bases, data.settings);
   if (r.status !== "no_fit" || !r.closest) return null;
   const seasons = r.closest.bases.map((b) => b.season);
   const matched = input.vibes.filter((v) => r.closest!.bases.some((b) => data.bases.find((x) => x.slug === b.slug)?.strengths.includes(v)));
   return {
     country: countryCode,
-    trip: toTrip(countryCode, "budget_hotel", r.closest.bases),
+    trip: toTrip(countryCode, fallback, r.closest.bases),
     fits: false,
     score: -r.closest.shortfallTND,
     season: seasons.includes("ok") ? "ok" : "best",
@@ -182,12 +185,12 @@ export interface BudgetGuideEntry {
  * the cheapest of the next 6 months, every cost included (flights from Tunis, stays, food, pocket money…) — from
  * the same prices as the picks. Cheapest first.
  */
-export function budgetGuide(data: BuilderData, today: Date): BudgetGuideEntry[] {
+export function budgetGuide(data: BuilderData, today: Date, style: TripStyle = "standard"): BudgetGuideEntry[] {
   const best = new Map<string, number>();
   for (let i = 1; i <= GUIDE_MONTHS; i++) {
     const input: BrainInput = {
       budgetTND: 100, budgetScope: "per_person", adults: 2, children: 0, childAges: [], group: "couple",
-      depart: null, ret: null, flexDays: 0, month: ((today.getUTCMonth() + i) % 12) + 1, nights: GUIDE_NIGHTS, vibes: [], stay: "good_hotel",
+      depart: null, ret: null, flexDays: 0, month: ((today.getUTCMonth() + i) % 12) + 1, nights: GUIDE_NIGHTS, vibes: [], stay: "good_hotel", style,
     };
     for (const c of pricedCandidates(input, data)) {
       const perPerson = (totalBudget(input) + c.shortTND) / travelersOf(input);

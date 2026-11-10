@@ -25,6 +25,7 @@ export const brainInputSchema = z
     vibes: z.array(z.enum(VIBE_OPTIONS)).max(MAX_VIBES),
     stay: z.enum(STAY_TYPES),
     exclude: z.array(z.string().regex(/^[a-z0-9-]{1,40}$/)).max(30).optional(),
+    style: z.enum(["standard", "luxury"]).optional(),
   })
   .refine((i) => !i.depart || !i.ret || i.ret > i.depart, "Return must be after departure.");
 
