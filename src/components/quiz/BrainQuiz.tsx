@@ -10,8 +10,8 @@ import { GROUP_TYPES, type GroupType } from "@/data/brain";
 import { useI18n } from "@/i18n/client";
 import { fmt, label } from "@/i18n/fmt";
 import type { Locale } from "@/i18n/config";
-import { DEFAULT_BUDGET, DISCOVERY_BUDGET_KEY, clampBudget, formatBudget } from "@/lib/budget";
-import type { BrainInput } from "@/lib/brain/engine";
+import { DEFAULT_BUDGET, DISCOVERY_BUDGET_KEY, STYLE_MIN_BUDGET, clampBudget, formatBudget, formatDT } from "@/lib/budget";
+import type { BrainInput, TripStyle } from "@/lib/brain/engine";
 import type { SurprisePreview } from "@/lib/brain/preview";
 import { MAX_VIBES, VIBE_OPTIONS, vibesForCategory } from "@/lib/quiz";
 import type { QuizPrefill } from "@/lib/search-params";
@@ -19,12 +19,13 @@ import { Choice, DateField, Pill, StepProgress, StepVisual, Stepper, choiceBase,
 import { BudgetGuide, guideZones, type GuideDestination } from "./BudgetGuide";
 import { LoadingStep, SurpriseResults } from "./SurpriseResults";
 
-const STEPS = ["Budget", "When", "Who", "Vibe"] as const;
+const STEPS = ["Style", "Budget", "When", "Who", "Vibe"] as const;
 type QuestionStep = (typeof STEPS)[number];
 type Step = QuestionStep | "Loading" | "Results";
 
 const unsplash = (id: string) => `https://images.unsplash.com/${id}?auto=format&fit=crop&w=1000&q=85`;
 export const VISUALS: Record<QuestionStep, { image: string; position?: string }> = {
+  Style: { image: "https://framerusercontent.com/images/GL4tcr2qJCc1BJINLyIiLL1ySA.jpg" },
   Budget: { image: "https://framerusercontent.com/images/snHq8305shuNdUjeU5oyWBUIZw.jpg" },
   When: { image: unsplash("photo-1535392432937-a27c36ec07b5") },
   Who: { image: unsplash("photo-1508904635850-d986b19765d0"), position: "50% 80%" },
@@ -33,6 +34,8 @@ export const VISUALS: Record<QuestionStep, { image: string; position?: string }>
 
 /** The questionnaire's state; `budget` is per person (the home slider's value). */
 interface Answers {
+  /** First question: standard or luxury (sets where the budget slider starts, and the hotels). */
+  style: TripStyle | "";
   budget: number;
   whenMode: "dates" | "month";
   depart: string;
@@ -56,6 +59,7 @@ function toInput(a: Answers): BrainInput {
   return {
     budgetTND: a.budget,
     budgetScope: "per_person",
+    style: a.style || "standard",
     adults: a.adults,
     children: a.children,
     childAges: a.childAges,
@@ -107,7 +111,7 @@ export function BrainQuiz({
   payOnline,
   assist,
   whatsappNumber,
-  guide,
+  guides,
 }: {
   prefill: QuizPrefill;
   planPriceDT: number;
@@ -116,12 +120,13 @@ export function BrainQuiz({
   /** How the WhatsApp assistance is sold (/admin/settings). */
   assist: AssistOffer;
   whatsappNumber: string;
-  /** What each destination needs per person for a typical week (budget step indicator). */
-  guide: GuideDestination[];
+  /** What each destination needs per person for a typical week, by kind of trip (budget step indicator). */
+  guides: Record<TripStyle, GuideDestination[]>;
 }) {
   const { t, locale } = useI18n();
   const today = useTodayISO();
   const [answers, setAnswers] = useState<Answers>(() => ({
+    style: "",
     budget: prefill.budget ?? DEFAULT_BUDGET,
     whenMode: "dates",
     depart: "",
@@ -135,7 +140,7 @@ export function BrainQuiz({
     childAges: [],
     vibes: vibesForCategory(prefill.category),
   }));
-  const [step, setStep] = useState<Step>("Budget");
+  const [step, setStep] = useState<Step>("Style");
   const [preview, setPreview] = useState<SurprisePreview | null>(null);
   const [, startTransition] = useTransition();
   // Only the latest request may show its result (the visitor can go back while it loads).
@@ -168,7 +173,7 @@ export function BrainQuiz({
       setPreview(saved.preview);
       setStep("Results");
     } else {
-      window.history.replaceState({ ...window.history.state, safraStep: "Budget" }, "");
+      window.history.replaceState({ ...window.history.state, safraStep: "Style" }, "");
     }
     const onPop = (event: PopStateEvent) => {
       const target = (event.state as { safraStep?: Step } | null)?.safraStep;
@@ -194,11 +199,15 @@ export function BrainQuiz({
     headingRef.current?.focus();
   }, [step]);
 
+  const styleMin = STYLE_MIN_BUDGET[answers.style || "standard"];
+  const styleGuide = guides[answers.style || "standard"];
   const set = <K extends keyof Answers>(key: K, value: Answers[K]) => setAnswers((a) => ({ ...a, [key]: value }));
 
   const canContinue = (s: QuestionStep): boolean => {
     const a = answers;
     switch (s) {
+      case "Style":
+        return a.style !== "";
       case "Budget":
         return true;
       case "When":
@@ -268,7 +277,7 @@ export function BrainQuiz({
 
       <div className={`grid min-w-0 items-start gap-7 ${isQuestion ? "grid-cols-[minmax(0,1.6fr)_minmax(220px,.95fr)] @max-[810px]:grid-cols-1 @max-[810px]:gap-4" : ""}`}>
         <div className="min-w-0">
-          {step !== "Budget" && step !== "Loading" ? (
+          {step !== "Style" && step !== "Loading" ? (
             <button type="button" onClick={goBack} className="mb-2.5 cursor-pointer p-0 font-extrabold">
               {t.quiz.back}
             </button>
@@ -280,6 +289,57 @@ export function BrainQuiz({
                 {t.brain.headings[step as QuestionStep]}
               </h2>
 
+              {step === "Style" ? (
+                <>
+                  <p className="m-0 text-lg font-bold opacity-85">{t.brain.styleLead}</p>
+                  <div className="grid gap-3 @min-[560px]:grid-cols-2">
+                    {(["standard", "luxury"] as const).map((s) => {
+                      const active = answers.style === s;
+                      return (
+                        <button
+                          key={s}
+                          type="button"
+                          aria-pressed={active}
+                          onClick={() =>
+                            setAnswers((a) => ({
+                              ...a,
+                              style: s,
+                              // The slider starts at the style's minimum; luxury trips lean on the "Luxury" vibe.
+                              budget: Math.max(a.budget, STYLE_MIN_BUDGET[s]),
+                              vibes:
+                                s === "luxury"
+                                  ? a.vibes.includes("Luxury") || a.vibes.length >= MAX_VIBES
+                                    ? a.vibes
+                                    : [...a.vibes, "Luxury"]
+                                  : a.vibes.filter((v) => v !== "Luxury"),
+                            }))
+                          }
+                          className={`${choiceBase} grid min-h-[150px] content-between gap-3 rounded-[24px] p-5 ${active ? "border-orange bg-orange" : "bg-white/67"}`}
+                        >
+                          <span className="flex items-center gap-3">
+                            <span className="inline-flex size-11 shrink-0 items-center justify-center rounded-full bg-white/70">
+                              {s === "luxury" ? (
+                                <OptionIcon kind="vibe" name="Luxury" />
+                              ) : (
+                                <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+                                  <rect x="3.5" y="7.5" width="17" height="12" rx="2.5" />
+                                  <path d="M9 7.5V5.5a1.5 1.5 0 0 1 1.5-1.5h3A1.5 1.5 0 0 1 15 5.5v2M3.5 12.5h17" />
+                                </svg>
+                              )}
+                            </span>
+                            <span className="text-2xl font-black">{t.brain.styles[s].title}</span>
+                          </span>
+                          <span className="text-[15px] leading-snug font-semibold opacity-85">{t.brain.styles[s].body}</span>
+                          <span className={`justify-self-start rounded-full px-3 py-1 text-sm font-black ${active ? "bg-white/75" : "bg-sky"}`}>
+                            {fmt(t.brain.styleFrom, { amount: formatDT(STYLE_MIN_BUDGET[s], locale) })}
+                          </span>
+                        </button>
+                      );
+                    })}
+                  </div>
+                </>
+              ) : null}
+
               {step === "Budget" ? (
                 <>
                   <p className="m-0 text-lg font-bold opacity-85">{t.brain.budgetLead}</p>
@@ -287,9 +347,9 @@ export function BrainQuiz({
                     <div className="mb-4 text-center text-[clamp(44px,8cqw,76px)] leading-none font-black tracking-[-0.03em] tabular-nums">
                       {formatBudget(answers.budget, locale)}
                     </div>
-                    <BudgetRange value={answers.budget} onChange={(v) => set("budget", v)} zones={guideZones(guide)} />
+                    <BudgetRange value={answers.budget} onChange={(v) => set("budget", v)} zones={guideZones(styleGuide)} min={styleMin} />
                   </div>
-                  <BudgetGuide value={answers.budget} guide={guide} />
+                  <BudgetGuide value={answers.budget} guide={styleGuide} />
                 </>
               ) : null}
 
@@ -358,7 +418,7 @@ export function BrainQuiz({
               onFix={applyFix}
               onRestart={() => {
                 setAnswers((a) => ({ ...a, depart: "", ret: "", month: null, group: "", vibes: [], children: 0, childAges: [] }));
-                go("Budget");
+                go("Style");
               }}
               headingRef={headingRef}
             />

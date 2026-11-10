@@ -76,6 +76,7 @@ export function TripBrainCard({ snapshot: s }: { snapshot: TripBrainSnapshot }) 
 
         <Facts
           rows={[
+            ["Kind of trip", i.style === "luxury" ? "Luxury — good (4–5★) hotels only" : "Standard"],
             ["Budget", `${formatDT(i.budgetTND)} ${i.budgetScope === "per_person" ? "per person" : "in total"} · ${formatDT(s.totalBudgetTND)} total`],
             ["Group", `${i.group} · ${party.join(", ")}`],
             ["When", when],

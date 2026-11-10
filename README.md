@@ -145,7 +145,9 @@ mode), because the customer needs to see how to pay.
 
 ## Trip brain ("Find my trip" — surprise me)
 
-The visitor gives a budget per person (set once, on the first step) and answers 3 quick questions (dates or a
+The visitor first picks the kind of trip — **Standard** (budget slider from 2,000 DT per person; a good hotel when it
+fits, else a budget hotel) or **Luxury** (from 4,000 DT; good 4–5★ hotels only, "Luxury" vibe preselected), see
+`STYLE_MIN_BUDGET` and `BrainInput.style` — then gives a budget per person (set once) and answers 3 quick questions (dates or a
 month, who's going, up to 5 of 14 vibes). The brain answers with **exactly 2 trips** in 2 countries — places, nights, weather,
 total cost and pocket money — each with a **locked block**: where the money goes (category names, blurred amounts)
 on top of the day-by-day program (day numbers and places, blurred details). "Unlock my program" opens the checkout
