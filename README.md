@@ -166,10 +166,12 @@ to the previous question.
 - `src/lib/brain/engine.ts` (Safra Trip Brain v0.5): the best plan per country — skips places in their rainy season
   or without a shared vibe, splits the nights, adds about one activity every 2 days, cuts activities or a place to
   fit, and scores (budget 30, vibe 25, season 20, group 15, ease 10).
-- `src/lib/brain/surprise.ts`: the 2 picks — a good hotel when it fits, else a budget hotel. **Focus destinations**
-  (Southeast Asia; `brain_countries.is_featured`, "Focus destination" in /admin/brain) lead: 2 that fit → both; 1 fits →
-  it plus the next focus trip if within 20% of the budget, else the best backup that fits; none fits → the closest
-  focus trip (with what it needs) plus the best backup that fits (or nearly fits).
+- `src/lib/brain/surprise.ts`: the 2 picks — a good hotel when it fits, else a budget hotel. **The budget is respected**:
+  only trips within it, or needing at most **150 DT more per person** (`MAX_STRETCH_PER_PERSON_TND`), are shown —
+  fitting ones first, and among them **focus destinations** (Southeast Asia; `brain_countries.is_featured`, "Focus
+  destination" in /admin/brain) first. When nothing is in reach, the visitor is told the budget is too tight for
+  these dates, with the budget per person the cheapest trip needs ("Change my budget"). The same rule applies to
+  "Show me 2 other destinations" and after live prices re-price the picks.
 - **"Show me 2 other destinations"** under the results: the next 2 countries, skipping every one already shown
   (`BrainInput.exclude`), until none are left ("Back to my 2 best matches" returns to the first pair). The skipped
   countries travel inside the encoded answers, so the checkout and the order rebuild exactly that pair; the admin

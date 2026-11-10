@@ -335,6 +335,7 @@ export function BrainQuiz({
               whatsappNumber={whatsappNumber}
               onOther={showOthers}
               onBest={exclude.length ? () => run([], false) : undefined}
+              onChangeBudget={() => go("Budget")}
               onRestart={() => {
                 setAnswers((a) => ({ ...a, depart: "", ret: "", month: null, group: "", vibes: [], children: 0, childAges: [] }));
                 go("Budget");

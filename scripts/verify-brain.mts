@@ -6,7 +6,7 @@ import { CATEGORIES, seasonOf, suggestTrips, type BrainInput, type BrainResult }
 import { adviseTrip, cleanTrip, priceTrip, stopSeason } from "../src/lib/brain/builder.ts";
 import { buildPreview } from "../src/lib/brain/preview.ts";
 import { decodeInput, encodeInput } from "../src/lib/brain/input.ts";
-import { hasMoreDestinations, pickTwo, rankCountries } from "../src/lib/brain/surprise.ts";
+import { MAX_STRETCH_PER_PERSON_TND, hasMoreDestinations, pickTwo, rankCountries } from "../src/lib/brain/surprise.ts";
 import { liveFlightTND, parseEurTnd, parseFlightPrice, parseHotelRates, pickTwoLive, searchDates, type LiveDeps } from "../src/lib/live/prices.ts";
 import { buildSnapshot } from "../src/lib/brain/snapshot.ts";
 
@@ -210,16 +210,19 @@ check("builder: room to spare suggests another place or a better hotel that fits
   assert(add && "costTND" in add && add.costTND <= margin, JSON.stringify(tips));
 });
 
-check("surprise: always 2 trips in 2 countries, focus destinations (Asia) first", () => {
+check("surprise: only trips within the budget (or ≤ 150 DT per person over), fitting ones first, Asia first among them", () => {
+  const focus = new Set(data.countries.filter((c) => c.featured).map((c) => c.code));
   for (const budgetTND of [2500, 4000, 5500, 8000]) {
     const r = pickTwo({ ...couple, budgetTND }, data);
-    assert(r.status === "ok" && r.picks.length === 2, `${budgetTND}: ${r.status}`);
-    assert(r.picks[0].country !== r.picks[1].country, "two countries");
-    const focus = new Set(data.countries.filter((c) => c.featured).map((c) => c.code));
-    assert(focus.has(r.picks[0].country), `${budgetTND}: a focus destination leads (${r.picks[0].country})`);
+    assert(r.status === "ok" && r.picks.length >= 1 && r.picks.length <= 2, `${budgetTND}: ${r.status}`);
+    if (r.picks.length === 2) assert(r.picks[0].country !== r.picks[1].country, "two countries");
+    assert(r.picks.every((p, i) => i === 0 || !p.fits || r.picks[i - 1].fits), `${budgetTND}: fitting trips first`);
+    const fitting = r.picks.filter((p) => p.fits);
+    if (fitting.some((p) => focus.has(p.country))) assert(focus.has(r.picks[0].country), `${budgetTND}: a focus destination leads (${r.picks[0].country})`);
     for (const p of r.picks) {
       assert(p.fits === (p.priced.marginTND >= 0), `${p.country}: fits matches the price`);
       assert(p.fits ? p.missingTND === 0 : p.missingTND >= -p.priced.marginTND && p.missingTND % 50 === 0, `${p.country}: missing amount`);
+      assert(p.missingTND / p.priced.travelers <= MAX_STRETCH_PER_PERSON_TND, `${budgetTND}: ${p.country} needs ${p.missingTND} more for ${p.priced.travelers}`);
       assert(p.fits ? p.label !== "stretch" : p.label === "stretch", `${p.country}: label ${p.label}`);
       assert(p.priced.nights === p.priced.targetNights, `${p.country}: covers the dates`);
       for (const s of p.trip.stops) assert(stopSeason(baseBySlug.get(s.slug)!, couple) !== "bad", `${s.slug}: not in the rainy season`);
@@ -228,16 +231,26 @@ check("surprise: always 2 trips in 2 countries, focus destinations (Asia) first"
   }
 });
 
-check("surprise: small budgets keep an Asian trip in view, with a backup that fits", () => {
-  const solo = { ...couple, adults: 1, group: "solo" as const, budgetTND: 2600, depart: "2026-12-10", ret: "2026-12-17", vibes: ["Food", "Culture"] };
-  const r = pickTwo(solo, data);
-  assert(r.status === "ok", r.status);
-  const [a, b] = r.picks;
-  const focus = new Set(data.countries.filter((c) => c.featured).map((c) => c.code));
-  assert(focus.has(a.country) && !a.fits && a.label === "stretch", `first: ${a.country} ${a.label}`);
-  assert(!focus.has(b.country) && b.fits, `second: ${b.country} fits ${b.fits}`);
-  console.log(`      solo 2,600 DT: ${a.country} (+${a.missingTND}) · ${b.country} ≈${b.priced.tripCostTND} (${b.label})`);
+check("surprise: a budget too small says so (with the budget that works) instead of showing trips far over it", () => {
+  const solo = { ...couple, adults: 1, group: "solo" as const, budgetTND: 1000, depart: "2026-12-10", ret: "2026-12-20", vibes: ["Beach", "Food"] };
+  for (const input of [solo, { ...couple, budgetTND: 1000 }]) {
+    const r = pickTwo(input, data);
+    assert(r.status === "too_tight", `${input.adults} at 1,000/pp: ${r.status}${r.status === "ok" ? " " + r.picks.map((p) => `${p.country}+${p.missingTND}`).join(",") : ""}`);
+    if (r.status !== "too_tight") continue;
+    assert(r.minPerPersonTND > 1000 && r.minPerPersonTND % 50 === 0, `suggested ${r.minPerPersonTND}`);
+    // At the suggested budget there is a trip, in reach.
+    const again = pickTwo({ ...input, budgetTND: r.minPerPersonTND }, data);
+    assert(again.status === "ok" && again.picks.some((p) => p.fits), `at ${r.minPerPersonTND}/pp: ${again.status}`);
+    console.log(`      ${input.adults} traveler(s), 10 nights at 1,000/pp → too tight, smallest trip ≈ ${r.minPerPersonTND}/pp`);
+    const preview = buildPreview(input, data, "en");
+    assert(preview.status === "too_tight" && preview.minPerPersonTND === r.minPerPersonTND, "the preview says it too");
+  }
+  // Just over the line: shown, with at most 150 DT more per person.
+  const tight = { ...solo, budgetTND: 2500 };
+  const t = pickTwo(tight, data);
+  assert(t.status !== "ok" || t.picks.every((p) => p.missingTND <= MAX_STRETCH_PER_PERSON_TND), JSON.stringify(t.status === "ok" ? t.picks.map((p) => p.missingTND) : t));
   const big = pickTwo({ ...solo, budgetTND: 6000 }, data);
+  const focus = new Set(data.countries.filter((c) => c.featured).map((c) => c.code));
   assert(big.status === "ok" && big.picks.every((p) => focus.has(p.country) && p.fits), "when Asia fits, both picks are Asian");
 });
 
