@@ -16,6 +16,7 @@ import type { SurprisePreview } from "@/lib/brain/preview";
 import { MAX_VIBES, VIBE_OPTIONS, vibesForCategory } from "@/lib/quiz";
 import type { QuizPrefill } from "@/lib/search-params";
 import { Choice, DateField, Pill, StepProgress, StepVisual, Stepper, choiceBase, questionHeading, stepButton } from "./controls";
+import { BudgetGuide, guideZones, type GuideDestination } from "./BudgetGuide";
 import { LoadingStep, SurpriseResults } from "./SurpriseResults";
 
 const STEPS = ["Budget", "When", "Who", "Vibe"] as const;
@@ -106,6 +107,7 @@ export function BrainQuiz({
   payOnline,
   assist,
   whatsappNumber,
+  guide,
 }: {
   prefill: QuizPrefill;
   planPriceDT: number;
@@ -114,6 +116,8 @@ export function BrainQuiz({
   /** How the WhatsApp assistance is sold (/admin/settings). */
   assist: AssistOffer;
   whatsappNumber: string;
+  /** What each destination needs per person for a typical week (budget step indicator). */
+  guide: GuideDestination[];
 }) {
   const { t, locale } = useI18n();
   const today = useTodayISO();
@@ -216,7 +220,7 @@ export function BrainQuiz({
    * The results get their own history entry; the loading screen shows under it. `skip`: countries to leave out
    * ("Show me 2 other destinations"); those reruns replace the results in place, so Back still returns to the questions.
    */
-  const run = (skip: string[] = [], newEntry = true) => {
+  const run = (skip: string[] = [], newEntry = true, a: Answers = answers) => {
     const id = ++requestId.current;
     const started = Date.now();
     if (newEntry) window.history.pushState({ ...window.history.state, safraStep: "Results" }, "");
@@ -225,7 +229,7 @@ export function BrainQuiz({
     startTransition(async () => {
       let result: SurprisePreview | null = null;
       try {
-        result = await surpriseMe(withExclude(toInput(answers), skip), locale);
+        result = await surpriseMe(withExclude(toInput(a), skip), locale);
       } catch {
         // shown as the error state
       }
@@ -233,10 +237,24 @@ export function BrainQuiz({
       if (id !== requestId.current) return;
       setPreview(result);
       setStep("Results");
-      if (result?.status === "ok") saveLastResults({ answers, exclude: skip, preview: result });
+      if (result?.status === "ok") saveLastResults({ answers: a, exclude: skip, preview: result });
     });
   };
   const goNext = () => (index < STEPS.length - 1 ? go(STEPS[index + 1]) : run());
+  /** A one-tap fix from the "too tight" screen: change one answer and search again, in place. */
+  const applyFix = (fix: { budget?: number; nights?: number; month?: number }) => {
+    const nights = answers.whenMode === "dates" && answers.depart && answers.ret ? Math.round((Date.parse(answers.ret) - Date.parse(answers.depart)) / 86_400_000) : answers.nights;
+    const patch: Partial<Answers> = fix.budget
+      ? { budget: fix.budget }
+      : fix.nights
+        ? answers.whenMode === "dates"
+          ? { ret: new Date(Date.parse(`${answers.depart}T00:00:00Z`) + fix.nights * 86_400_000).toISOString().slice(0, 10) }
+          : { nights: fix.nights }
+        : { whenMode: "month", month: fix.month ?? null, nights };
+    const next = { ...answers, ...patch };
+    setAnswers(next);
+    run([], false, next);
+  };
   const showOthers = () => {
     if (preview?.status === "ok") run([...exclude, ...preview.options.map((o) => o.country)], false);
   };
@@ -269,8 +287,9 @@ export function BrainQuiz({
                     <div className="mb-4 text-center text-[clamp(44px,8cqw,76px)] leading-none font-black tracking-[-0.03em] tabular-nums">
                       {formatBudget(answers.budget, locale)}
                     </div>
-                    <BudgetRange value={answers.budget} onChange={(v) => set("budget", v)} />
+                    <BudgetRange value={answers.budget} onChange={(v) => set("budget", v)} zones={guideZones(guide)} />
                   </div>
+                  <BudgetGuide value={answers.budget} guide={guide} />
                 </>
               ) : null}
 
@@ -336,6 +355,7 @@ export function BrainQuiz({
               onOther={showOthers}
               onBest={exclude.length ? () => run([], false) : undefined}
               onChangeBudget={() => go("Budget")}
+              onFix={applyFix}
               onRestart={() => {
                 setAnswers((a) => ({ ...a, depart: "", ret: "", month: null, group: "", vibes: [], children: 0, childAges: [] }));
                 go("Budget");

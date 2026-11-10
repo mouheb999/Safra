@@ -39,6 +39,7 @@ export function SurpriseResults({
   onBest,
   onRestart,
   onChangeBudget,
+  onFix,
   headingRef,
 }: {
   preview: SurprisePreview | null;
@@ -56,6 +57,8 @@ export function SurpriseResults({
   onRestart: () => void;
   /** Back to the budget question, answers kept. */
   onChangeBudget: () => void;
+  /** One-tap fix from the "too tight" screen: search again with one answer changed. */
+  onFix: (fix: { budget?: number; nights?: number; month?: number }) => void;
   headingRef: RefObject<HTMLHeadingElement | null>;
 }) {
   const { t, locale } = useI18n();
@@ -74,8 +77,39 @@ export function SurpriseResults({
           {b.tightTitle}
         </h2>
         <p className="m-0 text-lg font-bold opacity-85">{fmt(b.tightBody, { min: formatDT(preview.minPerPersonTND, locale) })}</p>
+        {preview.fixes.budgetTND || preview.fixes.nights || preview.fixes.month ? (
+          <div className="grid gap-2.5">
+            <p className="m-0 text-sm font-black tracking-[.04em] text-sea uppercase rtl:tracking-normal">{b.fixesLead}</p>
+            {(
+              [
+                preview.fixes.budgetTND ? [fmt(b.fixBudget, { amount: formatDT(preview.fixes.budgetTND, locale) }), { budget: preview.fixes.budgetTND }] : null,
+                preview.fixes.nights ? [fmt(b.fixNights, { n: preview.fixes.nights }), { nights: preview.fixes.nights }] : null,
+                preview.fixes.month
+                  ? [
+                      fmt(b.fixMonth, {
+                        month: new Intl.DateTimeFormat(locale === "ar" ? "ar-TN" : locale, { month: "long", timeZone: "UTC" }).format(new Date(Date.UTC(2026, preview.fixes.month - 1, 1))),
+                      }),
+                      { month: preview.fixes.month },
+                    ]
+                  : null,
+              ].filter(Boolean) as [string, { budget?: number; nights?: number; month?: number }][]
+            ).map(([label, fix], i) => (
+              <button
+                key={label}
+                type="button"
+                onClick={() => onFix(fix)}
+                className={`flex cursor-pointer items-center justify-between gap-3 rounded-2xl px-5 py-4 text-start font-black transition-[transform,filter] hover:-translate-y-0.5 motion-reduce:transition-none ${
+                  i === 0 ? "bg-orange shadow-[0_14px_28px_-16px_rgba(255,128,85,.95)] hover:brightness-105" : "bg-white ring-1 ring-ink/12 hover:ring-ink/30"
+                }`}
+              >
+                {label}
+                <ArrowIcon size={16} />
+              </button>
+            ))}
+          </div>
+        ) : null}
         <div className="flex flex-wrap gap-3">
-          <button type="button" onClick={onChangeBudget} className="cursor-pointer rounded-full bg-orange px-6 py-3.5 font-black hover:brightness-95">
+          <button type="button" onClick={onChangeBudget} className="cursor-pointer rounded-full border border-ink/15 bg-white/70 px-6 py-3.5 font-extrabold hover:bg-white">
             {b.changeBudget}
           </button>
           <a href={whatsappUrl(t.whatsapp.hi, whatsappNumber)} className="rounded-full border border-ink/15 bg-white/70 px-6 py-3.5 font-extrabold hover:bg-white">

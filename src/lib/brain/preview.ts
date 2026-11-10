@@ -6,7 +6,8 @@ import type { Locale } from "@/i18n/config";
 import { pick as tr } from "../../data/translations.ts";
 import type { BrainInput, Season } from "./engine";
 import type { BuilderData } from "./builder";
-import { hasMoreDestinations, pickTwo, type PickLabel, type PickResult } from "./surprise.ts";
+import { budgetFixes, hasMoreDestinations, pickTwo, type BudgetFixes, type PickLabel, type PickResult } from "./surprise.ts";
+import { MAX_BUDGET } from "../budget.ts";
 import { NO_LIVE, type LiveInfo } from "../live/prices.ts";
 
 export interface ProgramDay {
@@ -38,7 +39,7 @@ export interface SurpriseOption {
 export type SurprisePreview =
   | { status: "need_info" }
   /** Nothing within 150 DT per person of the budget: the budget per person the cheapest trip needs. */
-  | { status: "too_tight"; minPerPersonTND: number }
+  | { status: "too_tight"; minPerPersonTND: number; fixes: BudgetFixes }
   | {
       status: "ok";
       options: SurpriseOption[];
@@ -70,7 +71,9 @@ export function buildPreview(input: BrainInput, data: BuilderData, locale: Local
 
 /** The preview of picks already made (e.g. with live prices: pass the data they were priced with). */
 export function previewFromPicks(input: BrainInput, result: PickResult, data: BuilderData, locale: Locale, live: LiveInfo): SurprisePreview {
-  if (result.status === "too_tight") return { status: "too_tight", minPerPersonTND: result.minPerPersonTND };
+  if (result.status === "too_tight") {
+    return { status: "too_tight", minPerPersonTND: result.minPerPersonTND, fixes: budgetFixes(input, data, result.minPerPersonTND, MAX_BUDGET) };
+  }
   if (result.status === "need_info" || result.picks.length === 0) return { status: "need_info" };
   const first = result.picks[0].priced;
   return {

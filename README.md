@@ -172,6 +172,12 @@ to the previous question.
   destination" in /admin/brain) first. When nothing is in reach, the visitor is told the budget is too tight for
   these dates, with the budget per person the cheapest trip needs ("Change my budget"). The same rule applies to
   "Show me 2 other destinations" and after live prices re-price the picks.
+- **Budget guidance**: the budget step shows, live, what the budget gets (`budgetGuide()`: the smallest budget per
+  person a typical week for two needs in each destination, from the same prices) — red "too low, trips start at
+  about X", amber "N destinations possible… Southeast Asia from about Y", green "N destinations, Southeast Asia
+  included" — with matching colour zones under the slider. When the answers are still too tight, the results offer
+  one-tap fixes that re-run the search (`budgetFixes()`): raise to the budget that works, the longest shorter trip
+  that fits, or the nearest month that fits — each only when it really leads to a trip.
 - **"Show me 2 other destinations"** under the results: the next 2 countries, skipping every one already shown
   (`BrainInput.exclude`), until none are left ("Back to my 2 best matches" returns to the first pair). The skipped
   countries travel inside the encoded answers, so the checkout and the order rebuild exactly that pair; the admin

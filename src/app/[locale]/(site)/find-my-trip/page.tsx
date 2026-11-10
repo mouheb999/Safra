@@ -2,7 +2,9 @@ import type { Metadata } from "next";
 import { BrainQuiz } from "@/components/quiz/BrainQuiz";
 import { getMessages } from "@/i18n";
 import { routeLocale, type LocaleParams } from "@/i18n/server";
-import { getCheckoutConfig, getSiteSettings } from "@/lib/catalog";
+import { pick } from "@/data/translations";
+import { budgetGuide } from "@/lib/brain/surprise";
+import { getBrainData, getCheckoutConfig, getSiteSettings } from "@/lib/catalog";
 import { availableOnlineMethods } from "@/lib/payments";
 import { parseQuizParams, type SearchParams } from "@/lib/search-params";
 import { pageMetadata } from "@/lib/site";
@@ -18,8 +20,13 @@ export async function generateMetadata({ params }: LocaleParams): Promise<Metada
 }
 
 export default async function FindMyTripPage({ params, searchParams }: Props) {
-  await routeLocale(params);
-  const [sp, checkout, settings] = await Promise.all([searchParams, getCheckoutConfig(), getSiteSettings()]);
+  const locale = await routeLocale(params);
+  const [sp, checkout, settings, brain] = await Promise.all([searchParams, getCheckoutConfig(), getSiteSettings(), getBrainData()]);
+  // The budget step's indicator: what a typical week costs per person in each destination, from the live prices.
+  const guide = budgetGuide(brain, new Date()).map((g) => {
+    const country = brain.countries.find((c) => c.code === g.code)!;
+    return { ...g, name: pick(country.translations, locale, "name", country.name) };
+  });
   return (
     <main className="px-4 py-10 sm:px-7">
       <BrainQuiz
@@ -28,6 +35,7 @@ export default async function FindMyTripPage({ params, searchParams }: Props) {
         payOnline={availableOnlineMethods(checkout.accounts).length > 0}
         assist={checkout.assist}
         whatsappNumber={settings.whatsappNumber}
+        guide={guide}
       />
     </main>
   );
