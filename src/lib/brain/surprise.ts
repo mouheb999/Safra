@@ -5,7 +5,7 @@
 
 import type { StayType } from "../../data/brain";
 import { priceTrip, type BuilderData, type BuiltTrip, type PricedTrip } from "./builder.ts";
-import { suggestTrips, type BrainInput, type BrainOption, type Season } from "./engine.ts";
+import { suggestTrips, tripNights, type BrainInput, type BrainOption, type Season } from "./engine.ts";
 
 export type PickLabel = "best_match" | "best_value" | "best_experience" | "stretch";
 
@@ -162,6 +162,78 @@ export function keepInReach<T extends Pick>(input: BrainInput, picks: T[]): Pick
   if (kept.length) return { status: "ok", picks: labelPicks(kept) };
   const needed = picks.map((p) => (totalBudget(input) + p.missingTND) / travelersOf(input));
   return { status: "too_tight", minPerPersonTND: ceil50(Math.min(...needed)) };
+}
+
+// ---- Helping visitors whose budget is too small -------------------------------------------------------
+
+/** The typical trip the budget step talks about (dates and group aren't asked yet): a week for two. */
+export const GUIDE_NIGHTS = 7;
+const GUIDE_MONTHS = 6;
+
+export interface BudgetGuideEntry {
+  code: string;
+  featured: boolean;
+  /** The smallest budget per person (rounded up to 50 DT) a typical trip there needs. */
+  minPerPersonTND: number;
+}
+
+/**
+ * For the budget step: in each destination, the smallest budget per person a typical trip needs — a week for two,
+ * the cheapest of the next 6 months, every cost included (flights from Tunis, stays, food, pocket money…) — from
+ * the same prices as the picks. Cheapest first.
+ */
+export function budgetGuide(data: BuilderData, today: Date): BudgetGuideEntry[] {
+  const best = new Map<string, number>();
+  for (let i = 1; i <= GUIDE_MONTHS; i++) {
+    const input: BrainInput = {
+      budgetTND: 100, budgetScope: "per_person", adults: 2, children: 0, childAges: [], group: "couple",
+      depart: null, ret: null, flexDays: 0, month: ((today.getUTCMonth() + i) % 12) + 1, nights: GUIDE_NIGHTS, vibes: [], stay: "good_hotel",
+    };
+    for (const c of pricedCandidates(input, data)) {
+      const perPerson = (totalBudget(input) + c.shortTND) / travelersOf(input);
+      best.set(c.country, Math.min(best.get(c.country) ?? Infinity, perPerson));
+    }
+  }
+  return data.countries
+    .filter((c) => best.has(c.code))
+    .map((c) => ({ code: c.code, featured: c.featured, minPerPersonTND: ceil50(best.get(c.code)!) }))
+    .sort((a, b) => a.minPerPersonTND - b.minPerPersonTND);
+}
+
+/** One-tap ways out of "too tight": each is set only when it really leads to a trip. */
+export interface BudgetFixes {
+  /** Budget per person that brings a trip (when the slider can reach it). */
+  budgetTND?: number;
+  /** The longest shorter trip that fits the current budget. */
+  nights?: number;
+  /** The nearest other month a trip of the same length fits the current budget. */
+  month?: number;
+}
+
+const addDaysISO = (iso: string, n: number) => new Date(Date.parse(`${iso}T00:00:00Z`) + n * 86_400_000).toISOString().slice(0, 10);
+
+export function budgetFixes(input: BrainInput, data: BuilderData, minPerPersonTND: number, maxBudgetTND: number): BudgetFixes {
+  const fixes: BudgetFixes = {};
+  if (input.budgetScope === "per_person" && minPerPersonTND <= maxBudgetTND) fixes.budgetTND = minPerPersonTND;
+  const nights = tripNights(input) ?? 0;
+  for (let n = nights - 1; n >= 3; n--) {
+    const shorter = input.depart ? { ...input, ret: addDaysISO(input.depart, n) } : { ...input, nights: n };
+    if (pickTwo(shorter, data).status === "ok") {
+      fixes.nights = n;
+      break;
+    }
+  }
+  const from = input.month ?? (input.depart ? Number(input.depart.slice(5, 7)) : null);
+  if (from && nights) {
+    for (let i = 1; i < 12; i++) {
+      const month = ((from - 1 + i) % 12) + 1;
+      if (pickTwo({ ...input, depart: null, ret: null, flexDays: 0, month, nights }, data).status === "ok") {
+        fixes.month = month;
+        break;
+      }
+    }
+  }
+  return fixes;
 }
 
 /** The first is the best match; the second says what it's better at (or that it needs a bigger budget). */

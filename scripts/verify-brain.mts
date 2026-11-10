@@ -6,7 +6,7 @@ import { CATEGORIES, seasonOf, suggestTrips, type BrainInput, type BrainResult }
 import { adviseTrip, cleanTrip, priceTrip, stopSeason } from "../src/lib/brain/builder.ts";
 import { buildPreview } from "../src/lib/brain/preview.ts";
 import { decodeInput, encodeInput } from "../src/lib/brain/input.ts";
-import { MAX_STRETCH_PER_PERSON_TND, hasMoreDestinations, pickTwo, rankCountries } from "../src/lib/brain/surprise.ts";
+import { GUIDE_NIGHTS, MAX_STRETCH_PER_PERSON_TND, budgetFixes, budgetGuide, hasMoreDestinations, pickTwo, rankCountries } from "../src/lib/brain/surprise.ts";
 import { liveFlightTND, parseEurTnd, parseFlightPrice, parseHotelRates, pickTwoLive, searchDates, type LiveDeps } from "../src/lib/live/prices.ts";
 import { buildSnapshot } from "../src/lib/brain/snapshot.ts";
 
@@ -465,6 +465,39 @@ check("other destinations: the next 2 skip every country shown, until none are l
   assert(new Set(seen).size === seen.length && [...seen].sort().join() === [...possible].sort().join(), `every possible country once: ${seen.join(", ")} vs ${possible.join(", ")}`);
   assert(decodeInput(encodeInput({ ...couple, exclude: ["thailand"] }))?.exclude?.[0] === "thailand", "exclusions survive the URL");
   assert(decodeInput(encodeInput({ ...couple, exclude: ["<script>"] })) === null, "odd country codes are refused");
+});
+
+check("budget guide: the smallest typical-week budget per destination, and it really brings a trip", () => {
+  const today = new Date("2026-11-10T00:00:00Z");
+  const guide = budgetGuide(data, today);
+  assert(guide.length >= 5, `${guide.length} destinations`);
+  assert(guide.every((g, i) => i === 0 || guide[i - 1].minPerPersonTND <= g.minPerPersonTND), "cheapest first");
+  assert(guide.every((g) => g.minPerPersonTND % 50 === 0 && g.minPerPersonTND > 500), "rounded, realistic");
+  const cheapest = guide[0];
+  // At that budget, a typical week for two in its month fits there.
+  const fitsSomeMonth = Array.from({ length: 6 }, (_, i) => ((today.getUTCMonth() + i + 1) % 12) + 1).some((month) => {
+    const r = pickTwo({ ...couple, depart: null, ret: null, flexDays: 0, month, nights: GUIDE_NIGHTS, vibes: [], budgetTND: cheapest.minPerPersonTND }, data);
+    return r.status === "ok" && r.picks.some((p) => p.country === cheapest.code && p.fits);
+  });
+  assert(fitsSomeMonth, `${cheapest.code} at ${cheapest.minPerPersonTND}/pp`);
+  console.log(`      ${guide.map((g) => `${g.code} ${g.minPerPersonTND}`).join(" · ")}`);
+});
+
+check("too tight: one-tap fixes only when they lead to a trip", () => {
+  const solo = { ...couple, adults: 1, group: "solo" as const, budgetTND: 2300, depart: "2026-12-10", ret: "2026-12-24", vibes: [] as string[] };
+  const r = pickTwo(solo, data);
+  assert(r.status === "too_tight", r.status);
+  if (r.status !== "too_tight") return;
+  const fixes = budgetFixes(solo, data, r.minPerPersonTND, 10_000);
+  assert(fixes.budgetTND === r.minPerPersonTND, `budget fix ${fixes.budgetTND}`);
+  assert(pickTwo({ ...solo, budgetTND: fixes.budgetTND! }, data).status === "ok", "raised budget → a trip");
+  if (fixes.nights) {
+    assert(fixes.nights < 14 && fixes.nights >= 3, `nights ${fixes.nights}`);
+    assert(pickTwo({ ...solo, ret: new Date(Date.parse("2026-12-10") + fixes.nights * 86400000).toISOString().slice(0, 10) }, data).status === "ok", "shorter → a trip");
+  }
+  if (fixes.month) assert(pickTwo({ ...solo, depart: null, ret: null, month: fixes.month, nights: 14 }, data).status === "ok", "other month → a trip");
+  console.log(`      solo 14 nights at 2,300/pp → raise to ${fixes.budgetTND}, ${fixes.nights ?? "no"} nights, month ${fixes.month ?? "none"}`);
+  assert(budgetFixes(solo, data, 12_000, 10_000).budgetTND === undefined, "no budget fix beyond the slider");
 });
 
 for (const [name, fn] of queue) {
